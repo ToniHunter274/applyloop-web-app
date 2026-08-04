@@ -1,0 +1,2247 @@
+.app {
+  min-height: 100vh;
+  background: #edf1f8;
+  color: #111827;
+  display: flex;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(15, 23, 42, 0.35);
+  border: 0;
+}
+
+.sidebar {
+  width: 236px;
+  background: #ffffff;
+  border-right: 1px solid #dfe4ee;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  transform: translateX(0);
+}
+
+.logoRow {
+  padding: 26px 18px 22px;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.brandMark img {
+  width: 28px;
+  height: 28px;
+}
+
+.nav {
+  padding: 4px 10px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow: auto;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  color: #636a79;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.navItem svg {
+  width: 18px;
+  height: 18px;
+}
+
+.navItem:hover {
+  background: #f3f6fb;
+  color: #111827;
+}
+
+.navItemActive {
+  background: #e8eefc;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.account {
+  margin: auto 14px 18px;
+  border: 0;
+  background: transparent;
+  border-top: 1px solid #dfe4ee;
+  padding: 14px 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.avatarTiny {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f5f7fb, #dbe3f7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #475569;
+}
+
+.account strong,
+.account small {
+  display: block;
+}
+
+.account strong {
+  font-size: 14px;
+  color: #616876;
+}
+
+.account small {
+  font-size: 13px;
+  color: #707887;
+}
+
+.mainRail {
+  margin-left: 236px;
+  width: calc(100% - 236px);
+}
+
+.surface {
+  padding: 24px 30px 40px;
+}
+
+.mobileBar {
+  display: none;
+}
+
+.bellButton,
+.mobileBar button {
+  border: 1px solid #d6dcea;
+  background: white;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.pageHeader p {
+  margin: 8px 0 0;
+  color: #7b8393;
+  font-size: 16px;
+}
+
+.pageHeaderActions {
+  display: flex;
+  gap: 10px;
+}
+
+.statsGridEight,
+.statsGridFour,
+.statsGridFiveMini {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.statsGridEight {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.statsGridFour {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.statsGridFiveMini {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.statCard {
+  background: #ffffff;
+  border: 1px solid #dfe4ee;
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  min-height: 100px;
+}
+
+.statTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.statLabel {
+  color: #8a90a0;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.statLabel span {
+  display: block;
+}
+
+.statValue {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.statNote {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #8a90a0;
+}
+
+.noteGreen {
+  color: #16a34a;
+}
+
+.noteBlue {
+  color: #2563eb;
+}
+
+.statIcon {
+  width: 16px;
+  height: 16px;
+  color: #2563eb;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #dfe4ee;
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.dashboardMain,
+.splitCharts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dashboardAnalyticsHeader,
+.panelTitle,
+.chartHeaderMini,
+.operationalHead,
+.feedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboardAnalyticsHeader h2,
+.panelTitle h2,
+.operationalHead h2,
+.feedHeader h2,
+.chartTitle,
+.planCard h3,
+.planModalCard h3,
+.placeholderCard h2,
+.paymentCard h3,
+.currentPlan strong,
+.noticeBox strong {
+  margin: 0;
+}
+
+.dashboardAnalyticsHeader h2,
+.panelTitle h2,
+.operationalHead h2,
+.feedHeader h2,
+.placeholderCard h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.chartBlock {
+  margin-top: 18px;
+}
+
+.chartTitle {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.chartSvg {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+.gridLine {
+  stroke: #d8deea;
+  stroke-dasharray: 3 4;
+}
+
+.gridLineLight {
+  stroke: #eef2f8;
+}
+
+.areaFill {
+  fill: rgba(139, 92, 246, 0.15);
+}
+
+.legendRow {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.legendBlue::before,
+.legendPurple::before,
+.legendGreen::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.legendBlue::before { background: #2563eb; }
+.legendPurple::before { background: #8b5cf6; }
+.legendGreen::before { background: #10b981; }
+
+.barChart {
+  height: 230px;
+  padding: 12px 6px 0;
+}
+
+.barGrid {
+  height: 100%;
+  display: flex;
+  align-items: end;
+  justify-content: space-evenly;
+  gap: 18px;
+  border-bottom: 1px solid #d8deea;
+  border-left: 1px solid #d8deea;
+  padding: 0 8px;
+}
+
+.barColumn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar {
+  width: 100%;
+  max-width: 98px;
+  border-radius: 10px 10px 0 0;
+}
+
+.barBlue { background: #2d58cb; }
+.barPurple { background: linear-gradient(180deg, #8b5cf6, #7c3aed); }
+
+.barColumn small {
+  color: #6b7280;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.funnel {
+  padding: 10px 0 0;
+}
+
+.funnelRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.funnelRow span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.funnelTrack {
+  height: 30px;
+  background: #f2f4fa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.funnelFill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+  border-radius: 8px;
+}
+
+.feedCard {
+  min-height: 100%;
+}
+
+.livePill {
+  color: #6b7280;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.livePill span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16a34a;
+}
+
+.feedList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.feedItem {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.feedIcon {
+  width: 16px;
+  height: 16px;
+  margin-top: 4px;
+  border-radius: 8px;
+}
+
+.feed_green { background: #dcfce7; }
+.feed_blue { background: #dbeafe; }
+.feed_purple { background: #ede9fe; }
+.feed_amber { background: #fef3c7; }
+
+.feedItem strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.4;
+}
+
+.feedItem strong span,
+.feedItem small,
+.twoLine strong,
+.twoLine small,
+.workBreakdown span,
+.infoBanner p,
+.noticeBox li,
+.infoGrid span,
+.infoGridFour span,
+.chiefIdentity p {
+  display: block;
+}
+
+.feedItem small {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.operationalHead {
+  margin-bottom: 18px;
+}
+
+.healthLegend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.healthLegend i {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 999px;
+  margin-right: 4px;
+}
+
+.dotGreen { background: #16a34a; }
+.dotAmber { background: #f59e0b; }
+.dotRed { background: #dc2626; }
+
+.healthGrid,
+.planGrid,
+.chiefGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.healthGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.planGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chiefGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.healthCard {
+  border-radius: 14px;
+  border: 1px solid #dfe4ee;
+  padding: 18px;
+  min-height: 118px;
+}
+
+.healthGreen { background: #eefaf2; }
+.healthAmber { background: #fff8e8; }
+.healthRed { background: #fff3f2; }
+
+.healthLabel {
+  color: #616876;
+  font-size: 14px;
+  display: block;
+}
+
+.healthCard strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.searchPanel {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0 20px;
+}
+
+.searchPanelCompact {
+  padding-bottom: 18px;
+}
+
+.searchField,
+.selectField,
+.inlineSelect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #d9deea;
+  border-radius: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  color: #7b8393;
+}
+
+.searchField {
+  flex: 1;
+}
+
+.searchField input,
+.selectField select,
+.inlineSelect span,
+.inputWrap input,
+.formField textarea {
+  width: 100%;
+  font-size: 15px;
+  color: #374151;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.selectField {
+  min-width: 160px;
+}
+
+.selectField select {
+  appearance: none;
+}
+
+.inlineSelect {
+  min-height: 40px;
+  font-size: 13px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead th {
+  text-align: left;
+  font-size: 12px;
+  color: #8a90a0;
+  font-weight: 600;
+  padding: 14px 12px;
+  border-bottom: 1px solid #dfe4ee;
+}
+
+.table tbody td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #e7ebf3;
+  vertical-align: middle;
+  color: #374151;
+  font-size: 14px;
+}
+
+.nameCell,
+.boldText {
+  font-weight: 700;
+  color: #111827;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge_active,
+.badge_available,
+.badge_paid,
+.badge_approved,
+.badge_submitted {
+  background: #dff6e5;
+  color: #16a34a;
+}
+
+.badge_standard,
+.badge_applicant,
+.badge_basic {
+  background: #e7eefc;
+  color: #2563eb;
+}
+
+.badge_premium,
+.badge_completed,
+.badge_in-review {
+  background: #f2e8ff;
+  color: #9333ea;
+}
+
+.badge_paused,
+.badge_pending,
+.badge_chief-applicant,
+.badge_high,
+.badge_urgent {
+  background: #fff0cf;
+  color: #d97706;
+}
+
+.badge_revision-required,
+.badge_critical {
+  background: #fde2e6;
+  color: #dc2626;
+}
+
+.badge_revision-required { padding-left: 10px; padding-right: 10px; }
+
+.actionIcons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionIcons button,
+.planModalActions button {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+}
+
+.actionIcons button:hover,
+.planModalActions button:hover { color: #1d4ed8; }
+
+.paginationRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination button,
+.ghostMini,
+.primaryMini,
+.completedButton,
+.markPaidButton,
+.managePlanButton,
+.exportButton {
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pagination button {
+  border: 1px solid #ced6e5;
+  background: white;
+  min-width: 40px;
+  height: 32px;
+  padding: 0 12px;
+  color: #374151;
+}
+
+.pageActive {
+  background: #2d58cb !important;
+  color: white !important;
+  border-color: #2d58cb !important;
+}
+
+.button {
+  border: 0;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.button_primary,
+.primaryMini,
+.modalPrimary,
+.managePlanButton,
+.markPaidButton {
+  background: linear-gradient(90deg, #2d64db, #2554c7);
+  color: white;
+}
+
+.button_secondary,
+.modalGhost,
+.modalGhostWide,
+.ghostMini,
+.completedButton {
+  background: white;
+  color: #374151;
+  border: 1px solid #ced6e5;
+}
+
+.button_secondary:hover,
+.ghostMini:hover,
+.completedButton:hover { background: #f8fafc; }
+
+.modalPrimary,
+.modalGhost,
+.modalGhostWide,
+.modalWarning,
+.modalDanger,
+.modalDangerAlt {
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 0;
+}
+
+.modalGhostWide {
+  width: 100%;
+}
+
+.modalWarning {
+  background: #eab308;
+  color: white;
+}
+
+.modalDanger {
+  background: #dc2626;
+  color: white;
+}
+
+.modalDangerAlt {
+  background: white;
+  color: #dc2626;
+  border: 1px solid #f3c5c7;
+}
+
+.ghostMini,
+.primaryMini,
+.completedButton,
+.markPaidButton {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #ced6e5;
+}
+
+.primaryMini,
+.markPaidButton {
+  border: 0;
+}
+
+.completedButton {
+  color: #6b7280;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.twoLine strong { color: #111827; font-size: 14px; }
+.twoLine small { color: #8a90a0; font-size: 12px; margin-top: 4px; }
+.taskCount {
+  min-width: 24px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f5f7;
+  border-radius: 6px;
+}
+
+.inlineProgress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inlineProgress span { min-width: 34px; }
+
+.progressTrack {
+  display: inline-flex;
+  width: 92px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.progress_blue { background: #2563eb; }
+.progress_green { background: #16a34a; }
+.progress_purple { background: #9333ea; }
+.progress_amber { background: #d97706; }
+
+.metricMini {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #dfe4ee;
+  background: #fff;
+}
+
+.metricIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.metric_blue { background: #2d58cb; }
+.metric_green { background: #16a34a; }
+.metric_purple { background: #9333ea; }
+.metric_amber { background: #d97706; }
+
+.metricTitle {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.metricMini strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.metricMini small {
+  display: block;
+  color: #6b7280;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.chiefCard { padding: 20px 22px; }
+
+.chiefTop,
+.chiefIdentity,
+.chiefFooter,
+.personCell,
+.rateRow,
+.infoBanner,
+.paymentRow,
+.planBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chiefIdentity { justify-content: flex-start; }
+
+.avatarCircle {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #eab308;
+  color: white;
+  font-weight: 700;
+  font-size: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chiefIdentity h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chiefIdentity p,
+.teamSize,
+.infoBanner p,
+.planMeta,
+.paymentCard p,
+.modalSubtitle,
+.hint {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.teamSize {
+  font-size: 15px;
+}
+
+.teamSize strong {
+  display: block;
+  color: #111827;
+  font-size: 18px;
+}
+
+.gem { color: #eab308; font-size: 18px; }
+
+.chiefMetrics,
+.metricStripFour,
+.metricStripThree,
+.metricStripThreeLarge {
+  display: grid;
+  gap: 14px;
+}
+
+.chiefMetrics,
+.metricStripThree { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.metricStripFour { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.metricStripThreeLarge { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.barStack {
+  margin-top: 16px;
+}
+
+.barStack label {
+  display: flex;
+  justify-content: space-between;
+  color: #6b7280;
+  font-size: 14px;
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+.chiefFooter {
+  margin-top: 18px;
+}
+
+.chiefFooter strong { display: block; color: #111827; font-size: 16px; margin-top: 4px; }
+
+.ratesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.rateBlock {
+  border-radius: 14px;
+  background: #fcfdfd;
+}
+
+.rateTitle {
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1f2937;
+}
+
+.rateRow {
+  background: #eef2fb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  color: #4b5563;
+}
+
+.rateRow strong { color: #2563eb; }
+
+.inlineFilters {
+  display: flex;
+  gap: 10px;
+}
+
+.workBreakdown {
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.pendingTotal {
+  padding-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  color: #6b7280;
+  font-size: 18px;
+}
+
+.pendingTotal strong {
+  color: #ea580c;
+  margin-left: 10px;
+}
+
+.infoBanner {
+  align-items: flex-start;
+}
+
+.infoIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #3f3f46;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.infoBanner h3,
+.currentPlan strong,
+.planModalCard h3,
+.planCard h3 {
+  font-size: 18px;
+  color: #111827;
+  font-weight: 700;
+}
+
+.infoBanner p {
+  margin: 8px 0 10px;
+  max-width: 780px;
+  line-height: 1.5;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 10px;
+}
+
+.placeholderCard {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.placeholderCard p {
+  max-width: 520px;
+  color: #6b7280;
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.placeholderIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: #e8eefc;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  margin-bottom: 18px;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal {
+  background: #ffffff;
+  border-radius: 22px;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 28px 28px 22px;
+  position: relative;
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.3);
+}
+
+.modalWide {
+  width: min(1180px, 100%);
+}
+
+.modalClose {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  border: 0;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.modalSubtitle {
+  margin: 6px 0 0;
+}
+
+.modalBody {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.modalFooter {
+  margin-top: 22px;
+  border-top: 1px solid #e6ebf4;
+  padding-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.formGrid,
+.infoGrid,
+.infoGridFour,
+.assignmentGrid,
+.planModalGrid,
+.subscriptionOptions {
+  display: grid;
+  gap: 16px;
+}
+
+.formGrid,
+.infoGrid,
+.assignmentGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.infoGridFour { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.planModalGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.subscriptionOptions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formField span,
+.fieldLabel,
+.planBottom span,
+.currentPlan span {
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.inputWrap,
+.formField textarea,
+.currentPlan,
+.assignmentBox,
+.toggleCard,
+.addPlanBox {
+  border: 1px solid #d5dbe8;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 14px;
+  gap: 10px;
+}
+
+.formField textarea {
+  padding: 14px;
+  resize: vertical;
+}
+
+.selectIcon,
+.inputIcon { color: #9ca3af; }
+
+.paymentCard,
+.assignmentBox,
+.noticeBox,
+.modalInnerCard,
+.currentPlan,
+.toggleCard {
+  padding: 16px 18px;
+}
+
+.paymentCard {
+  background: #eef4ff;
+  border: 1px solid #bfd6ff;
+  border-radius: 14px;
+}
+
+.paymentRow {
+  margin-top: 18px;
+}
+
+.paymentRow strong,
+.planPrice,
+.planRevenue,
+.planClients {
+  color: #111827;
+  font-weight: 800;
+}
+
+.planPrice {
+  margin-top: 10px;
+  font-size: 24px;
+}
+
+.planPrice span {
+  font-size: 14px;
+  color: #6b7280;
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+.planMeta {
+  margin-top: 14px;
+}
+
+.planClients,
+.planRevenue {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+}
+
+.planCard {
+  min-height: 320px;
+}
+
+.plan_slate { background: #ffffff; }
+.plan_blue { background: #f4f8ff; }
+.plan_purple { background: #f7f1ff; }
+
+.managePlanButton {
+  margin-top: 22px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+}
+
+.infoGrid div,
+.infoGridFour div,
+.assignmentGrid div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoGrid strong,
+.infoGridFour strong,
+.assignmentGrid strong,
+.currentPlan strong {
+  font-size: 16px;
+}
+
+.greenText { color: #16a34a; }
+.orangeText { color: #ea580c; }
+.fiveScale { color: #8a90a0; font-size: 12px; }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  text-align: center;
+}
+
+.steps.secondary {
+  margin-top: 20px;
+}
+
+.stepComplete,
+.stepActive,
+.stepMuted {
+  position: relative;
+  padding-top: 46px;
+  font-size: 13px;
+  color: #16a34a;
+}
+
+.stepComplete::before,
+.stepActive::before,
+.stepMuted::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+}
+
+.stepComplete::before { background: #16a34a; box-shadow: inset 0 0 0 8px #16a34a; }
+.stepActive::before { background: white; border: 3px solid #16a34a; }
+.stepMuted::before { background: #f3f4f6; }
+.stepMuted { color: #9ca3af; }
+
+.noticeBox {
+  border-radius: 14px;
+}
+
+.notice_amber,
+.notice_orange {
+  background: #fff9eb;
+  border: 1px solid #f2c66b;
+  color: #b45309;
+}
+
+.notice_orange {
+  background: #fff6ee;
+  border-color: #f2bb84;
+  color: #c2410c;
+}
+
+.noticeBox ul {
+  margin: 10px 0 0 18px;
+  padding: 0;
+}
+
+.noticeBox li { line-height: 1.55; }
+.noticeCompact ul { margin-left: 0; list-style: none; }
+
+.toggleCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #eef4ff;
+  border-color: #bfd6ff;
+}
+
+.toggleCard strong { display: block; }
+.toggleCard small { color: #6b7280; }
+
+.toggle {
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #2563eb;
+  position: relative;
+  display: inline-block;
+}
+
+.toggle i {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 999px;
+}
+
+.assignmentBox h3 { margin: 0 0 16px; font-size: 18px; }
+
+.tabSwitch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tabSwitch button,
+.subscriptionOption {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid #d5dbe8;
+  background: white;
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tabActive,
+.tabActiveWarning,
+.subscriptionOptionActive {
+  background: #eaf1ff;
+  border-color: #2d58cb;
+  color: #2d58cb;
+}
+
+.tabActiveWarning {
+  color: #b45309;
+  border-color: #eab308;
+  background: #fff8e1;
+}
+
+.subscriptionOptions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.subscriptionOption {
+  padding: 16px;
+  min-height: 122px;
+  position: relative;
+}
+
+.subscriptionOption h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.subscriptionOption strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 22px;
+}
+
+.subscriptionOption small {
+  display: block;
+  margin-top: 8px;
+  color: #6b7280;
+}
+
+.radioActive {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #2d58cb;
+  box-shadow: inset 0 0 0 5px white;
+}
+
+.planModalCard {
+  border: 1px solid #d8deea;
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.planModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  color: #ef4444;
+}
+
+.featureList {
+  margin: 12px 0 0 0;
+  padding-left: 16px;
+  color: #4b5563;
+}
+
+.featureList li { margin-top: 8px; }
+
+.planBottom {
+  border-top: 1px solid #e7ebf3;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.addPlanBox {
+  margin-top: 8px;
+  min-height: 52px;
+  border-style: dashed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.currentPlan {
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.exportButton {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+}
+
+.personCell { justify-content: flex-start; }
+
+.metricStripThreeLarge .metricMini {
+  min-height: 86px;
+}
+
+@media (max-width: 1120px) {
+  .statsGridEight,
+  .statsGridFour,
+  .statsGridFiveMini,
+  .healthGrid,
+  .planGrid,
+  .chiefGrid,
+  .metricStripFour,
+  .metricStripThree,
+  .metricStripThreeLarge,
+  .formGrid,
+  .infoGrid,
+  .infoGridFour,
+  .assignmentGrid,
+  .planModalGrid,
+  .subscriptionOptions,
+  .dashboardMain,
+  .splitCharts,
+  .ratesGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebarOpen { transform: translateX(0); }
+  .mainRail { margin-left: 0; width: 100%; }
+  .mobileBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 0;
+  }
+  .surface { padding: 18px; }
+  .pageHeader { flex-direction: column; }
+  .pageHeaderActions { width: 100%; }
+  .searchPanel,
+  .paginationRow,
+  .buttonRow,
+  .inlineFilters,
+  .modalFooter,
+  .dashboardAnalyticsHeader,
+  .operationalHead,
+  .feedHeader,
+  .panelTitle,
+  .chartHeaderMini {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .statsGridEight,
+  .statsGridFour,
+  .statsGridFiveMini,
+  .healthGrid,
+  .planGrid,
+  .chiefGrid,
+  .metricStripFour,
+  .metricStripThree,
+  .metricStripThreeLarge,
+  .formGrid,
+  .infoGrid,
+  .infoGridFour,
+  .assignmentGrid,
+  .planModalGrid,
+  .subscriptionOptions,
+  .dashboardMain,
+  .splitCharts,
+  .ratesGrid,
+  .steps {
+    grid-template-columns: 1fr;
+  }
+  .table {
+    display: block;
+    overflow-x: auto;
+  }
+  .modal {
+    padding: 22px 20px 18px;
+  }
+}
+
+/* Owner corrections V3 */
+.statIconWrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.statIconWrap svg { width: 17px; height: 17px; }
+.statIcon_blue { background: #e8f0ff; color: #2563eb; }
+.statIcon_green { background: #dcfce7; color: #16a34a; }
+.statIcon_red { background: #fee2e2; color: #dc2626; }
+.statIcon_orange { background: #fff1d6; color: #e89b00; }
+.statIcon_gray { background: #f3f4f6; color: #6b7280; }
+
+.statCard_green { background: #f0fbf4; border-color: #b9eccb; }
+.statCard_blue { background: #eff6ff; border-color: #bfdbfe; }
+.statCard_orange { background: #fff8eb; border-color: #fed7aa; }
+.statValue_green { color: #16a34a; }
+.statValue_blue { color: #2563eb; }
+.noteRed { color: #dc2626; }
+.noteOrange { color: #d97706; }
+
+.axisChartWrap { width: 100%; }
+.axisChartSvg { width: 100%; height: 250px; display: block; overflow: visible; }
+.axisGridLine { stroke: #dfe5ef; stroke-dasharray: 4 4; }
+.axisBaseLine { stroke: #7b8494; stroke-width: 1; }
+.axisTickText { fill: #6b7280; font-size: 12px; font-family: inherit; }
+.chartLegend { display: flex; justify-content: center; gap: 18px; margin-top: 8px; color: #6b7280; font-size: 12px; }
+.chartLegend span { display: inline-flex; align-items: center; gap: 6px; }
+.chartLegend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+.horizontalAxisChart { padding: 10px 8px 28px 0; }
+.horizontalRows { display: flex; flex-direction: column; gap: 13px; }
+.horizontalRow { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; }
+.horizontalRow > span { text-align: right; color: #6b7280; font-size: 12px; }
+.horizontalPlot { height: 28px; position: relative; background: #fafbfe; overflow: hidden; }
+.horizontalGridLines { position: absolute; inset: 0; }
+.horizontalGridLines i { position: absolute; top: 0; bottom: 0; width: 1px; background: #dfe5ef; }
+.horizontalBar { height: 100%; background: linear-gradient(90deg, #8b5cf6, #7c3aed); border-radius: 0 8px 8px 0; position: relative; z-index: 1; }
+.horizontalTicks { margin-left: 122px; position: relative; height: 18px; }
+.horizontalTicks span { position: absolute; transform: translateX(-50%); color: #6b7280; font-size: 11px; top: 6px; }
+
+.healthCard { position: relative; }
+.healthCardTop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.healthIcon { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
+.healthIcon svg { width: 18px; height: 18px; }
+.healthDot { width: 9px; height: 9px; border-radius: 999px; }
+.healthIcon_green { background: #dcfce7; color: #16a34a; }
+.healthIcon_mint { background: #e8fbf1; color: #22c55e; }
+.healthIcon_yellow { background: #fff7d6; color: #eab308; }
+.healthIcon_orange { background: #fff1dd; color: #f97316; }
+.healthIcon_red { background: #fee2e2; color: #dc2626; }
+.healthDot_green { background: #16a34a; }
+.healthDot_mint { background: #4ade80; }
+.healthDot_yellow { background: #eab308; }
+.healthDot_orange { background: #f97316; }
+.healthDot_red { background: #dc2626; }
+.healthScore_green { color: #16a34a !important; }
+.healthScore_mint { color: #22c55e !important; }
+.healthScore_yellow { color: #eab308 !important; }
+.healthScore_orange { color: #f97316 !important; }
+.healthScore_red { color: #dc2626 !important; }
+.health_green { background: #f0fbf4; border-color: #b8e8c8; }
+.health_mint { background: #f1fcf6; border-color: #c8f2d7; }
+.health_yellow { background: #fffbea; border-color: #f3dc82; }
+.health_orange { background: #fff7ed; border-color: #fed7aa; }
+.health_red { background: #fff2f2; border-color: #fca5a5; }
+
+.clientNameLink { color: #111827; text-decoration: none; }
+.clientNameLink:hover { color: #2563eb; text-decoration: underline; }
+.buttonGroup .ghostMini { display: inline-flex; align-items: center; gap: 6px; }
+.buttonGroup .ghostMini svg { width: 14px; height: 14px; }
+
+.metricMini { align-items: center; }
+.metricCard_blue { background: #eef4ff; border-color: #bfdbfe; }
+.metricCard_green { background: #effbf3; border-color: #bbefcc; }
+.metricCard_amber { background: #fff8e6; border-color: #f6d37a; }
+.metricCard_purple { background: #f7efff; border-color: #ddc2ff; }
+.metricValue_blue { color: #1d4ed8; }
+.metricValue_green { color: #16a34a; }
+.metricValue_amber { color: #d97706; }
+.metricValue_purple { color: #9333ea; }
+.modalHeadingRow { display: flex; align-items: center; gap: 16px; padding-right: 38px; }
+.modalHeadingRow .avatarCircle { width: 58px; height: 58px; background: #2d58cb; font-size: 22px; }
+.modalHeadingRow h2 { margin: 0; }
+.barStack .progressTrack { width: 100%; display: flex; }
+.chiefMetrics .metricMini { min-height: 86px; justify-content: center; text-align: center; }
+.gem { color: #eab308; width: 18px; height: 18px; }
+
+.operationsStatusCard { background: #fff; border: 1px solid #dfe4ee; border-radius: 14px; padding: 18px; min-height: 90px; }
+.operationsStatusCard > div { display: flex; align-items: center; gap: 9px; color: #71798a; font-size: 13px; }
+.operationsStatusCard > strong { display: block; margin-top: 14px; font-size: 22px; }
+.statusDot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+.statusDot_blue { background: #2563eb; }
+.statusDot_orange { background: #f59e0b; }
+.statusDot_green { background: #16a34a; }
+.statusDot_red { background: #dc2626; }
+.redText { color: #dc2626 !important; }
+.blueText { color: #2563eb !important; }
+.purpleText { color: #9333ea !important; }
+
+.plan_slate { background: #f5f6f8; }
+.plan_purple { background: #f7efff; }
+.managePlan_slate { background: #111827; color: white; }
+.managePlan_blue { background: #2563eb; color: white; }
+.managePlan_purple { background: #a21caf; color: white; }
+.chiefRateBlock { background: #fffaf0; padding: 12px; border-radius: 12px; }
+.rateTitle { display: flex; align-items: center; gap: 8px; }
+.chiefRateBlock .rateTitle { color: #d97706; }
+.chiefRateBlock .rateRow { background: #fff5df; }
+.chiefRateBlock .rateRow strong { color: #f97316; }
+
+/* Prompt System */
+.promptCategoryGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+.promptCategory { display: flex; flex-direction: column; gap: 14px; }
+.promptCategory > div { display: flex; align-items: center; gap: 12px; }
+.promptCategory > div svg, .envelopeIcon { font-size: 22px; color: #6b7280; }
+.promptCategory strong, .promptCategory small { display: block; }
+.promptCategory strong { font-size: 16px; }
+.promptCategory small { color: #6b7280; margin-top: 4px; }
+.promptCategory button { border: 0; border-radius: 8px; height: 34px; background: #f8fafc; font-weight: 600; color: #374151; }
+.workflowBanner { border: 1px solid #b7d0ff; background: #eaf2ff; border-radius: 14px; padding: 18px; display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.workflowIcon { width: 42px; height: 42px; border-radius: 10px; background: #2554c7; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
+.workflowBanner h3, .workflowBanner p { margin: 0; }
+.workflowBanner p { color: #6b7280; margin-top: 6px; font-size: 13px; }
+.promptTableCard { margin-bottom: 18px; }
+.extraBadge { display: inline-flex; align-items: center; justify-content: center; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.extraBadge_green { background: #dcfce7; color: #16a34a; }
+.extraBadge_blue { background: #dbeafe; color: #2563eb; }
+.extraBadge_purple { background: #f3e8ff; color: #9333ea; }
+.extraBadge_amber { background: #fff1cc; color: #d97706; }
+.extraBadge_red { background: #fee2e2; color: #dc2626; }
+.extraBadge_yellow { background: #fef9c3; color: #a16207; }
+.extraBadge_gray { background: #eef0f3; color: #6b7280; }
+.promptTestingGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+.promptTestCard h3, .draftPromptCard h3 { margin: 0; font-size: 16px; }
+.testCardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.testCardHead small { color: #6b7280; display: block; margin-top: 5px; }
+.testMetrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.testMetrics span { background: #f8fafc; border-radius: 10px; padding: 12px; text-align: center; }
+.testMetrics small, .testMetrics strong { display: block; }
+.testMetrics small { color: #6b7280; font-size: 11px; }
+.testMetrics strong { margin-top: 5px; font-size: 20px; color: #2563eb; }
+.teamFeedback, .draftBody { background: #f8fafc; border-radius: 10px; padding: 12px; margin-top: 12px; }
+.teamFeedback small { font-weight: 700; color: #6b7280; }
+.teamFeedback p, .draftBody p { margin: 4px 0 0; color: #374151; font-size: 13px; }
+.testActions { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 12px; }
+.trashButton { border: 1px solid #fecaca; background: #fff; color: #dc2626; border-radius: 10px; width: 44px; }
+.draftPromptCard { margin-bottom: 18px; }
+.draftInput { height: 42px; border: 1px solid #d5dbe8; border-radius: 9px; background: white; margin-top: 12px; }
+.safeDeployment { border: 1px solid #b8e8c8; background: linear-gradient(90deg, #effbf3, #eff8ff); border-radius: 14px; padding: 20px; display: flex; gap: 14px; }
+.safeDeployment > span { width: 42px; height: 42px; border-radius: 10px; background: #16a34a; color: white; display: inline-flex; align-items: center; justify-content: center; }
+.safeDeployment h3 { margin: 0; }
+.safeDeployment p { color: #4b5563; line-height: 1.5; }
+.safeDeployment ul { padding-left: 18px; color: #4b5563; line-height: 1.7; }
+
+/* Analytics */
+.analyticsMetricGrid, .issueMetricGrid, .clientDetailMetricGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.clientDetailMetricGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.analyticsMetric { background: #fff; border: 1px solid #dfe4ee; border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 12px; min-height: 82px; }
+.analyticsMetricIcon { width: 40px; height: 40px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
+.analyticsMetric_blue { background: #dbeafe; color: #2563eb; }
+.analyticsMetric_green { background: #dcfce7; color: #16a34a; }
+.analyticsMetric_purple { background: #f3e8ff; color: #9333ea; }
+.analyticsMetric_amber { background: #fff1cc; color: #e89b00; }
+.analyticsMetric_red { background: #fee2e2; color: #dc2626; }
+.analyticsMetric_gray { background: #eee; color: #52525b; }
+.analyticsMetric small, .analyticsMetric strong { display: block; }
+.analyticsMetric small { color: #7b8393; font-size: 12px; }
+.analyticsMetric strong { margin-top: 4px; font-size: 20px; }
+.analyticsValue_blue { color: #2563eb; }
+.analyticsValue_green { color: #16a34a; }
+.analyticsValue_purple { color: #9333ea; }
+.analyticsValue_amber { color: #d97706; }
+.analyticsValue_red { color: #dc2626; }
+.analyticsTwoColumn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+.sectionTitle { margin: 0 0 16px; font-size: 18px; }
+.rankingList { display: flex; flex-direction: column; }
+.rankingRow { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #e7ebf3; }
+.rankCircle { width: 34px; height: 34px; border-radius: 50%; background: #2854bd; color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+.rankingRow strong, .rankingRow small { display: block; }
+.rankingRow small { color: #6b7280; margin-top: 3px; }
+.rankRate { text-align: right; }
+.rankRate strong { color: #16a34a; font-size: 17px; }
+.pieWrap { display: flex; align-items: center; justify-content: center; min-height: 300px; }
+.pieChart { width: 240px; height: 240px; border-radius: 50%; }
+.groupedChart { display: grid; grid-template-columns: 45px 1fr; grid-template-rows: 1fr auto; column-gap: 8px; }
+.groupedYAxis { display: flex; flex-direction: column; justify-content: space-between; color: #6b7280; font-size: 11px; padding-bottom: 32px; }
+.groupedPlot { position: relative; min-height: 240px; }
+.groupedGrid { position: absolute; inset: 0 0 32px 0; }
+.groupedGrid i { position: absolute; left: 0; right: 0; height: 1px; background: #dfe5ef; }
+.groupedBars { position: absolute; inset: 0 0 0 0; display: flex; align-items: stretch; gap: 12px; }
+.groupedBand { flex: 1; display: flex; flex-direction: column; justify-content: end; align-items: center; min-width: 0; }
+.groupedBarCluster { height: calc(100% - 34px); display: flex; align-items: end; justify-content: center; gap: 3px; width: 100%; }
+.groupedBarCluster span { width: 26%; min-width: 8px; max-width: 30px; }
+.groupedBand small { height: 30px; margin-top: 4px; color: #6b7280; text-align: center; white-space: pre-line; font-size: 10px; }
+.groupedChart .chartLegend { grid-column: 2; }
+
+/* Escalations */
+.criticalBanner { background: #fff0f0; border: 1px solid #fca5a5; border-radius: 14px; padding: 18px; display: flex; gap: 14px; color: #dc2626; margin-bottom: 18px; }
+.criticalBanner svg { width: 24px; height: 24px; flex: 0 0 auto; }
+.criticalBanner h3, .criticalBanner p { margin: 0; }
+.criticalBanner p { margin-top: 8px; font-size: 14px; }
+.issueListCard { padding: 0; overflow: hidden; }
+.issueListCard .searchPanel { padding: 16px; border-bottom: 1px solid #e7ebf3; }
+.issueRow { padding: 20px; border-bottom: 1px solid #e7ebf3; }
+.issueHeading { display: flex; align-items: center; gap: 10px; }
+.issueHeading h3 { margin: 0; font-size: 18px; }
+.issueRow > p { color: #4b5563; margin: 10px 0; }
+.issueMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: #64748b; font-size: 12px; }
+.issueMeta i { font-style: normal; }
+.issueActions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.resolveButton, .urgentButton { border: 0; border-radius: 10px; min-height: 42px; padding: 0 16px; color: white; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+.resolveButton { background: #16a34a; }
+.urgentButton { background: #dc2626; }
+.resolvedBox { margin-top: 14px; border-radius: 10px; padding: 13px; background: #effbf3; color: #16a34a; display: flex; align-items: center; gap: 8px; }
+
+/* Settings */
+.settingsSection { margin-bottom: 18px; }
+.settingsSectionHead { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+.settingsSectionIcon { width: 42px; height: 42px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
+.settingsIcon_purple { background: #f3e8ff; color: #9333ea; }
+.settingsIcon_blue { background: #dbeafe; color: #2563eb; }
+.settingsIcon_green { background: #dcfce7; color: #16a34a; }
+.settingsIcon_amber { background: #fff1cc; color: #ea580c; }
+.settingsSectionHead h2, .settingsSectionHead p { margin: 0; }
+.settingsSectionHead h2 { font-size: 17px; }
+.settingsSectionHead p { color: #6b7280; font-size: 12px; margin-top: 3px; }
+.rolesGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.roleCard, .teamCard, .notificationRow, .integrationRow, .backupRow, .configStack > label { border: 1px solid #e0e5ed; border-radius: 10px; padding: 12px; background: #fff; }
+.roleCard > div, .teamCard > div, .notificationRow, .integrationRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.roleCard > div > span { flex: 1; color: #6b7280; font-size: 12px; }
+.roleCard button, .teamCard button { border: 0; background: #eef0f3; border-radius: 999px; padding: 4px 12px; font-size: 11px; }
+.roleCard p, .teamCard p { color: #4b5563; font-size: 12px; margin: 10px 0 0; }
+.teamCard > div:last-child { margin-top: 10px; color: #6b7280; font-size: 12px; }
+.settingsColumns { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+.settingsRightStack { display: flex; flex-direction: column; gap: 16px; }
+.configStack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.configStack > label { display: flex; flex-direction: column; gap: 7px; }
+.configStack small, .notificationRow small, .integrationRow small, .backupRow small { color: #6b7280; display: block; font-size: 11px; margin-top: 4px; }
+.moneyInput { border: 1px solid #e1e6ef; border-radius: 9px; height: 40px; display: flex; align-items: center; padding: 0 10px; }
+.moneyInput input { border: 0; outline: 0; flex: 1; min-width: 0; }
+.doubleMoney { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.settingsToggle { width: 36px; height: 20px; background: #2563eb; border-radius: 999px; display: inline-block; position: relative; }
+.settingsToggle i { position: absolute; width: 16px; height: 16px; right: 2px; top: 2px; border-radius: 50%; background: #fff; }
+.notificationRow, .integrationRow { margin-bottom: 8px; }
+.notificationRow strong, .integrationRow strong, .backupRow strong { font-size: 13px; }
+.backupRow { margin-bottom: 10px; }
+.dangerRow strong, .dangerRow small { color: #dc2626; }
+
+/* Client details page */
+.clientDetailsPageHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.clientDetailsPageHead h1 { margin: 10px 0 0; font-size: 28px; }
+.clientDetailsPageHead p { color: #6b7280; margin: 6px 0 0; }
+.backLink { color: #2563eb; text-decoration: none; font-size: 13px; }
+.clientInfoGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 80px; }
+.clientInfoGrid small, .clientInfoGrid strong { display: block; }
+.clientInfoGrid small { color: #6b7280; margin-bottom: 6px; }
+.onboardingSteps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px; }
+.onboardingSteps > div { text-align: center; position: relative; }
+.onboardingSteps > div span { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.onboardingSteps > div small { display: block; line-height: 1.25; }
+.onboardingComplete span { background: #16a34a; color: white; }
+.onboardingComplete small, .onboardingActive small { color: #16a34a; }
+.onboardingActive span { border: 3px solid #16a34a; color: #16a34a; background: white; }
+.onboardingPending span { background: #f1f3f6; color: #cbd5e1; }
+.onboardingPending small { color: #94a3b8; }
+
+@media (max-width: 1120px) {
+  .analyticsMetricGrid, .issueMetricGrid, .clientDetailMetricGrid, .promptCategoryGrid, .promptTestingGrid, .analyticsTwoColumn, .settingsColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .healthGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .analyticsMetricGrid, .issueMetricGrid, .clientDetailMetricGrid, .promptCategoryGrid, .promptTestingGrid, .analyticsTwoColumn, .settingsColumns, .rolesGrid, .clientInfoGrid, .onboardingSteps { grid-template-columns: 1fr; }
+  .healthGrid { grid-template-columns: 1fr; }
+  .testActions { grid-template-columns: 1fr; }
+  .searchPanel { flex-direction: column; align-items: stretch; }
+  .selectField { min-width: 0; }
+  .issueActions { flex-direction: column; }
+  .clientDetailsPageHead { flex-direction: column; }
+}
+
+/* V5 shared formatting pass
+   The Applicant and Chief Applicant workspaces define the reference scale. */
+.app {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  background: #e8eefc;
+}
+
+.sidebar { width: 235px; }
+.logoRow { padding: 0 20px; min-height: 115px; display: flex; align-items: center; }
+.brandMark { gap: 8px; font-size: 15px; font-weight: 600; }
+.brandMark img { width: 28px; height: 28px; }
+.nav { padding: 0 15px 18px; gap: 3px; }
+.navItem { min-height: 43px; padding: 0 11px; border-radius: 3px; gap: 11px; font-size: 12px; font-weight: 400; }
+.navItem svg { width: 16px; height: 16px; }
+.navItemActive { font-weight: 600; }
+.account { margin: auto 14px 32px; padding-top: 12px; }
+.account strong { font-size: 11px; font-weight: 500; }
+.account small { font-size: 10px; }
+.avatarTiny { width: 28px; height: 28px; font-size: 10px; }
+.mainRail { margin-left: 235px; width: calc(100% - 235px); }
+.surface { min-height: calc(100vh - 35px); margin: 13px 14px 22px; padding: 1px 0 52px; background: #fff; }
+.pageHeader { margin: 26px 24px 31px; }
+.pageHeader h1 { font-size: 23px; font-weight: 500; }
+.pageHeader p { margin-top: 5px; font-size: 11px; }
+.pageHeaderActions .button { min-height: 36px; border-radius: 4px; padding: 0 14px; font-size: 10px; }
+
+.statsGridEight,
+.statsGridFour,
+.statsGridFiveMini,
+.dashboardMain,
+.splitCharts,
+.planGrid,
+.chiefGrid,
+.healthGrid { margin-left: 24px; margin-right: 24px; }
+
+.statsGridEight,
+.statsGridFour,
+.statsGridFiveMini { gap: 13px; margin-bottom: 31px; }
+.statCard { min-height: 112px; border-radius: 12px; padding: 21px 20px 17px; }
+.statLabel { font-size: 10px; }
+.statValue { margin-top: 21px; font-size: 21px; font-weight: 700; }
+.statNote { margin-top: 7px; font-size: 10px; }
+.statIcon { width: 16px; height: 16px; }
+.card { border-radius: 12px; padding: 22px; }
+.surface > .card { margin-left: 24px; margin-right: 24px; }
+.dashboardMain,
+.splitCharts { gap: 18px; margin-bottom: 31px; }
+.dashboardAnalyticsHeader h2,
+.panelTitle h2,
+.operationalHead h2,
+.feedHeader h2,
+.placeholderCard h2,
+.sectionTitle { font-size: 14px; font-weight: 600; }
+.chartTitle { font-size: 10px; }
+.inlineSelect,
+.searchField,
+.selectField { min-height: 38px; border-radius: 4px; font-size: 10px; }
+.searchField input,
+.selectField select,
+.inlineSelect span { font-size: 10px; }
+.legendRow,
+.livePill,
+.healthLegend { font-size: 9px; }
+.feedItem strong { font-size: 10px; }
+.feedItem small { font-size: 9px; }
+.healthGrid { gap: 13px; }
+.healthCard { min-height: 104px; border-radius: 8px; padding: 16px; }
+.healthLabel { font-size: 10px; }
+.healthCard strong { margin-top: 8px; font-size: 18px; }
+
+.table thead th { padding: 12px 13px; font-size: 10px; }
+.table tbody td { padding: 13px; font-size: 10px; }
+.badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; }
+.nameCell,
+.boldText { font-size: 10px; }
+.actionIcons { gap: 9px; }
+.actionIcons svg { width: 15px; height: 15px; }
+.paginationRow { padding-top: 14px; font-size: 10px; }
+.pagination button { height: 30px; min-width: 34px; border-radius: 5px; padding: 0 9px; font-size: 9px; }
+.button,
+.ghostMini,
+.primaryMini,
+.completedButton,
+.markPaidButton,
+.managePlanButton,
+.exportButton { font-size: 10px; }
+.ghostMini,
+.primaryMini,
+.completedButton,
+.markPaidButton { min-height: 30px; border-radius: 4px; padding: 0 10px; }
+.twoLine strong { font-size: 10px; }
+.twoLine small { font-size: 9px; }
+.taskCount { width: 23px; height: 23px; font-size: 10px; }
+.inlineProgress span { font-size: 10px; }
+.progressTrack { height: 7px; }
+
+.metricMini { min-height: 88px; border-radius: 8px; padding: 18px; }
+.metricIcon { width: 36px; height: 36px; border-radius: 8px; }
+.metricIcon svg { width: 18px; height: 18px; }
+.metricTitle { font-size: 10px; }
+.metricMini strong { font-size: 20px; }
+.metricMini small { font-size: 9px; }
+.chiefCard { padding: 20px 22px; }
+.avatarCircle { width: 48px; height: 48px; font-size: 18px; }
+.chiefIdentity h3 { font-size: 14px; }
+.chiefIdentity p,
+.teamSize,
+.infoBanner p,
+.planMeta,
+.paymentCard p,
+.modalSubtitle,
+.hint { font-size: 10px; }
+.teamSize strong { font-size: 18px; }
+.barStack label { font-size: 10px; }
+.chiefFooter strong { font-size: 14px; }
+.rateTitle { font-size: 12px; }
+.rateRow { padding: 11px 13px; font-size: 10px; }
+.workBreakdown { font-size: 9px; }
+.pendingTotal { font-size: 14px; }
+.infoBanner h3,
+.currentPlan strong,
+.planModalCard h3,
+.planCard h3 { font-size: 14px; }
+.infoIcon { width: 36px; height: 36px; }
+.placeholderCard p { font-size: 10px; }
+
+.modal { border-radius: 12px; padding: 24px 24px 19px; }
+.modal h2 { font-size: 20px; font-weight: 500; }
+.modalSubtitle { font-size: 10px; }
+.modalBody { margin-top: 22px; gap: 16px; }
+.modalFooter { margin-top: 20px; padding-top: 14px; }
+.modalPrimary,
+.modalGhost,
+.modalGhostWide,
+.modalWarning,
+.modalDanger,
+.modalDangerAlt { min-height: 40px; border-radius: 4px; padding: 0 14px; font-size: 10px; }
+.formGrid,
+.infoGrid,
+.infoGridFour,
+.assignmentGrid,
+.planModalGrid,
+.subscriptionOptions { gap: 13px; }
+.formField span,
+.fieldLabel,
+.planBottom span,
+.currentPlan span { font-size: 10px; }
+.inputWrap { min-height: 39px; border-radius: 4px; padding: 0 11px; }
+.inputWrap input,
+.formField textarea { font-size: 10px; }
+.formField textarea { border-radius: 4px; padding: 12px; }
+.paymentCard,
+.assignmentBox,
+.noticeBox,
+.modalInnerCard,
+.currentPlan,
+.toggleCard { padding: 15px 16px; }
+.paymentCard h3,
+.assignmentBox h3 { font-size: 14px; }
+.paymentRow strong,
+.planPrice { font-size: 21px; }
+.planMeta { font-size: 10px; }
+.planClients,
+.planRevenue { font-size: 18px; }
+.infoGrid strong,
+.infoGridFour strong,
+.assignmentGrid strong,
+.currentPlan strong { font-size: 12px; }
+.stepComplete,
+.stepActive,
+.stepMuted { font-size: 9px; }
+.noticeBox strong { font-size: 11px; }
+.noticeBox li { font-size: 10px; }
+.toggleCard strong { font-size: 11px; }
+.toggleCard small { font-size: 9px; }
+.tabSwitch button,
+.subscriptionOption { min-height: 40px; border-radius: 4px; font-size: 10px; }
+.subscriptionOption h4 { font-size: 12px; }
+.subscriptionOption strong { font-size: 20px; }
+.subscriptionOption small { font-size: 9px; }
+.planModalCard { border-radius: 8px; padding: 16px 18px; }
+.featureList { font-size: 10px; }
+.addPlanBox { min-height: 44px; border-radius: 4px; font-size: 10px; }
+
+.analyticsMetric small { font-size: 10px; }
+.analyticsMetric strong { font-size: 18px; }
+.rankingRow small,
+.issueMeta,
+.settingsSectionHead p,
+.roleCard > div > span,
+.roleCard p,
+.teamCard p,
+.teamCard > div:last-child,
+.configStack small,
+.notificationRow small,
+.integrationRow small,
+.backupRow small { font-size: 9px; }
+.rankRate strong { font-size: 14px; }
+.criticalBanner p { font-size: 10px; }
+.issueHeading h3 { font-size: 14px; }
+.issueRow > p { font-size: 10px; }
+.resolveButton,
+.urgentButton { min-height: 36px; border-radius: 4px; padding: 0 12px; font-size: 10px; }
+.settingsSectionHead h2 { font-size: 14px; }
+.settingsSectionIcon { width: 36px; height: 36px; border-radius: 8px; }
+.roleCard button,
+.teamCard button { font-size: 9px; }
+.notificationRow strong,
+.integrationRow strong,
+.backupRow strong { font-size: 10px; }
+.clientDetailsPageHead h1 { font-size: 23px; font-weight: 500; }
+.clientDetailsPageHead p,
+.backLink,
+.clientInfoGrid small { font-size: 10px; }
+.clientInfoGrid strong { font-size: 12px; }
+.onboardingSteps > div small { font-size: 9px; }
+
+@media (max-width: 860px) {
+  .mainRail { margin-left: 0; width: 100%; }
+  .surface { margin: 0; padding: 1px 18px 40px; }
+  .pageHeader,
+  .statsGridEight,
+  .statsGridFour,
+  .statsGridFiveMini,
+  .dashboardMain,
+  .splitCharts,
+  .planGrid,
+  .chiefGrid,
+  .healthGrid { margin-left: 0; margin-right: 0; }
+}
+
+/* Consistent page gutters for Owner secondary pages. */
+.promptCategoryGrid,
+.workflowBanner,
+.promptTableCard,
+.promptTestingGrid,
+.draftPromptCard,
+.safeDeployment,
+.analyticsMetricGrid,
+.analyticsTwoColumn,
+.issueMetricGrid,
+.criticalBanner,
+.issueListCard,
+.settingsSection,
+.settingsColumns,
+.clientDetailsPageHead,
+.clientDetailMetricGrid {
+  margin-left: 24px;
+  margin-right: 24px;
+}
+
+.promptCategoryGrid,
+.analyticsMetricGrid,
+.issueMetricGrid,
+.clientDetailMetricGrid { margin-bottom: 31px; }
+.workflowBanner,
+.promptTableCard,
+.promptTestingGrid,
+.draftPromptCard,
+.safeDeployment,
+.analyticsTwoColumn,
+.criticalBanner,
+.issueListCard,
+.settingsSection,
+.settingsColumns { margin-bottom: 18px; }
+
+.promptCategory h3,
+.promptCategory strong,
+.workflowBanner h3,
+.testCardHead h3,
+.safeDeployment h3 { font-size: 12px; }
+.promptCategory small,
+.workflowBanner p,
+.testCardHead small,
+.teamFeedback small,
+.teamFeedback p,
+.draftBody p,
+.safeDeployment p,
+.safeDeployment li { font-size: 9px; }
+.extraBadge { font-size: 9px; }
+.analyticsMetric { min-height: 88px; padding: 16px 18px; border-radius: 8px; }
+.analyticsMetricIcon { width: 36px; height: 36px; border-radius: 8px; }
+.analyticsMetricIcon svg { width: 18px; height: 18px; }
+.rankCircle { width: 30px; height: 30px; font-size: 10px; }
+.pieChart { width: 210px; height: 210px; }
+.issueRow { padding: 17px 20px; }
+.settingsSection { padding: 18px 20px; }
+.moneyInput { height: 38px; border-radius: 4px; font-size: 10px; }
+.clientDetailsPageHead { padding-top: 24px; }
+
+@media (max-width: 860px) {
+  .promptCategoryGrid,
+  .workflowBanner,
+  .promptTableCard,
+  .promptTestingGrid,
+  .draftPromptCard,
+  .safeDeployment,
+  .analyticsMetricGrid,
+  .analyticsTwoColumn,
+  .issueMetricGrid,
+  .criticalBanner,
+  .issueListCard,
+  .settingsSection,
+  .settingsColumns,
+  .clientDetailsPageHead,
+  .clientDetailMetricGrid {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}

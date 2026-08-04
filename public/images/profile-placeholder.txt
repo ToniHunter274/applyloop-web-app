@@ -1,0 +1,4 @@
+A profile image file named 'profile.jpg' should be placed in this directory.
+This image is used for the user profile in the dashboard header.
+
+Size recommendation: 512x512px 

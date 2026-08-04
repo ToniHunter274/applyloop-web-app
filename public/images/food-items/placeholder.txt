@@ -1,0 +1,11 @@
+These food image files should be placed in this directory:
+
+1. tuna-soup.jpg - Tuna soup with spinach and himalaya salt
+2. pizza.jpg - Mozarella pizza with random toppings
+3. sweet-pizza.jpg - Sweet cheesy pizza for kids (small size)
+4. chicken-curry.jpg - Chicken curry special with cucumber
+5. watermelon-juice.jpg - Watermelon juice with ice
+6. italiano-pizza.jpg - Italiano pizza with garlic
+7. spaghetti.jpg - Medium spicy spaghetti italiano
+
+These images are referenced in the orders and menu items displayed in the dashboard. 

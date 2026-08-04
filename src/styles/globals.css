@@ -1,0 +1,570 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add smooth transitions for dark mode */
+@layer base {
+  html {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+  
+  body, 
+  main, 
+  header, 
+  footer, 
+  section,
+  aside,
+  nav,
+  article,
+  div,
+  span,
+  h1, h2, h3, h4, h5, h6,
+  p, a, button, input, textarea, select,
+  table, th, td, tr, 
+  svg, path, rect, circle {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+}
+
+/* Enhanced animations for dropdowns and charts */
+@keyframes dropdownEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    box-shadow: 0 0 0 rgba(37, 99, 235, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.1), 0 4px 6px -2px rgba(37, 99, 235, 0.05);
+  }
+}
+
+@keyframes tabEnter {
+  from {
+    transform: scaleX(0);
+    background-color: rgba(37, 99, 235, 0);
+  }
+  to {
+    transform: scaleX(1);
+    background-color: rgba(37, 99, 235, 0.1);
+  }
+}
+
+@keyframes sectionEnter {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes userEnter {
+  from {
+    opacity: 0;
+    transform: translateX(15px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes noteEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    border-color: rgba(37, 99, 235, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    border-color: rgba(37, 99, 235, 0.3);
+  }
+}
+
+@keyframes alertEnter {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+    background-color: rgba(37, 99, 235, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    background-color: rgba(37, 99, 235, 0.1);
+  }
+}
+
+@keyframes timelineEnter {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+    height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    height: auto;
+  }
+}
+
+@keyframes fadeIn {
+  0% { 
+    opacity: 0; 
+    transform: translateY(15px); 
+    filter: blur(2px);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
+    filter: blur(0);
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes scaleIn {
+  0% { 
+    transform: scale(0.90); 
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+  }
+  50% { 
+    transform: scale(1.05); 
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0);
+  }
+  100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+@keyframes chartFadeIn {
+  0% { 
+    opacity: 0; 
+    transform: translateY(10px) scale(0.97); 
+    filter: blur(3px);
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+    filter: blur(0);
+  }
+}
+
+@keyframes valueUpdate {
+  0% { 
+    opacity: 0; 
+    transform: translateY(10px);
+    color: rgba(37, 99, 235, 1);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0);
+    color: currentColor;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes blueRipple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+/* Custom utility classes */
+.animate-dropdownEnter {
+  animation: dropdownEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-tabEnter {
+  animation: tabEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-sectionEnter {
+  animation: sectionEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-userEnter {
+  animation: userEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-noteEnter {
+  animation: noteEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-alertEnter {
+  animation: alertEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-timelineEnter {
+  animation: timelineEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-staggered-fadeIn > * {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.animate-staggered-fadeIn > *:nth-child(1) { animation-delay: 0.1s; }
+.animate-staggered-fadeIn > *:nth-child(2) { animation-delay: 0.2s; }
+.animate-staggered-fadeIn > *:nth-child(3) { animation-delay: 0.3s; }
+.animate-staggered-fadeIn > *:nth-child(4) { animation-delay: 0.4s; }
+.animate-staggered-fadeIn > *:nth-child(5) { animation-delay: 0.5s; }
+.animate-staggered-fadeIn > *:nth-child(6) { animation-delay: 0.6s; }
+
+.animate-scaleIn {
+  animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-pulse-blue {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-chartFadeIn {
+  animation: chartFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-valueUpdate {
+  animation: valueUpdate 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(37, 99, 235, 0.1),
+    rgba(255, 255, 255, 0)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-blueRipple {
+  animation: blueRipple 1.5s infinite;
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(37, 99, 235, 0.3) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(37, 99, 235, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(37, 99, 235, 0.5);
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 248, 249, 250;
+  --primary-color: 30, 80, 195;
+  --secondary-color: 59, 130, 246;
+  --blue-light: 239, 246, 255;
+  --blue-accent: 30, 80, 195;
+  --pink-accent: 219, 39, 119;
+  --yellow-accent: 245, 158, 11;
+  --red-accent: 239, 68, 68;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-rgb: 33, 37, 41;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: rgb(var(--background-rgb));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer components {
+  .container {
+    @apply px-4 mx-auto max-w-7xl;
+  }
+
+  .btn {
+    @apply px-4 py-2 font-medium rounded-full transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 shadow-sm;
+  }
+
+  .btn-outline {
+    @apply border border-blue-600 text-blue-600 hover:bg-blue-50;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 p-6;
+  }
+}
+
+/* Add theme toggle animation */
+@keyframes sunRotate {
+  from {
+    transform: rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes moonRotate {
+  from {
+    transform: rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-360deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-sun {
+  animation: sunRotate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-moon {
+  animation: moonRotate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Add vendor status toggle animation */
+@keyframes onlineAnimation {
+  0% {
+    transform: scale(0.6);
+    background-color: rgba(34, 197, 94, 0.2);
+  }
+  70% {
+    transform: scale(1.1);
+    background-color: rgba(34, 197, 94, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    background-color: rgba(34, 197, 94, 0.3);
+  }
+}
+
+@keyframes offlineAnimation {
+  0% {
+    transform: scale(0.6);
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  70% {
+    transform: scale(1.1);
+    background-color: rgba(239, 68, 68, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    background-color: rgba(239, 68, 68, 0.3);
+  }
+}
+
+.animate-online {
+  animation: onlineAnimation 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-offline {
+  animation: offlineAnimation 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+html {
+  background: #f5f7fb;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: #0f172a;
+  background: #f5f7fb;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition-duration: 150ms;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+/* ApplyLoop shared compact formatting
+   Applicant and Chief Applicant are the reference scale for all role workspaces. */
+.role-compact,
+.user-client-compact {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+}
+
+.role-compact-main {
+  min-height: calc(100vh - 102px);
+  background: #ffffff;
+  padding: 38px 38px 52px !important;
+}
+
+.user-client-page-surface {
+  min-height: calc(100vh - 102px);
+  background: #ffffff;
+  padding: 38px 40px 52px;
+}
+
+/* Shared role portals: Prompt Engineer, Team Auditor, Chief Auditor. */
+.role-compact-main .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 24px !important;
+}
+
+.role-compact-main .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 20px !important;
+}
+
+.role-compact-main .gap-6 { gap: 24px !important; }
+.role-compact-main .gap-5 { gap: 18px !important; }
+.role-compact-main .gap-4 { gap: 13px !important; }
+.role-compact-main .rounded-2xl { border-radius: 8px !important; }
+.role-compact-main .rounded-xl { border-radius: 6px !important; }
+.role-compact-main .shadow-sm { box-shadow: none !important; }
+.role-compact-main .text-2xl { font-size: 21px !important; line-height: 1.15 !important; }
+.role-compact-main .text-xl { font-size: 17px !important; line-height: 1.25 !important; }
+.role-compact-main .text-lg { font-size: 14px !important; line-height: 1.3 !important; }
+.role-compact-main .text-base { font-size: 12px !important; line-height: 1.4 !important; }
+.role-compact-main .text-sm { font-size: 10px !important; line-height: 1.45 !important; }
+.role-compact-main .text-xs { font-size: 9px !important; line-height: 1.4 !important; }
+.role-compact-main input,
+.role-compact-main select,
+.role-compact-main textarea,
+.role-compact-main button {
+  font-family: inherit;
+}
+
+/* User/Client content uses the same compact typographic hierarchy. */
+.user-client-page-surface .text-3xl { font-size: 23px !important; line-height: 1.15 !important; }
+.user-client-page-surface .text-2xl { font-size: 20px !important; line-height: 1.2 !important; }
+.user-client-page-surface .text-xl { font-size: 16px !important; line-height: 1.25 !important; }
+.user-client-page-surface .text-lg { font-size: 14px !important; line-height: 1.3 !important; }
+.user-client-page-surface .text-base { font-size: 12px !important; line-height: 1.4 !important; }
+.user-client-page-surface .text-sm { font-size: 10px !important; line-height: 1.45 !important; }
+.user-client-page-surface .text-xs { font-size: 9px !important; line-height: 1.4 !important; }
+.user-client-page-surface .sm\:text-3xl { font-size: 21px !important; }
+.user-client-page-surface .md\:text-base { font-size: 11px !important; }
+.user-client-page-surface .md\:text-sm { font-size: 10px !important; }
+.user-client-page-surface .rounded-2xl { border-radius: 8px !important; }
+.user-client-page-surface .rounded-xl { border-radius: 6px !important; }
+.user-client-page-surface .p-8,
+.user-client-page-surface .md\:p-8 { padding: 22px !important; }
+.user-client-page-surface .p-6,
+.user-client-page-surface .md\:p-6,
+.user-client-page-surface .sm\:p-6 { padding: 18px !important; }
+.user-client-page-surface .p-5 { padding: 16px !important; }
+.user-client-page-surface .mb-8 { margin-bottom: 24px !important; }
+.user-client-page-surface .mb-6 { margin-bottom: 18px !important; }
+.user-client-page-surface .gap-6,
+.user-client-page-surface .md\:gap-6 { gap: 18px !important; }
+.user-client-page-surface .gap-4,
+.user-client-page-surface .sm\:gap-4 { gap: 13px !important; }
+.user-client-page-surface table th { font-size: 10px !important; }
+.user-client-page-surface table td { font-size: 10px !important; }
+.user-client-page-surface input,
+.user-client-page-surface select,
+.user-client-page-surface textarea,
+.user-client-page-surface button { font-family: inherit; }
+
+@media (max-width: 900px) {
+  .role-compact-main,
+  .user-client-page-surface {
+    padding: 24px 20px 40px !important;
+  }
+}
