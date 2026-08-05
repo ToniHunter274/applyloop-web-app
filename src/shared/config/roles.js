@@ -23,6 +23,7 @@ export const USER_ROLES = {
   TEAM_AUDITOR: 'team_auditor',
   CHIEF_AUDITOR: 'chief_auditor',
   OWNER: 'owner',
+  OPERATIONS: 'operations',
 };
 
 export const ROLE_LABELS = {
@@ -33,6 +34,7 @@ export const ROLE_LABELS = {
   [USER_ROLES.TEAM_AUDITOR]: 'Team Auditor',
   [USER_ROLES.CHIEF_AUDITOR]: 'Chief Auditor',
   [USER_ROLES.OWNER]: 'Owner',
+  [USER_ROLES.OPERATIONS]: 'Operations',
 };
 
 export const ROLE_SLUGS = {
@@ -42,6 +44,7 @@ export const ROLE_SLUGS = {
   [USER_ROLES.TEAM_AUDITOR]: 'team-auditor',
   [USER_ROLES.CHIEF_AUDITOR]: 'chief-auditor',
   [USER_ROLES.OWNER]: 'owner',
+  [USER_ROLES.OPERATIONS]: 'operations',
 };
 
 export const ROLE_FROM_SLUG = Object.fromEntries(
@@ -112,6 +115,12 @@ export const ROLE_NAVIGATION = {
     { label: 'Reports', href: 'reports', icon: FiFileText },
     { label: 'Settings', href: 'settings', icon: FiSettings },
   ]),
+  [USER_ROLES.OPERATIONS]: withBase('operations', [
+    { label: 'Client Management', href: 'client-management', icon: FiUsers },
+    { label: 'Applicants Management', href: 'applicants-management', icon: FiBriefcase },
+    { label: 'Chief Applicants', href: 'chief-applicants', icon: FiUsers },
+    { label: 'Application Operations', href: 'application-operations', icon: FiFileText },
+  ]),
 };
 
 export const ROLE_DEMO_USERS = {
@@ -149,6 +158,11 @@ export const ROLE_DEMO_USERS = {
     name: 'ApplyLoop Owner',
     email: 'owner@applyloop.com',
     role: USER_ROLES.OWNER,
+  },
+  [USER_ROLES.OPERATIONS]: {
+    name: 'Operations Manager',
+    email: 'operations@applyloop.com',
+    role: USER_ROLES.OPERATIONS,
   },
 };
 
@@ -205,5 +219,11 @@ export const ROLE_PAGE_META = {
     quality: ['Audit & Quality', 'Track review quality, defects, and escalations.'],
     reports: ['Reports', 'Generate operational and commercial reports.'],
     settings: ['Platform Settings', 'Manage global preferences and service rules.'],
+  },
+  [USER_ROLES.OPERATIONS]: {
+    'client-management': ['Client Management', 'Manage client accounts, statuses, plans, and assignments.'],
+    'applicants-management': ['Applicants Management', 'Manage applicants, workload, availability, and performance.'],
+    'chief-applicants': ['Chief Applicants', 'Review chief applicant teams and operational performance.'],
+    'application-operations': ['Application Operations', 'Manage assignments, priorities, deadlines, and application progress.'],
   },
 };

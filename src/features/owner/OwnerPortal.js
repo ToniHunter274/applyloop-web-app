@@ -41,7 +41,7 @@ import { AnalyticsReportsPage, ClientDetailsPage, EscalationsIssuesPage, PromptS
 
 const cn = (...values) => values.filter(Boolean).join(' ');
 
-const NAV_ITEMS = [
+const OWNER_NAV_ITEMS = [
   { section: 'dashboard', href: '/owner', label: 'Dashboard', icon: FiHome },
   { section: 'client-management', href: '/owner/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
   { section: 'applicants-management', href: '/owner/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
@@ -54,6 +54,15 @@ const NAV_ITEMS = [
   { section: 'escalations-issues', href: '/owner/escalations-issues', label: 'Escalations & Issues', icon: FiAlertTriangle },
   { section: 'settings', href: '/owner/settings', label: 'Settings', icon: FiSettings },
 ];
+
+const OPERATIONS_NAV_ITEMS = [
+  { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
+  { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
+  { section: 'chief-applicants', href: '/operations/chief-applicants', label: 'Chief Applicants', icon: FiGrid },
+  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },
+];
+
+const OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));
 
 const PAGE_META = {
   dashboard: ['Dashboard', 'Mission Control - Complete visibility and control over your platform'],
@@ -162,10 +171,10 @@ const paymentHistoryRows = [
   ['Alex Thompson', 'Applicant', 'May 2026', 114, '$608.00', 'Direct Deposit', '2026-05-28', 'Pending'],
 ].map(([worker, type, period, tasks, amount, method, date, status]) => ({ worker, type, period, tasks, amount, method, date, status }));
 
-function getSection(router) {
+function getSection(router, fallback = 'dashboard') {
   const raw = router.query?.section;
-  if (Array.isArray(raw) && raw.length) return raw[0] === 'task-distribution' ? 'dashboard' : raw[0];
-  return 'dashboard';
+  if (Array.isArray(raw) && raw.length) return raw[0] === 'task-distribution' ? fallback : raw[0];
+  return fallback;
 }
 
 function getDetail(router) {
@@ -187,14 +196,15 @@ function Brand() {
   );
 }
 
-function OwnerShell({ section, children }) {
+function OwnerShell({ section, children, portalRole, navItems }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isOperations = portalRole === USER_ROLES.OPERATIONS;
 
   useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.OWNER) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+    if (user?.role && user.role !== portalRole) router.replace(getRoleHome(user.role));
+  }, [portalRole, router, user?.role]);
 
   return (
     <div className={styles.app}>
@@ -202,7 +212,7 @@ function OwnerShell({ section, children }) {
       <aside className={cn(styles.sidebar, menuOpen && styles.sidebarOpen)}>
         <div className={styles.logoRow}><Brand /></div>
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} className={cn(styles.navItem, section === item.section && styles.navItemActive)} onClick={() => setMenuOpen(false)}>
@@ -213,10 +223,10 @@ function OwnerShell({ section, children }) {
           })}
         </nav>
         <button className={styles.account} onClick={logout}>
-          <span className={styles.avatarTiny}>S</span>
+          <span className={styles.avatarTiny}>{isOperations ? 'O' : 'S'}</span>
           <span>
-            <strong>Super Admin</strong>
-            <small>Owner</small>
+            <strong>{isOperations ? (user?.name || 'Operations Team') : 'Super Admin'}</strong>
+            <small>{isOperations ? 'Operations' : 'Owner'}</small>
           </span>
         </button>
       </aside>
@@ -431,7 +441,7 @@ function DashboardPage() {
   );
 }
 
-function ClientManagementPage({ openClient, openAddClient, openPause, openEscalate }) {
+function ClientManagementPage({ openClient, openAddClient, openPause, openEscalate, basePath = '/owner' }) {
   return (
     <>
       <PageHeader section="client-management" action={<ActionButton icon={FiPlus} onClick={openAddClient}>Add New Client</ActionButton>} />
@@ -446,7 +456,7 @@ function ClientManagementPage({ openClient, openAddClient, openPause, openEscala
           <tbody>
             {clients.map((client) => (
               <tr key={client.name}>
-                <td className={styles.nameCell}><Link href="/owner/client-management/olabanji-david" className={styles.clientNameLink}>{client.name}</Link></td>
+                <td className={styles.nameCell}><Link href={`${basePath}/client-management/olabanji-david`} className={styles.clientNameLink}>{client.name}</Link></td>
                 <td><StatusBadge value={client.plan} /></td>
                 <td>{client.applications}</td>
                 <td>{client.interviews}</td>
@@ -829,10 +839,15 @@ function NoticeBox({ tone, title, items, compact = false }) {
   return <div className={cn(styles.noticeBox, styles[`notice_${tone}`], compact && styles.noticeCompact)}><strong>{title}</strong><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></div>;
 }
 
-export default function OwnerPortal() {
+export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
   const router = useRouter();
-  const section = getSection(router);
+  const isOperations = portalRole === USER_ROLES.OPERATIONS;
+  const basePath = isOperations ? '/operations' : '/owner';
+  const defaultSection = isOperations ? 'client-management' : 'dashboard';
+  const requestedSection = getSection(router, defaultSection);
+  const section = isOperations && !OPERATIONS_SECTIONS.has(requestedSection) ? defaultSection : requestedSection;
   const detail = getDetail(router);
+  const navItems = isOperations ? OPERATIONS_NAV_ITEMS : OWNER_NAV_ITEMS;
   const [modals, setModals] = useState({
     addClient: false,
     clientPerformance: false,
@@ -848,13 +863,19 @@ export default function OwnerPortal() {
     paymentHistory: false,
   });
 
+  useEffect(() => {
+    if (isOperations && requestedSection !== section && router.isReady) {
+      router.replace(`${basePath}/${defaultSection}`);
+    }
+  }, [basePath, defaultSection, isOperations, requestedSection, router, section]);
+
   const openModal = (key) => setModals((current) => ({ ...current, [key]: true }));
   const closeModal = (key) => setModals((current) => ({ ...current, [key]: false }));
 
   const content = useMemo(() => {
     if (section === 'dashboard') return <DashboardPage />;
-    if (section === 'client-management' && detail) return <ClientDetailsPage />;
-    if (section === 'client-management') return <ClientManagementPage openClient={() => openModal('clientPerformance')} openAddClient={() => openModal('addClient')} openPause={() => openModal('pauseAccount')} openEscalate={() => openModal('escalate')} />;
+    if (section === 'client-management' && detail) return <ClientDetailsPage basePath={basePath} />;
+    if (section === 'client-management') return <ClientManagementPage basePath={basePath} openClient={() => openModal('clientPerformance')} openAddClient={() => openModal('addClient')} openPause={() => openModal('pauseAccount')} openEscalate={() => openModal('escalate')} />;
     if (section === 'applicants-management') return <ApplicantsManagementPage openAddApplicant={() => openModal('addApplicant')} openWorkerStats={() => openModal('workerStats')} />;
     if (section === 'chief-applicants') return <ChiefApplicantsPage openChiefStats={() => openModal('chiefStats')} />;
     if (section === 'application-operations') return <ApplicationOperationsPage openAddApplicant={() => openModal('addApplicant')} openReassign={() => openModal('reassign')} openForcePriority={() => openModal('forcePriority')} openEscalate={() => openModal('escalate')} />;
@@ -865,7 +886,7 @@ export default function OwnerPortal() {
     if (section === 'escalations-issues') return <EscalationsIssuesPage />;
     if (section === 'settings') return <SettingsPage />;
     return <PlaceholderPage section={section} />;
-  }, [detail, section]);
+  }, [basePath, detail, section]);
 
   const [title, subtitle] = PAGE_META[section] || PAGE_META.dashboard;
 
@@ -875,7 +896,7 @@ export default function OwnerPortal() {
         <title>{title} | ApplyLoop</title>
         <meta name="description" content={subtitle} />
       </Head>
-      <OwnerShell section={section}>
+      <OwnerShell section={section} portalRole={portalRole} navItems={navItems}>
         {content}
         <AddNewClientModal open={modals.addClient} onClose={() => closeModal('addClient')} />
         <ClientPerformanceModal open={modals.clientPerformance} onClose={() => closeModal('clientPerformance')} />
