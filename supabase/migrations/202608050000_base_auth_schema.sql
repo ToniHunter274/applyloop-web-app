@@ -77,6 +77,15 @@ grant select
   on public.profiles
   to authenticated;
 
+grant update (
+  full_name,
+  phone,
+  country,
+  timezone
+)
+  on public.profiles
+  to authenticated;
+
 grant all
   on public.profiles
   to service_role;
