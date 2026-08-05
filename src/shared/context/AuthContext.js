@@ -240,29 +240,49 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     setIsLoading(true);
 
+    let logoutError = null;
+    let supabase;
+
     try {
-      const supabase = createClient();
-      const { error: logoutError } = await supabase.auth.signOut();
+      supabase = createClient();
 
-      if (logoutError) {
-        throw logoutError;
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        logoutError = error;
+
+        await supabase.auth.signOut({
+          scope: 'local',
+        });
       }
+    } catch (signOutError) {
+      logoutError = signOutError;
 
-      clearSession();
-      await router.replace('/auth/login');
-
-      return { success: true };
-    } catch (logoutError) {
-      const message = logoutError?.message || 'Unable to sign out.';
-      setError(message);
-
-      return {
-        success: false,
-        error: message,
-      };
+      if (supabase) {
+        try {
+          await supabase.auth.signOut({
+            scope: 'local',
+          });
+        } catch (localSignOutError) {
+          logoutError = logoutError || localSignOutError;
+        }
+      }
     } finally {
+      clearSession();
       setIsLoading(false);
     }
+
+    await router.replace('/auth/login');
+
+    if (logoutError) {
+      return {
+        success: false,
+        error:
+          'You were signed out on this device, but the remote session could not be revoked.',
+      };
+    }
+
+    return { success: true };
   };
 
   const updateProfile = async (profileData) => {
