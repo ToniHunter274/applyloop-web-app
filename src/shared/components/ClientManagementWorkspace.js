@@ -1110,12 +1110,23 @@ export default function ClientManagementWorkspace({
         );
       }
 
-      await loadClients();
-
       setCredentialContext('created');
       setCredentialsSaved(false);
       setCredentials(result.credentials);
       setSelectedFileName('');
+
+      try {
+        await loadClients();
+      } catch (reloadError) {
+        console.error(
+          'Client created, but list refresh failed:',
+          reloadError
+        );
+
+        setFormError(
+          'The client was created successfully, but the client list could not refresh. Save these credentials, then refresh the page.'
+        );
+      }
     } catch (error) {
       setFormError(
         error?.message ||

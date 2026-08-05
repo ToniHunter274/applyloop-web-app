@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '../../shared/context/AuthContext';
+import {
+  getRoleHome,
+  USER_ROLES,
+} from '../../shared/config/roles';
 import { 
   FiCheckCircle, 
   FiXCircle, 
@@ -19,6 +24,15 @@ import useAdmin from '../../shared/hooks/useAdmin';
 
 const VendorApprovalsPage = () => {
   const router = useRouter();
+  const {
+    user,
+    hasAdminAccess: authIsAuthenticated,
+    isLoading: isAuthLoading,
+  } = useAuth();
+
+  const hasAdminAccess =
+    authIsAuthenticated &&
+    user?.role === USER_ROLES.ADMIN;
   const { approveVendor, rejectVendor, getVendors, loading } = useAdmin();
   const [vendors, setVendors] = useState([]);
   const [filteredVendors, setFilteredVendors] = useState([]);
@@ -28,49 +42,31 @@ const VendorApprovalsPage = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Check authentication
   useEffect(() => {
-    try {
-      console.log('Checking admin authentication in vendor-approvals page...');
-      const adminToken = localStorage.getItem('orderlyAdminToken');
-      const adminDataStr = localStorage.getItem('orderlyAdminData');
-      
-      console.log('Admin token:', adminToken ? 'exists' : 'not found');
-      console.log('Admin data:', adminDataStr ? 'exists' : 'not found');
-      
-      if (!adminToken || !adminDataStr) {
-        console.log('Admin authentication failed. Redirecting to login...');
-        router.push('/admin/login');
-        return;
-      }
-      
-      // Check if admin data is valid
-      try {
-        const adminData = JSON.parse(adminDataStr);
-        if (!adminData || adminData.role !== 'admin') {
-          console.log('Invalid admin role. Redirecting to login...');
-          router.push('/admin/login');
-          return;
-        }
-        
-        // Admin is authenticated
-        console.log('Admin authenticated successfully in vendor-approvals');
-        setIsAuthenticated(true);
-      } catch (e) {
-        console.error('Error parsing admin data:', e);
-        router.push('/admin/login');
-      }
-    } catch (error) {
-      console.error('Authentication check error:', error);
-      router.push('/admin/login');
+    if (isAuthLoading) {
+      return;
     }
-  }, [router]);
-  
+
+    if (!authIsAuthenticated) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    if (user?.role !== USER_ROLES.ADMIN) {
+      router.replace(getRoleHome(user?.role));
+    }
+  }, [
+    authIsAuthenticated,
+    isAuthLoading,
+    router,
+    user?.role,
+  ]);
+
   // Fetch vendors on component mount
   useEffect(() => {
-    if (isAuthenticated) {
+    if (hasAdminAccess) {
       const loadVendors = async () => {
         setIsLoading(true);
         try {
@@ -87,7 +83,7 @@ const VendorApprovalsPage = () => {
       
       loadVendors();
     }
-  }, [getVendors, isAuthenticated, statusFilter, searchTerm]);
+  }, [getVendors, hasAdminAccess, statusFilter, searchTerm]);
   
   // Filter vendors based on search term and status filter
   const filterVendors = (vendorList, search, status) => {
@@ -260,7 +256,7 @@ const VendorApprovalsPage = () => {
     }
   };
   
-  if (!isAuthenticated) {
+  if (!hasAdminAccess) {
     return <div className="flex justify-center items-center h-screen">Redirecting to login...</div>;
   }
   
