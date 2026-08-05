@@ -14,13 +14,12 @@ import {
   FiCreditCard,
   FiDollarSign,
   FiEdit2,
-  FiEye,
   FiFileText,
   FiGrid,
   FiHome,
+  FiLogOut,
   FiMenu,
   FiMessageSquare,
-  FiPauseCircle,
   FiPlus,
   FiRefreshCw,
   FiSearch,
@@ -35,6 +34,8 @@ import { HiOutlineLightBulb, HiOutlineUserGroup } from 'react-icons/hi';
 import { FaCrown, FaRegGem } from 'react-icons/fa';
 import { useAuth } from '../../shared/context/AuthContext';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
+import CustomSelect from '../../shared/components/CustomSelect';
+import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
 import styles from './OwnerPortal.module.css';
 import { AxisBarChart, AxisLineChart, AxisMultiLineChart, ConversionFunnelChart } from './OwnerCharts';
 import { AnalyticsReportsPage, ClientDetailsPage, EscalationsIssuesPage, PromptSystemPage, SettingsPage } from './OwnerExtraPages';
@@ -87,16 +88,6 @@ const dashboardFeed = [
   ['Chief Applicant approved task\nfor review', '18 minutes ago', 'amber'],
   ['Interview scheduled: Michael\nChen - Google', '23 minutes ago', 'green'],
   ['New client onboarded - Pro\nPlan', '31 minutes ago', 'blue'],
-];
-
-const clients = [
-  { name: 'Maya Patel', plan: 'Standard', applications: 245, interviews: 68, team: 'Team Alpha', status: 'Active', revenue: '$12,500' },
-  { name: 'Luis Garcia', plan: 'Premium', applications: 128, interviews: 34, team: 'Team Beta', status: 'Active', revenue: '$4,200' },
-  { name: 'Amina Yusuf', plan: 'Standard', applications: 89, interviews: 21, team: 'Team Gamma', status: 'Paused', revenue: '$2,100' },
-  { name: 'Ethan Brown', plan: 'Standard', applications: 156, interviews: 45, team: 'Team Alpha', status: 'Active', revenue: '$4,800' },
-  { name: 'Michael Chen', plan: 'Standard', applications: 312, interviews: 92, team: 'Team Delta', status: 'Completed', revenue: '$15,000' },
-  { name: 'Sophia Martinez', plan: 'Premium', applications: 415, interviews: 120, team: 'Team Alpha', status: 'Completed', revenue: '$22,500' },
-  { name: "Liam O'Connor", plan: 'Basic', applications: 210, interviews: 75, team: 'Team Gamma', status: 'Completed', revenue: '$8,750' },
 ];
 
 const applicants = [
@@ -192,6 +183,16 @@ function OwnerShell({ section, children }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const displayName = user?.name || 'Super Admin';
+
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((namePart) => namePart[0])
+    .join('')
+    .toUpperCase();
+
   useEffect(() => {
     if (user?.role && user.role !== USER_ROLES.OWNER) router.replace(getRoleHome(user.role));
   }, [router, user?.role]);
@@ -212,13 +213,27 @@ function OwnerShell({ section, children }) {
             );
           })}
         </nav>
-        <button className={styles.account} onClick={logout}>
-          <span className={styles.avatarTiny}>S</span>
-          <span>
-            <strong>Super Admin</strong>
-            <small>Owner</small>
-          </span>
-        </button>
+        <div className={styles.accountPanel}>
+          <div className={styles.accountIdentity}>
+            <span className={styles.avatarTiny}>
+              {initials}
+            </span>
+
+            <span className={styles.accountText}>
+              <strong>{displayName}</strong>
+              <small>Owner</small>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className={styles.signOutButton}
+            onClick={logout}
+          >
+            <FiLogOut />
+            <span>Sign out</span>
+          </button>
+        </div>
       </aside>
 
       <div className={styles.mainRail}>
@@ -322,21 +337,64 @@ function PanelTitle({ children, action }) {
   );
 }
 
-function SearchFilters({ placeholder = 'Search...', filters = [], compact = false, action }) {
+const FILTER_OPTIONS = {
+  'All Plans': [
+    { value: 'all', label: 'All Plans' },
+    { value: 'basic', label: 'Basic' },
+    { value: 'standard', label: 'Standard' },
+    { value: 'premium', label: 'Premium' },
+    { value: 'quarterly', label: 'Quarterly' },
+  ],
+  'All Statuses': [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'active', label: 'Active' },
+    { value: 'paused', label: 'Paused' },
+    { value: 'completed', label: 'Completed' },
+  ],
+  'All Period': [
+    { value: 'all', label: 'All Periods' },
+    { value: 'current', label: 'Current Period' },
+    { value: 'previous', label: 'Previous Period' },
+  ],
+};
+
+function SearchFilters({
+  placeholder = 'Search...',
+  filters = [],
+  compact = false,
+  action,
+}) {
   return (
-    <div className={cn(styles.searchPanel, compact && styles.searchPanelCompact)}>
+    <div
+      className={cn(
+        styles.searchPanel,
+        compact && styles.searchPanelCompact
+      )}
+    >
       <label className={styles.searchField}>
         <FiSearch />
         <input placeholder={placeholder} />
       </label>
+
       {filters.map((filter) => (
-        <label key={filter} className={styles.selectField}>
-          <select defaultValue="">
-            <option value="">{filter}</option>
-          </select>
-          <FiChevronDown />
-        </label>
+        <CustomSelect
+          key={filter}
+          name={filter
+            .toLowerCase()
+            .replace(/[^a-z]+/g, '-')}
+          compact
+          defaultValue="all"
+          options={
+            FILTER_OPTIONS[filter] || [
+              {
+                value: 'all',
+                label: filter,
+              },
+            ]
+          }
+        />
       ))}
+
       {action}
     </div>
   );
@@ -431,43 +489,11 @@ function DashboardPage() {
   );
 }
 
-function ClientManagementPage({ openClient, openAddClient, openPause, openEscalate }) {
+function ClientManagementPage() {
   return (
-    <>
-      <PageHeader section="client-management" action={<ActionButton icon={FiPlus} onClick={openAddClient}>Add New Client</ActionButton>} />
-      <Card>
-        <SearchFilters placeholder="Search clients by name, plan, or team..." filters={['All Plans', 'All Statuses']} compact />
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>CLIENT NAME</th><th>PLAN TYPE</th><th>APPLICATIONS</th><th>INTERVIEWS</th><th>ASSIGNED TEAM</th><th>STATUS</th><th>REVENUE</th><th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((client) => (
-              <tr key={client.name}>
-                <td className={styles.nameCell}><Link href="/owner/client-management/olabanji-david" className={styles.clientNameLink}>{client.name}</Link></td>
-                <td><StatusBadge value={client.plan} /></td>
-                <td>{client.applications}</td>
-                <td>{client.interviews}</td>
-                <td>{client.team}</td>
-                <td><StatusBadge value={client.status} /></td>
-                <td className={styles.boldText}>{client.revenue}</td>
-                <td>
-                  <div className={styles.actionIcons}>
-                    <button onClick={openClient}><FiEye /></button>
-                    <button onClick={() => {}}><FiTrendingUp /></button>
-                    <button onClick={openPause}><FiPauseCircle /></button>
-                    <button onClick={openEscalate}><FiAlertTriangle /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className={styles.paginationRow}><span>Showing 5 of 342 clients</span><div className={styles.pagination}><button>Previous</button><button className={styles.pageActive}>1</button><button>2</button><button>3</button><button>Next</button></div></div>
-      </Card>
-    </>
+    <div className={styles.clientManagementWorkspace}>
+      <ClientManagementWorkspace mode="owner" />
+    </div>
   );
 }
 
@@ -833,6 +859,8 @@ export default function OwnerPortal() {
   const router = useRouter();
   const section = getSection(router);
   const detail = getDetail(router);
+
+
   const [modals, setModals] = useState({
     addClient: false,
     clientPerformance: false,
@@ -854,7 +882,7 @@ export default function OwnerPortal() {
   const content = useMemo(() => {
     if (section === 'dashboard') return <DashboardPage />;
     if (section === 'client-management' && detail) return <ClientDetailsPage />;
-    if (section === 'client-management') return <ClientManagementPage openClient={() => openModal('clientPerformance')} openAddClient={() => openModal('addClient')} openPause={() => openModal('pauseAccount')} openEscalate={() => openModal('escalate')} />;
+    if (section === 'client-management') return <ClientManagementPage />;
     if (section === 'applicants-management') return <ApplicantsManagementPage openAddApplicant={() => openModal('addApplicant')} openWorkerStats={() => openModal('workerStats')} />;
     if (section === 'chief-applicants') return <ChiefApplicantsPage openChiefStats={() => openModal('chiefStats')} />;
     if (section === 'application-operations') return <ApplicationOperationsPage openAddApplicant={() => openModal('addApplicant')} openReassign={() => openModal('reassign')} openForcePriority={() => openModal('forcePriority')} openEscalate={() => openModal('escalate')} />;

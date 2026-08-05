@@ -2245,3 +2245,126 @@
     margin-right: 0;
   }
 }
+
+/* Owner client management containment and account actions */
+.mainRail {
+  min-width: 0;
+  max-width: calc(100vw - 235px);
+}
+
+.surface {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.surface > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.clientManagementWorkspace {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 24px;
+}
+
+.accountPanel {
+  margin: auto 14px 26px;
+  padding-top: 13px;
+  border-top: 1px solid #dfe4ee;
+}
+
+.accountIdentity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.accountText {
+  min-width: 0;
+}
+
+.accountText strong,
+.accountText small {
+  display: block;
+}
+
+.accountText strong {
+  overflow: hidden;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountText small {
+  margin-top: 2px;
+  color: #8490a3;
+  font-size: 10px;
+}
+
+.signOutButton {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 12px;
+  border: 1px solid #d9e0ea;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.signOutButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.signOutButton:hover {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.signOutButton:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 860px) {
+  .mainRail {
+    min-width: 0;
+    max-width: 100vw;
+  }
+
+  .surface {
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .clientManagementWorkspace {
+    padding: 0;
+  }
+
+  .accountPanel {
+    margin-bottom: 20px;
+  }
+}
