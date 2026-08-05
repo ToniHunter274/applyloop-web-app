@@ -29,6 +29,9 @@ const formatUser = (authUser, profile) => ({
   id: authUser.id,
   email: profile.email || authUser.email,
   name: profile.full_name,
+  phone: profile.phone || '',
+  country: profile.country || '',
+  timezone: profile.timezone || '',
   role: profile.role,
   accountStatus: profile.account_status,
   createdAt: profile.created_at,
@@ -67,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select(
-        'id, email, full_name, role, account_status, created_at, updated_at'
+        'id, email, full_name, phone, country, timezone, role, account_status, created_at, updated_at'
       )
       .eq('id', authUser.id)
       .single();
@@ -263,9 +266,11 @@ export const AuthProvider = ({ children }) => {
         throw new Error('You must be signed in to update your profile.');
       }
 
+      const changes = profileData || {};
+
       const fullName =
-        profileData?.name?.trim() ||
-        [profileData?.firstName, profileData?.lastName]
+        changes.name?.trim() ||
+        [changes.firstName, changes.lastName]
           .filter(Boolean)
           .join(' ')
           .trim();
@@ -274,16 +279,30 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Enter your full name.');
       }
 
+      const profileUpdates = {
+        full_name: fullName,
+      };
+
+      if (Object.prototype.hasOwnProperty.call(changes, 'phone')) {
+        profileUpdates.phone = changes.phone?.trim() || null;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(changes, 'country')) {
+        profileUpdates.country = changes.country?.trim() || null;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(changes, 'timezone')) {
+        profileUpdates.timezone = changes.timezone?.trim() || null;
+      }
+
       const supabase = createClient();
 
       const { data: profile, error: updateError } = await supabase
         .from('profiles')
-        .update({
-          full_name: fullName,
-        })
+        .update(profileUpdates)
         .eq('id', user.id)
         .select(
-          'id, email, full_name, role, account_status, created_at, updated_at'
+          'id, email, full_name, phone, country, timezone, role, account_status, created_at, updated_at'
         )
         .single();
 
@@ -294,6 +313,9 @@ export const AuthProvider = ({ children }) => {
       const updatedUser = {
         ...user,
         name: profile.full_name,
+        phone: profile.phone || '',
+        country: profile.country || '',
+        timezone: profile.timezone || '',
         updatedAt: profile.updated_at,
       };
 
