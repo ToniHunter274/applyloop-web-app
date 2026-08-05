@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useRouter } from 'next/router';
@@ -630,6 +631,7 @@ export default function ClientManagementWorkspace({
   mode = 'admin',
 }) {
   const router = useRouter();
+  const allowNextRouteRef = useRef(false);
 
   const [clients, setClients] = useState([]);
   const [isLoadingClients, setIsLoadingClients] =
@@ -773,9 +775,44 @@ export default function ClientManagementWorkspace({
     const warningMessage =
       'These temporary credentials have not been copied or downloaded. Leaving now will permanently hide them.';
 
+    const confirmNavigation = () =>
+      window.confirm(warningMessage);
+
     const handleBeforeUnload = (event) => {
       event.preventDefault();
       event.returnValue = '';
+    };
+
+    const handleRouteChangeStart = (
+      url,
+      routeProperties
+    ) => {
+      if (
+        url === router.asPath ||
+        allowNextRouteRef.current
+      ) {
+        allowNextRouteRef.current = false;
+        return;
+      }
+
+      if (confirmNavigation()) {
+        return;
+      }
+
+      const navigationError = new Error(
+        'Navigation cancelled because temporary credentials are unsaved.'
+      );
+
+      navigationError.cancelled = true;
+
+      router.events.emit(
+        'routeChangeError',
+        navigationError,
+        url,
+        routeProperties
+      );
+
+      throw navigationError;
     };
 
     const handleBeforePopState = ({ as }) => {
@@ -783,23 +820,28 @@ export default function ClientManagementWorkspace({
         return true;
       }
 
-      const shouldLeave =
-        window.confirm(warningMessage);
-
-      if (!shouldLeave) {
-        window.history.pushState(
-          null,
-          '',
-          router.asPath
-        );
+      if (confirmNavigation()) {
+        allowNextRouteRef.current = true;
+        return true;
       }
 
-      return shouldLeave;
+      window.history.pushState(
+        null,
+        '',
+        router.asPath
+      );
+
+      return false;
     };
 
     window.addEventListener(
       'beforeunload',
       handleBeforeUnload
+    );
+
+    router.events.on(
+      'routeChangeStart',
+      handleRouteChangeStart
     );
 
     router.beforePopState(
@@ -812,7 +854,13 @@ export default function ClientManagementWorkspace({
         handleBeforeUnload
       );
 
+      router.events.off(
+        'routeChangeStart',
+        handleRouteChangeStart
+      );
+
       router.beforePopState(() => true);
+      allowNextRouteRef.current = false;
     };
   }, [
     credentials,
