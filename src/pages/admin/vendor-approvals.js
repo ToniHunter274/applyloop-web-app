@@ -26,7 +26,7 @@ const VendorApprovalsPage = () => {
   const router = useRouter();
   const {
     user,
-    hasAdminAccess: authIsAuthenticated,
+    isAuthenticated: authIsAuthenticated,
     isLoading: isAuthLoading,
   } = useAuth();
 

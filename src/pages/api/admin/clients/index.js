@@ -410,65 +410,76 @@ async function createClient(req, res) {
   const { profile: adminProfile, supabase } =
     await requireAdmin(req);
 
-  const [fields, files] = await parseClientForm(req);
-
-  const fullName = validateRequired(
-    getField(fields, 'fullName'),
-    'Client name',
-    120
-  );
-
-  const email = validateEmail(getField(fields, 'email'));
-
-  const phone = validateOptional(
-    getField(fields, 'phone'),
-    'Phone number',
-    30
-  );
-
-  const gender = validateOptional(
-    getField(fields, 'gender'),
-    'Gender',
-    50
-  );
-
-  const assignedTeam = validateOptional(
-    getField(fields, 'assignedTeam'),
-    'Assigned team',
-    100
-  );
-
-  const notes = validateOptional(
-    getField(fields, 'notes'),
-    'Notes',
-    2000
-  );
-
-  const portfolioUrl = validateOptionalUrl(
-    getField(fields, 'portfolioUrl'),
-    'Portfolio link'
-  );
-
-  const linkedinUrl = validateOptionalUrl(
-    getField(fields, 'linkedinUrl'),
-    'LinkedIn URL'
-  );
-
-  const selectedPlan = getClientPlan(
-    getField(fields, 'plan').toLowerCase()
-  );
-
-  if (!selectedPlan) {
-    throw new ApiError(400, 'Select a valid client plan.');
-  }
-
-  const resume = validateResume(getFile(files, 'resume'));
-  const temporaryPassword = generateTemporaryPassword();
-
+  let resume = null;
   let createdUserId = null;
   let resumePath = null;
 
   try {
+    const [fields, files] =
+      await parseClientForm(req);
+
+    resume = getFile(files, 'resume');
+
+    const fullName = validateRequired(
+      getField(fields, 'fullName'),
+      'Client name',
+      120
+    );
+
+    const email = validateEmail(
+      getField(fields, 'email')
+    );
+
+    const phone = validateOptional(
+      getField(fields, 'phone'),
+      'Phone number',
+      30
+    );
+
+    const gender = validateOptional(
+      getField(fields, 'gender'),
+      'Gender',
+      50
+    );
+
+    const assignedTeam = validateOptional(
+      getField(fields, 'assignedTeam'),
+      'Assigned team',
+      100
+    );
+
+    const notes = validateOptional(
+      getField(fields, 'notes'),
+      'Notes',
+      2000
+    );
+
+    const portfolioUrl = validateOptionalUrl(
+      getField(fields, 'portfolioUrl'),
+      'Portfolio link'
+    );
+
+    const linkedinUrl = validateOptionalUrl(
+      getField(fields, 'linkedinUrl'),
+      'LinkedIn URL'
+    );
+
+    const selectedPlan = getClientPlan(
+      getField(fields, 'plan').toLowerCase()
+    );
+
+    if (!selectedPlan) {
+      throw new ApiError(
+        400,
+        'Select a valid client plan.'
+      );
+    }
+
+    resume = validateResume(resume);
+
+    const temporaryPassword =
+      generateTemporaryPassword();
+
     const {
       data: authData,
       error: authError,
