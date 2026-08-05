@@ -1,0 +1,231 @@
+name: Package Operations Role
+
+on:
+  push:
+    branches:
+      - operations-role-package
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out current project
+        uses: actions/checkout@v4
+
+      - name: Add Operations role
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, value):
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(value, encoding='utf-8')
+
+          def replace_once(value, old, new, label):
+              if old not in value:
+                  raise RuntimeError(f'Missing expected source for {label}')
+              return value.replace(old, new, 1)
+
+          roles_path = 'src/shared/config/roles.js'
+          roles = read(roles_path)
+          roles = replace_once(
+              roles,
+              "  OWNER: 'owner',\n};",
+              "  OWNER: 'owner',\n  OPERATIONS: 'operations',\n};",
+              'Operations role constant',
+          )
+          roles = replace_once(
+              roles,
+              "  [USER_ROLES.OWNER]: 'Owner',\n};",
+              "  [USER_ROLES.OWNER]: 'Owner',\n  [USER_ROLES.OPERATIONS]: 'Operations',\n};",
+              'Operations role label',
+          )
+          roles = replace_once(
+              roles,
+              "  [USER_ROLES.OWNER]: 'owner',\n};",
+              "  [USER_ROLES.OWNER]: 'owner',\n  [USER_ROLES.OPERATIONS]: 'operations',\n};",
+              'Operations role slug',
+          )
+          roles = replace_once(
+              roles,
+              "    { label: 'Settings', href: 'settings', icon: FiSettings },\n  ]),\n};\n\nexport const ROLE_DEMO_USERS",
+              "    { label: 'Settings', href: 'settings', icon: FiSettings },\n  ]),\n  [USER_ROLES.OPERATIONS]: withBase('operations', [\n    { label: 'Client Management', href: 'client-management', icon: FiUsers },\n    { label: 'Applicants Management', href: 'applicants-management', icon: FiBriefcase },\n    { label: 'Chief Applicants', href: 'chief-applicants', icon: FiUsers },\n    { label: 'Application Operations', href: 'application-operations', icon: FiFileText },\n  ]),\n};\n\nexport const ROLE_DEMO_USERS",
+              'Operations navigation',
+          )
+          roles = replace_once(
+              roles,
+              "  [USER_ROLES.OWNER]: {\n    name: 'ApplyLoop Owner',\n    email: 'owner@applyloop.com',\n    role: USER_ROLES.OWNER,\n  },\n};\n\nexport const ROLE_PAGE_META",
+              "  [USER_ROLES.OWNER]: {\n    name: 'ApplyLoop Owner',\n    email: 'owner@applyloop.com',\n    role: USER_ROLES.OWNER,\n  },\n  [USER_ROLES.OPERATIONS]: {\n    name: 'Operations Manager',\n    email: 'operations@applyloop.com',\n    role: USER_ROLES.OPERATIONS,\n  },\n};\n\nexport const ROLE_PAGE_META",
+              'Operations demo profile',
+          )
+          final_close = roles.rfind('\n};')
+          if final_close == -1:
+              raise RuntimeError('Unable to locate ROLE_PAGE_META closing block')
+          operations_meta = """
+  [USER_ROLES.OPERATIONS]: {
+    'client-management': ['Client Management', 'Manage client accounts, statuses, plans, and assignments.'],
+    'applicants-management': ['Applicants Management', 'Manage applicants, workload, availability, and performance.'],
+    'chief-applicants': ['Chief Applicants', 'Review chief applicant teams and operational performance.'],
+    'application-operations': ['Application Operations', 'Manage assignments, priorities, deadlines, and application progress.'],
+  },"""
+          roles = roles[:final_close] + '\n' + operations_meta + roles[final_close:]
+          write(roles_path, roles)
+
+          extra_path = 'src/features/owner/OwnerExtraPages.js'
+          extra = read(extra_path)
+          extra = replace_once(
+              extra,
+              'export function ClientDetailsPage() {',
+              "export function ClientDetailsPage({ basePath = '/owner' }) {",
+              'ClientDetailsPage base path',
+          )
+          extra = replace_once(
+              extra,
+              'Link href="/owner/client-management"',
+              'Link href={`${basePath}/client-management`}',
+              'Client details back link',
+          )
+          write(extra_path, extra)
+
+          portal_path = 'src/features/owner/OwnerPortal.js'
+          portal = read(portal_path)
+          portal = replace_once(portal, 'const NAV_ITEMS = [', 'const OWNER_NAV_ITEMS = [', 'Owner navigation rename')
+          portal = replace_once(
+              portal,
+              "  { section: 'settings', href: '/owner/settings', label: 'Settings', icon: FiSettings },\n];\n\nconst PAGE_META = {",
+              "  { section: 'settings', href: '/owner/settings', label: 'Settings', icon: FiSettings },\n];\n\nconst OPERATIONS_NAV_ITEMS = [\n  { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },\n  { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },\n  { section: 'chief-applicants', href: '/operations/chief-applicants', label: 'Chief Applicants', icon: FiGrid },\n  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },\n];\n\nconst OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));\n\nconst PAGE_META = {",
+              'Operations navigation items',
+          )
+          portal = replace_once(
+              portal,
+              "function getSection(router) {\n  const raw = router.query?.section;\n  if (Array.isArray(raw) && raw.length) return raw[0] === 'task-distribution' ? 'dashboard' : raw[0];\n  return 'dashboard';\n}",
+              "function getSection(router, fallback = 'dashboard') {\n  const raw = router.query?.section;\n  if (Array.isArray(raw) && raw.length) return raw[0] === 'task-distribution' ? fallback : raw[0];\n  return fallback;\n}",
+              'Operations section fallback',
+          )
+          portal = replace_once(
+              portal,
+              'function OwnerShell({ section, children }) {',
+              'function OwnerShell({ section, children, portalRole, navItems }) {',
+              'OwnerShell props',
+          )
+          portal = replace_once(
+              portal,
+              '  const [menuOpen, setMenuOpen] = useState(false);\n\n  useEffect(() => {',
+              "  const [menuOpen, setMenuOpen] = useState(false);\n  const isOperations = portalRole === USER_ROLES.OPERATIONS;\n\n  useEffect(() => {",
+              'Operations shell flag',
+          )
+          portal = replace_once(
+              portal,
+              "    if (user?.role && user.role !== USER_ROLES.OWNER) router.replace(getRoleHome(user.role));\n  }, [router, user?.role]);",
+              "    if (user?.role && user.role !== portalRole) router.replace(getRoleHome(user.role));\n  }, [portalRole, router, user?.role]);",
+              'Role protection',
+          )
+          portal = replace_once(portal, '          {NAV_ITEMS.map((item) => {', '          {navItems.map((item) => {', 'Role navigation rendering')
+          portal = replace_once(
+              portal,
+              "          <span className={styles.avatarTiny}>S</span>\n          <span>\n            <strong>Super Admin</strong>\n            <small>Owner</small>",
+              "          <span className={styles.avatarTiny}>{isOperations ? 'O' : 'S'}</span>\n          <span>\n            <strong>{isOperations ? (user?.name || 'Operations Team') : 'Super Admin'}</strong>\n            <small>{isOperations ? 'Operations' : 'Owner'}</small>",
+              'Operations account label',
+          )
+          portal = replace_once(
+              portal,
+              'function ClientManagementPage({ openClient, openAddClient, openPause, openEscalate }) {',
+              "function ClientManagementPage({ openClient, openAddClient, openPause, openEscalate, basePath = '/owner' }) {",
+              'Client management base path',
+          )
+          portal = replace_once(
+              portal,
+              'Link href="/owner/client-management/olabanji-david"',
+              'Link href={`${basePath}/client-management/olabanji-david`}',
+              'Client details route',
+          )
+          portal = replace_once(
+              portal,
+              "export default function OwnerPortal() {\n  const router = useRouter();\n  const section = getSection(router);\n  const detail = getDetail(router);",
+              "export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {\n  const router = useRouter();\n  const isOperations = portalRole === USER_ROLES.OPERATIONS;\n  const basePath = isOperations ? '/operations' : '/owner';\n  const defaultSection = isOperations ? 'client-management' : 'dashboard';\n  const requestedSection = getSection(router, defaultSection);\n  const section = isOperations && !OPERATIONS_SECTIONS.has(requestedSection) ? defaultSection : requestedSection;\n  const detail = getDetail(router);\n  const navItems = isOperations ? OPERATIONS_NAV_ITEMS : OWNER_NAV_ITEMS;",
+              'Operations portal setup',
+          )
+          portal = replace_once(
+              portal,
+              "  const openModal = (key) => setModals((current) => ({ ...current, [key]: true }));",
+              "  useEffect(() => {\n    if (isOperations && requestedSection !== section && router.isReady) {\n      router.replace(`${basePath}/${defaultSection}`);\n    }\n  }, [basePath, defaultSection, isOperations, requestedSection, router, section]);\n\n  const openModal = (key) => setModals((current) => ({ ...current, [key]: true }));",
+              'Operations route guard',
+          )
+          portal = replace_once(
+              portal,
+              "    if (section === 'client-management' && detail) return <ClientDetailsPage />;\n    if (section === 'client-management') return <ClientManagementPage openClient={() => openModal('clientPerformance')} openAddClient={() => openModal('addClient')} openPause={() => openModal('pauseAccount')} openEscalate={() => openModal('escalate')} />;",
+              "    if (section === 'client-management' && detail) return <ClientDetailsPage basePath={basePath} />;\n    if (section === 'client-management') return <ClientManagementPage basePath={basePath} openClient={() => openModal('clientPerformance')} openAddClient={() => openModal('addClient')} openPause={() => openModal('pauseAccount')} openEscalate={() => openModal('escalate')} />;",
+              'Shared client screens',
+          )
+          portal = replace_once(portal, '  }, [detail, section]);', '  }, [basePath, detail, section]);', 'Portal memo dependencies')
+          portal = replace_once(
+              portal,
+              '      <OwnerShell section={section}>',
+              '      <OwnerShell section={section} portalRole={portalRole} navItems={navItems}>',
+              'Role-aware shell',
+          )
+          write(portal_path, portal)
+
+          write(
+              'src/pages/operations/[[...section]].js',
+              """import OwnerPortal from '../../features/owner/OwnerPortal';
+import { USER_ROLES } from '../../shared/config/roles';
+
+export default function OperationsRoute() {
+  return <OwnerPortal portalRole={USER_ROLES.OPERATIONS} />;
+}
+""",
+          )
+
+          write(
+              'OPERATIONS_ROLE_README.md',
+              """# Operations Role
+
+The Operations workspace shares four screens with the Owner workspace:
+
+- Client Management
+- Applicants Management
+- Chief Applicants
+- Application Operations
+
+Operations users cannot open Owner-only dashboard, revenue, payroll, prompt, analytics, escalation, or settings screens.
+
+## Supabase profile
+
+Set the Operations user's `profiles.role` value to `operations`. If the database has a check constraint or enum for roles, add `operations` before creating the account.
+
+## Main route
+
+Open `/operations`. It redirects to `/operations/client-management`.
+""",
+          )
+          PY
+
+      - name: Confirm Operations files
+        shell: bash
+        run: |
+          test -f 'src/pages/operations/[[...section]].js'
+          grep -q "OPERATIONS: 'operations'" src/shared/config/roles.js
+          grep -q 'OPERATIONS_NAV_ITEMS' src/features/owner/OwnerPortal.js
+
+      - name: Create complete project ZIP
+        shell: bash
+        run: |
+          rm -rf .git .next node_modules
+          rm -f .github/workflows/package-operations-role.yml
+          zip -qr applyloop-operations-full-project.zip . \
+            -x 'applyloop-operations-full-project.zip'
+
+      - name: Upload complete project
+        uses: actions/upload-artifact@v4
+        with:
+          name: applyloop-operations-full-project
+          path: applyloop-operations-full-project.zip
+          retention-days: 7
