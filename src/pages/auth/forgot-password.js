@@ -1,277 +1,152 @@
-import React, { useState } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
 import Head from 'next/head';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import Link from 'next/link';
+import {
+  FiArrowLeft,
+  FiCheckCircle,
+  FiMail,
+} from 'react-icons/fi';
 import { useAuth } from '../../shared/context/AuthContext';
 
-const AUTH_BG = {
-  background: 'radial-gradient(ellipse at 50% 0%, #e4ecf9 0%, #f0f4fb 40%, #f8f9fd 100%)',
-};
-
-const LOGO = (
-  <div className="flex items-center justify-center gap-2 mb-3">
-    <img
-      src="/logo.svg"
-      alt="ApplyLoop Logo"
-      className="w-6 h-6 object-contain select-none"
-    />
-    <span className="text-[15px] font-bold text-gray-900">ApplyLoop</span>
-  </div>
-);
-
 export default function ForgotPassword() {
-  const { requestPasswordReset } = useAuth();
+  const {
+    requestPasswordReset,
+    clearError,
+  } = useAuth();
 
-  // Steps: 1 = email, 2 = recovery code, 3 = new password
-  const [step, setStep] = useState(1);
-
-  // Step 1
   const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Step 2
-  const [recoveryCode, setRecoveryCode] = useState('');
-  const [codeError, setCodeError] = useState('');
-  const [isLoadingCode, setIsLoadingCode] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
 
-  // Step 3
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [isLoadingReset, setIsLoadingReset] = useState(false);
-
-  // ──────────── Step 1: Submit email ────────────
-  const handleEmailSubmit = async (e) => {
-    e.preventDefault();
-    if (!email) { setEmailError('Email is required'); return; }
-    if (!/\S+@\S+\.\S+/.test(email)) { setEmailError('Email is invalid'); return; }
-    setEmailError('');
-    setIsLoadingEmail(true);
-    try {
-      await requestPasswordReset(email);
-    } catch (_) {}
-    setIsLoadingEmail(false);
-    setStep(2);
-  };
-
-  // ──────────── Step 2: Verify code ────────────
-  const handleCodeSubmit = async (e) => {
-    e.preventDefault();
-    if (!recoveryCode) { setCodeError('Recovery code is required'); return; }
-    setCodeError('');
-    setIsLoadingCode(true);
-    // Simulate code verification
-    await new Promise((r) => setTimeout(r, 800));
-    setIsLoadingCode(false);
-    setStep(3);
-  };
-
-  // ──────────── Step 3: Update password ────────────
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    if (!email.trim()) {
+      setFormError('Enter your email address.');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match');
-      return;
+
+    setLoading(true);
+    setFormError('');
+    setMessage('');
+    clearError();
+
+    const result = await requestPasswordReset(email);
+
+    if (!result.success) {
+      setFormError(result.error);
+    } else {
+      setMessage(
+        'Check your email for a secure password-reset link. You can close this page after opening the email.'
+      );
     }
-    setPasswordError('');
-    setIsLoadingReset(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setIsLoadingReset(false);
-    // Redirect to login after success
-    window.location.href = '/auth/login';
+
+    setLoading(false);
   };
 
   return (
     <>
       <Head>
-        <title>Forgot Password | ApplyLoop</title>
-        <meta name="description" content="Reset your ApplyLoop password" />
+        <title>Forgot password | ApplyLoop</title>
+        <meta
+          name="description"
+          content="Reset your ApplyLoop password."
+        />
       </Head>
 
-      <div
-        className="min-h-screen flex items-center justify-center p-4 bg-gray-50"
-        style={AUTH_BG}
-      >
-        {/* ─── STEP 1: Enter Email ─── */}
-        {step === 1 && (
-          <div className="w-[440px] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 flex flex-col gap-8">
-            <div className="text-center space-y-4">
-              {LOGO}
-              <h2 className="text-[22px] font-bold text-gray-900">
-                Forgot Password
-              </h2>
-              <p className="text-[13px] text-gray-500 leading-relaxed max-w-[280px] mx-auto">
-                Please provide your email address below so we can send you a recovery code.
-              </p>
+      <main className="flex min-h-screen items-center justify-center bg-[#f4f7fc] p-4">
+        <section className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-8 shadow-2xl shadow-blue-900/10 sm:p-10">
+          <div className="mb-8 text-center">
+            <div className="mb-5 flex items-center justify-center gap-2">
+              <img
+                src="/logo.svg"
+                alt="ApplyLoop"
+                className="h-9 w-9"
+              />
+
+              <span className="text-xl font-extrabold text-slate-950">
+                ApplyLoop
+              </span>
             </div>
 
-            <form onSubmit={handleEmailSubmit} className="flex flex-col gap-6">
-              <div>
-                <label htmlFor="fp-email" className="block text-[12px] text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  id="fp-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`block w-full px-4 py-3 border ${emailError ? 'border-red-400' : 'border-gray-100'} rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1E50C3] focus:ring-1 focus:ring-[#1E50C3] transition-all text-[13px]`}
-                  placeholder="banjidhevid216@gmail.com"
-                />
-                {emailError && <p className="mt-1 text-[11px] text-red-500">{emailError}</p>}
-              </div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-950">
+              Reset your password
+            </h1>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoadingEmail}
-                  className="w-full flex justify-center py-3.5 px-4 rounded-full text-white font-medium bg-[#2453CA] hover:bg-[#1E46AA] transition-colors disabled:opacity-50 text-[14px]"
-                >
-                  {isLoadingEmail ? 'Sending...' : 'Confirm'}
-                </button>
-              </div>
-            </form>
-
-            <div className="text-center mt-2">
-              <Link href="/auth/forgot-password" className="text-[13px] text-gray-500 hover:text-gray-700 transition-colors">
-                Forgot Password?
-              </Link>
-            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Enter the email address connected to your ApplyLoop account.
+            </p>
           </div>
-        )}
 
-        {/* ─── STEP 2: Enter Recovery Code ─── */}
-        {step === 2 && (
-          <div className="w-[440px] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 flex flex-col gap-8">
-            <div className="text-center space-y-4">
-              {LOGO}
-              <h2 className="text-[22px] font-bold text-gray-900">
-                Forgot Password
-              </h2>
-              <p className="text-[13px] text-gray-800">
-                A code has been sent to <span className="font-bold">{email}</span>
-              </p>
-            </div>
+          {message ? (
+            <div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+                <FiCheckCircle className="mx-auto h-9 w-9 text-emerald-600" />
 
-            <form onSubmit={handleCodeSubmit} className="flex flex-col gap-6">
-              <div>
-                <label htmlFor="recovery-code" className="block text-[12px] text-gray-700 mb-2">
-                  Recovery Code
-                </label>
-                <input
-                  id="recovery-code"
-                  type="text"
-                  value={recoveryCode}
-                  onChange={(e) => setRecoveryCode(e.target.value)}
-                  className={`block w-full px-4 py-3 border ${codeError ? 'border-red-400' : 'border-gray-100'} rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1E50C3] focus:ring-1 focus:ring-[#1E50C3] transition-all text-[13px]`}
-                  placeholder="banjidhevid216@gmail.com"
-                />
-                {codeError && <p className="mt-1 text-[11px] text-red-500">{codeError}</p>}
+                <p className="mt-3 text-sm font-semibold leading-6 text-emerald-800">
+                  {message}
+                </p>
               </div>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoadingCode}
-                  className="w-full flex justify-center py-3.5 px-4 rounded-full text-white font-medium bg-[#2453CA] hover:bg-[#1E46AA] transition-colors disabled:opacity-50 text-[14px]"
-                >
-                  {isLoadingCode ? 'Verifying...' : 'Confirm'}
-                </button>
-              </div>
-            </form>
-
-            <div className="text-center mt-2">
               <button
                 type="button"
-                onClick={() => setStep(1)}
-                className="text-[13px] text-[#2453CA] hover:text-[#1E46AA] underline decoration-1 underline-offset-2 transition-colors"
+                onClick={() => {
+                  setMessage('');
+                  setEmail('');
+                }}
+                className="mt-5 h-12 w-full rounded-xl border border-slate-200 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
               >
-                Change Email Address
+                Send another email
               </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <form onSubmit={submit} className="space-y-5">
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700">
+                  Email address
+                </span>
 
-        {/* ─── STEP 3: Update Password ─── */}
-        {step === 3 && (
-          <div className="w-[440px] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 flex flex-col gap-8">
-            <div className="text-center space-y-4">
-              {LOGO}
-              <h2 className="text-[22px] font-bold text-gray-900">
-                Update password
-              </h2>
-            </div>
+                <span className="relative block">
+                  <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
 
-            <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-6">
-              {/* New Password */}
-              <div>
-                <label htmlFor="new-password" className="block text-[12px] text-gray-700 mb-2">
-                  New Password
-                </label>
-                <div className="relative">
                   <input
-                    id="new-password"
-                    type={showNew ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className={`block w-full pl-4 pr-11 py-3 border ${passwordError ? 'border-red-400' : 'border-gray-100'} rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1E50C3] focus:ring-1 focus:ring-[#1E50C3] transition-all text-[13px] tracking-widest`}
-                    placeholder="***********"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="h-12 w-full rounded-xl border border-slate-200 pl-11 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    {showNew ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+                </span>
+              </label>
 
-              {/* Confirm New Password */}
-              <div>
-                <label htmlFor="confirm-password" className="block text-[12px] text-gray-700 mb-2">
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="confirm-password"
-                    type={showConfirm ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`block w-full pl-4 pr-11 py-3 border ${passwordError ? 'border-red-400' : 'border-gray-100'} rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1E50C3] focus:ring-1 focus:ring-[#1E50C3] transition-all text-[13px] tracking-widest`}
-                    placeholder="***********"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    {showConfirm ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {passwordError && <p className="mt-1 text-[11px] text-red-500">{passwordError}</p>}
-              </div>
+              {formError && (
+                <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                  {formError}
+                </p>
+              )}
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoadingReset}
-                  className="w-full flex justify-center py-3.5 px-4 rounded-full text-white font-medium bg-[#2453CA] hover:bg-[#1E46AA] transition-colors disabled:opacity-50 text-[14px]"
-                >
-                  {isLoadingReset ? 'Updating...' : 'Confirm'}
-                </button>
-              </div>
+              <button
+                disabled={loading}
+                className="flex h-12 w-full items-center justify-center rounded-xl bg-blue-700 px-4 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Sending...' : 'Send reset link'}
+              </button>
             </form>
+          )}
+
+          <div className="mt-7 text-center">
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline"
+            >
+              <FiArrowLeft />
+              Back to sign in
+            </Link>
           </div>
-        )}
-      </div>
+        </section>
+      </main>
     </>
   );
 }

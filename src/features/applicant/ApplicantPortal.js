@@ -776,13 +776,18 @@ function Toggle({ value, onChange, label }) {
 
 function SettingsPage() {
   const { user, updateProfile, logout } = useAuth();
+  const nameParts = (user?.name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
   const [profile, setProfile] = useState({
-    firstName: 'Olabanji',
-    lastName: 'David T.',
-    email: user?.email || 'banjidhevid216@gmail.com',
-    phone: '+234 811 474 6609',
-    country: 'Nigeria',
-    timezone: 'Lagos',
+    firstName: nameParts[0] || '',
+    lastName: nameParts.slice(1).join(' '),
+    email: user?.email || '',
+    phone: user?.phone || '',
+    country: user?.country || '',
+    timezone: user?.timezone || '',
   });
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
@@ -798,12 +803,32 @@ function SettingsPage() {
         <div className={styles.settingsGrid}>
           <div className={styles.field}><label>First Name</label><input value={profile.firstName} onChange={(event) => update('firstName', event.target.value)} /></div>
           <div className={styles.field}><label>Last Name</label><input value={profile.lastName} onChange={(event) => update('lastName', event.target.value)} /></div>
-          <div className={styles.field}><label>Email Address</label><input value={profile.email} onChange={(event) => update('email', event.target.value)} /></div>
+          <div className={styles.field}><label>Email Address</label><input value={profile.email} readOnly title="Contact an ApplyLoop administrator to change your login email." /></div>
           <div className={styles.field}><label>Phone Number</label><input value={profile.phone} onChange={(event) => update('phone', event.target.value)} /></div>
           <div className={styles.field}><label>Country</label><input value={profile.country} onChange={(event) => update('country', event.target.value)} /></div>
           <div className={styles.field}><label>Timezone</label><input value={profile.timezone} onChange={(event) => update('timezone', event.target.value)} /></div>
         </div>
-        <button type="button" className={styles.primaryButton} style={{ marginTop: 15 }} onClick={async () => { await updateProfile({ name: `${profile.firstName} ${profile.lastName}`, email: profile.email }); setSaved(true); }}><FiSave /> Save Changes</button>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          style={{ marginTop: 15 }}
+          onClick={async () => {
+            setSaved(false);
+
+            const result = await updateProfile({
+              name: `${profile.firstName} ${profile.lastName}`,
+              phone: profile.phone,
+              country: profile.country,
+              timezone: profile.timezone,
+            });
+
+            if (result.success) {
+              setSaved(true);
+            }
+          }}
+        >
+          <FiSave /> Save Changes
+        </button>
         {saved && <span style={{ marginLeft: 12, color: '#159a66', fontSize: 9 }}>Saved.</span>}
       </section>
       <section className={styles.settingsSection}>

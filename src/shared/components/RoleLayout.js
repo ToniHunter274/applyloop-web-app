@@ -17,7 +17,6 @@ import {
   ROLE_LABELS,
   ROLE_NAVIGATION,
   ROLE_PAGE_META,
-  USER_ROLES,
 } from '../config/roles';
 import { Avatar, Badge } from './PortalUI';
 
@@ -29,10 +28,9 @@ const getSection = (router) => {
 
 export default function RoleLayout({ role, children, actions }) {
   const router = useRouter();
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [roleOpen, setRoleOpen] = useState(false);
   const section = getSection(router);
   const [title, subtitle] = ROLE_PAGE_META[role]?.[section] || ROLE_PAGE_META[role]?.dashboard || ['ApplyLoop', ''];
   const navigation = ROLE_NAVIGATION[role] || [];
@@ -124,21 +122,6 @@ export default function RoleLayout({ role, children, actions }) {
                   <FiBell className="h-[18px] w-[18px]" />
                   <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
                 </button>
-                <div className="relative hidden md:block">
-                  <button onClick={() => setRoleOpen((value) => !value)} className="flex h-[38px] items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 hover:bg-slate-50">
-                    Demo role <FiChevronDown />
-                  </button>
-                  {roleOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
-                      {Object.values(USER_ROLES).map((option) => (
-                        <button key={option} onClick={() => { setRoleOpen(false); switchRole(option); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${option === role ? 'font-bold text-blue-700' : 'text-slate-600'}`}>
-                          {ROLE_LABELS[option]}
-                          {option === role && <span className="h-2 w-2 rounded-full bg-blue-600" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 {actions}
               </div>
             </div>

@@ -16,7 +16,7 @@ import {
   FiX,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
-import { getRoleHome, ROLE_LABELS, USER_ROLES } from '../config/roles';
+import { getRoleHome, USER_ROLES } from '../config/roles';
 import { Avatar } from './PortalUI';
 
 const pageMeta = {
@@ -31,11 +31,10 @@ const pageMeta = {
 
 export default function DashboardLayout({ children, logout: logoutProp }) {
   const router = useRouter();
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [roleOpen, setRoleOpen] = useState(false);
   const [title, subtitle] = pageMeta[router.pathname] || ['ApplyLoop', ''];
 
   const navItems = [
@@ -83,7 +82,6 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
             <div className="flex items-center gap-2">
               <label className="relative hidden xl:block"><FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input placeholder="Search applications" className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400" /></label>
               <div className="relative"><button onClick={() => setNotificationsOpen((value) => !value)} className="relative rounded-full border border-blue-600 p-2 text-blue-700 hover:bg-slate-50"><FiBell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" /></button>{notificationsOpen && <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"><p className="px-2 py-2 text-[11px] font-medium">Notifications</p>{['Your Notion application moved to Interview.', 'A new Loop Lab session is available.', 'Your monthly application usage is at 64%.'].map((message) => <div key={message} className="border-t border-slate-100 px-2 py-3 text-xs leading-5 text-slate-600">{message}</div>)}</div>}</div>
-              <div className="relative hidden lg:block"><button onClick={() => setRoleOpen((value) => !value)} className="flex h-[38px] items-center gap-2 rounded-md border border-slate-200 px-3 text-[11px] font-medium text-slate-700">Demo role <FiChevronDown /></button>{roleOpen && <div className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">{Object.values(USER_ROLES).map((role) => <button key={role} onClick={() => { setRoleOpen(false); switchRole(role); }} className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${role === USER_ROLES.USER_CLIENT ? 'font-bold text-blue-700' : 'text-slate-600'}`}>{ROLE_LABELS[role]}</button>)}</div>}</div>
             </div>
           </div>
         </header>
