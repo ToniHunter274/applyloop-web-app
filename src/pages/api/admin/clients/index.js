@@ -657,14 +657,22 @@ export default async function handler(req, res) {
         ? error.statusCode
         : error.httpCode || 500;
 
+    const serverErrorMessage =
+      req.method === 'GET'
+        ? 'Unable to load the client list right now.'
+        : 'Unable to create the client right now.';
+
     if (statusCode >= 500) {
-      console.error('Create client API error:', error);
+      console.error(
+        `${req.method} clients API error:`,
+        error
+      );
     }
 
     return res.status(statusCode).json({
       error:
         statusCode >= 500
-          ? 'Unable to create the client right now.'
+          ? serverErrorMessage
           : error.message,
     });
   }
