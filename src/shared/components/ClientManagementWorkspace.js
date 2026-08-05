@@ -710,11 +710,14 @@ export default function ClientManagementWorkspace({
       }
 
       setClients(result.clients || []);
+      return true;
     } catch (error) {
       setListError(
         error?.message ||
           'The client list could not be loaded.'
       );
+
+      return false;
     } finally {
       setIsLoadingClients(false);
     }
@@ -1150,16 +1153,11 @@ export default function ClientManagementWorkspace({
       setCredentials(result.credentials);
       setSelectedFileName('');
 
-      try {
-        await loadClients();
-      } catch (reloadError) {
-        console.error(
-          'Client created, but list refresh failed:',
-          reloadError
-        );
+      const clientsReloaded = await loadClients();
 
+      if (!clientsReloaded) {
         setFormError(
-          'The client was created successfully, but the client list could not refresh. Save these credentials, then refresh the page.'
+          'The client was created successfully, but the client list could not refresh automatically. Save these credentials, then refresh the page.'
         );
       }
     } catch (error) {
