@@ -20,7 +20,7 @@ begin
       add constraint clients_priority_check
       check (priority in ('high', 'urgent', 'critical'));
   end if;
-end
+end;
 $$;
 
 create index if not exists clients_priority_idx

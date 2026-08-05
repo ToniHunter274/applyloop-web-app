@@ -23,7 +23,7 @@ begin
       'operations'
     );
   end if;
-end
+end;
 $$;
 
 -- Keep updated_at values consistent across application tables.
