@@ -42,15 +42,6 @@ revoke all on public.clients from authenticated;
 grant select, update on public.clients to authenticated;
 grant all on public.clients to service_role;
 
-drop policy if exists "Clients can view their own record"
-  on public.clients;
-
-create policy "Clients can view their own record"
-on public.clients
-for select
-to authenticated
-using ((select auth.uid()) = user_id);
-
 drop policy if exists "Admins can view all clients"
   on public.clients;
 
