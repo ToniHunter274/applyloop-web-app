@@ -92,7 +92,9 @@ export default async function handler(req, res) {
       error: currentStepError,
     } = await supabase
       .from('client_onboarding_steps')
-      .select('id, step_key, step_order, label')
+      .select(
+        'id, step_key, step_order, label, status, completed_at'
+      )
       .eq('client_id', clientId)
       .eq('step_key', stepKey)
       .single();
@@ -106,7 +108,10 @@ export default async function handler(req, res) {
 
     const completedAt =
       status === 'completed'
-        ? new Date().toISOString()
+        ? currentStep.status === 'completed' &&
+          currentStep.completed_at
+          ? currentStep.completed_at
+          : new Date().toISOString()
         : null;
 
     const {

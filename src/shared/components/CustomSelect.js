@@ -110,10 +110,12 @@ export default function CustomSelect({
       return;
     }
 
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && isOpen) {
       event.preventDefault();
+      event.stopPropagation();
       setIsOpen(false);
       buttonRef.current?.focus();
+      return;
     }
 
     if (event.key === 'Tab') {
