@@ -76,24 +76,6 @@ grant all
   to service_role;
 
 drop policy if exists
-  "Clients can view their onboarding"
-  on public.client_onboarding_steps;
-
-create policy "Clients can view their onboarding"
-on public.client_onboarding_steps
-for select
-to authenticated
-using (
-  exists (
-    select 1
-    from public.clients
-    where clients.id =
-      client_onboarding_steps.client_id
-      and clients.user_id = (select auth.uid())
-  )
-);
-
-drop policy if exists
   "Admins can view client onboarding"
   on public.client_onboarding_steps;
 
