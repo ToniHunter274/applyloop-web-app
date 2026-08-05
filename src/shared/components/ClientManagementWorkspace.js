@@ -734,7 +734,8 @@ export default function ClientManagementWorkspace({
         event.key === 'Escape' &&
         !isSubmitting &&
         !isSavingClient &&
-        !isSavingOnboarding
+        !isSavingOnboarding &&
+        (!credentials || credentialsSaved)
       ) {
         setActiveModal(null);
       }
@@ -751,6 +752,8 @@ export default function ClientManagementWorkspace({
     };
   }, [
     activeModal,
+    credentials,
+    credentialsSaved,
     isSavingClient,
     isSavingOnboarding,
     isSubmitting,
