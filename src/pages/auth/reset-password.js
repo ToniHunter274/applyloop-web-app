@@ -12,7 +12,7 @@ import { useAuth } from '../../shared/context/AuthContext';
 
 export default function ResetPassword() {
   const {
-    isAuthenticated,
+    isPasswordRecovery,
     isLoading,
     resetPassword,
     logout,
@@ -29,6 +29,13 @@ export default function ResetPassword() {
 
   const submit = async (event) => {
     event.preventDefault();
+
+    if (!isPasswordRecovery) {
+      setFormError(
+        'This password-reset link is invalid or has expired.'
+      );
+      return;
+    }
 
     if (newPassword.length < 8) {
       setFormError('Your password must contain at least 8 characters.');
@@ -110,7 +117,7 @@ export default function ResetPassword() {
             </p>
           </div>
 
-          {!isAuthenticated ? (
+          {!isPasswordRecovery ? (
             <div>
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
                 <FiAlertCircle className="mx-auto h-9 w-9 text-amber-600" />

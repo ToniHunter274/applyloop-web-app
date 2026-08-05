@@ -52,12 +52,14 @@ export const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const clearSession = useCallback(() => {
     setUser(null);
     setIsAuthenticated(false);
+    setIsPasswordRecovery(false);
   }, []);
 
   const loadUserProfile = useCallback(async (authUser) => {
@@ -151,6 +153,10 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+      }
+
       if (
         event === 'SIGNED_IN' ||
         event === 'PASSWORD_RECOVERY' ||
@@ -181,6 +187,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async ({ email, password }) => {
     setError(null);
+    setIsPasswordRecovery(false);
     setIsLoading(true);
 
     try {
@@ -385,6 +392,12 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
+      if (!isPasswordRecovery) {
+        throw new Error(
+          'This password-reset link is invalid or has expired.'
+        );
+      }
+
       if (!newPassword || newPassword.length < 8) {
         throw new Error(
           'Your new password must contain at least 8 characters.'
@@ -439,6 +452,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAuthenticated,
+    isPasswordRecovery,
     isLoading,
     error,
     login,
