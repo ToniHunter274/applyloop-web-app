@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useRouter } from 'next/router';
 import {
   FiAlertTriangle,
   FiCheck,
@@ -628,6 +629,8 @@ function MetricCard({ label, value, tone }) {
 export default function ClientManagementWorkspace({
   mode = 'admin',
 }) {
+  const router = useRouter();
+
   const [clients, setClients] = useState([]);
   const [isLoadingClients, setIsLoadingClients] =
     useState(true);
@@ -764,9 +767,31 @@ export default function ClientManagementWorkspace({
       return undefined;
     }
 
+    const warningMessage =
+      'These temporary credentials have not been copied or downloaded. Leaving now will permanently hide them.';
+
     const handleBeforeUnload = (event) => {
       event.preventDefault();
       event.returnValue = '';
+    };
+
+    const handleBeforePopState = ({ as }) => {
+      if (as === router.asPath) {
+        return true;
+      }
+
+      const shouldLeave =
+        window.confirm(warningMessage);
+
+      if (!shouldLeave) {
+        window.history.pushState(
+          null,
+          '',
+          router.asPath
+        );
+      }
+
+      return shouldLeave;
     };
 
     window.addEventListener(
@@ -774,13 +799,23 @@ export default function ClientManagementWorkspace({
       handleBeforeUnload
     );
 
+    router.beforePopState(
+      handleBeforePopState
+    );
+
     return () => {
       window.removeEventListener(
         'beforeunload',
         handleBeforeUnload
       );
+
+      router.beforePopState(() => true);
     };
-  }, [credentials, credentialsSaved]);
+  }, [
+    credentials,
+    credentialsSaved,
+    router,
+  ]);
 
   const visibleClients = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
