@@ -45,12 +45,25 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
       : router.query.previewClientId || ''
     : '';
 
-  const isOwnerPreview =
-    user?.role === USER_ROLES.OWNER &&
+  const isClientPreview =
+    [
+      USER_ROLES.OWNER,
+      USER_ROLES.ADMIN,
+    ].includes(user?.role) &&
     Boolean(previewClientId);
 
+  const previewRoleLabel =
+    user?.role === USER_ROLES.ADMIN
+      ? 'Admin'
+      : 'Owner';
+
+  const previewExitHref =
+    user?.role === USER_ROLES.ADMIN
+      ? '/admin'
+      : '/owner/client-management';
+
   const displayUser =
-    isOwnerPreview && previewClient
+    isClientPreview && previewClient
       ? {
           name: previewClient.fullName,
           email: previewClient.email,
@@ -74,7 +87,7 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
       : logout();
 
   useEffect(() => {
-    if (!router.isReady || !isOwnerPreview) {
+    if (!router.isReady || !isClientPreview) {
       setPreviewClient(null);
       setPreviewError('');
       return undefined;
@@ -161,7 +174,7 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
       cancelled = true;
     };
   }, [
-    isOwnerPreview,
+    isClientPreview,
     previewClientId,
     router.isReady,
   ]);
@@ -174,12 +187,12 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
     if (
       user?.role &&
       user.role !== USER_ROLES.USER_CLIENT &&
-      !isOwnerPreview
+      !isClientPreview
     ) {
       router.replace(getRoleHome(user.role));
     }
   }, [
-    isOwnerPreview,
+    isClientPreview,
     router,
     router.isReady,
     user?.role,
@@ -190,7 +203,7 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-slate-200 bg-white transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-[112px] items-center justify-between border-b border-slate-100 px-6">
-          <Link href={isOwnerPreview ? `/dashboard?previewClientId=${encodeURIComponent(previewClientId)}` : '/dashboard'} className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-[26px] w-[26px]" /><span className="text-[15px] font-semibold tracking-tight">ApplyLoop</span></Link>
+          <Link href={isClientPreview ? `/dashboard?previewClientId=${encodeURIComponent(previewClientId)}` : '/dashboard'} className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-[26px] w-[26px]" /><span className="text-[15px] font-semibold tracking-tight">ApplyLoop</span></Link>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-500 md:hidden"><FiX /></button>
         </div>
         <div className="px-[14px] pt-0"><div className="rounded border border-blue-100 bg-blue-50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-[0.09em] text-blue-500">Workspace</p><p className="mt-1 text-[11px] font-semibold text-blue-950">User/Client portal</p></div></div>
@@ -202,7 +215,7 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
                 router.pathname ===
                   '/applications/[id]');
 
-            const targetHref = isOwnerPreview
+            const targetHref = isClientPreview
               ? `${href}?previewClientId=${encodeURIComponent(
                   previewClientId
                 )}`
@@ -231,9 +244,9 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
             <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-[4px] px-2 py-2 text-left hover:bg-slate-50"><Avatar name={displayUser?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{displayUser?.name || 'User/Client'}</span><span className="block truncate text-[10px] text-slate-500">{displayUser?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
             {profileOpen && (
               <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                {isOwnerPreview ? (
+                {isClientPreview ? (
                   <Link
-                    href="/owner/client-management"
+                    href={previewExitHref}
                     className="flex w-full items-center px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
                   >
                     Back to Client Management
@@ -264,11 +277,11 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
           </div>
         </header>
         <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-[13px] sm:p-[14px] lg:p-[14px]">
-          {isOwnerPreview && (
+          {isClientPreview && (
             <div className="mb-3 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-600">
-                  Owner Preview
+                  {previewRoleLabel} Preview
                 </p>
 
                 <p className="mt-1 text-sm font-semibold text-blue-950">
@@ -278,12 +291,12 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
                 </p>
 
                 <p className="mt-1 text-xs text-blue-700">
-                  You are still signed in as Owner.
+                  You are still signed in as {previewRoleLabel}.
                 </p>
               </div>
 
               <Link
-                href="/owner/client-management"
+                href={previewExitHref}
                 className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-white px-4 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
               >
                 Back to Client Management

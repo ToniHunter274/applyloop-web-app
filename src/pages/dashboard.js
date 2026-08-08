@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { 
   FiFileText, 
   FiMail, 
@@ -26,6 +27,19 @@ import AddJobLinkModal from '../shared/components/AddJobLinkModal';
 import { MOCK_APPLICATIONS } from '../data/mockData';
 
 export default function Dashboard() {
+  const router = useRouter();
+
+  const previewClientId =
+    router.isReady
+      ? Array.isArray(
+          router.query.previewClientId
+        )
+        ? router.query
+            .previewClientId[0]
+        : router.query
+            .previewClientId || ''
+      : '';
+
   // TODO(Backend): Replace with useEffect + applyLoopApi.applications.getAll()
   const [applications, setApplications] = useState(MOCK_APPLICATIONS);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -239,7 +253,17 @@ export default function Dashboard() {
                       <span className="whitespace-nowrap">{app.date}</span>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 font-semibold text-gray-900 dark:text-white">
-                      <Link href={`/applications/${app.number.replace('#', '')}`} className="hover:text-[#1E50C3] hover:underline transition-colors block">
+                      <Link
+                        href={{
+                          pathname: `/applications/${app.number.replace('#', '')}`,
+                          query: previewClientId
+                            ? {
+                                previewClientId,
+                              }
+                            : {},
+                        }}
+                        className="hover:text-[#1E50C3] hover:underline transition-colors block"
+                      >
                         {app.company}
                       </Link>
                     </td>

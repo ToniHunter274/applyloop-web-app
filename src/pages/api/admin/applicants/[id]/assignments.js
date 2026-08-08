@@ -27,7 +27,7 @@ async function requireApplicant(
     error: applicantError,
   } = await supabase
     .from('applicants')
-    .select('id, user_id')
+    .select('id, user_id, availability')
     .eq('id', applicantId)
     .single();
 
@@ -65,10 +65,15 @@ async function listAssignments(req, res) {
   const { supabase } = await requireAdmin(req);
   const applicantId = getApplicantId(req);
 
-  await requireApplicant(
-    supabase,
-    applicantId
-  );
+  const applicant =
+    await requireApplicant(
+      supabase,
+      applicantId
+    );
+
+  const applicantCanReceiveAssignments =
+    applicant.accountStatus === 'active' &&
+    applicant.availability === 'available';
 
   const {
     data: clientRows,
@@ -239,6 +244,7 @@ async function listAssignments(req, res) {
         ),
         isAssigned,
         canAssign:
+          applicantCanReceiveAssignments &&
           !isAssigned &&
           assignmentCount < 2,
       };
@@ -271,6 +277,15 @@ async function createAssignment(req, res) {
     throw new ApiError(
       409,
       'Reactivate this applicant before assigning another client.'
+    );
+  }
+
+  if (
+    applicant.availability !== 'available'
+  ) {
+    throw new ApiError(
+      409,
+      'Set this applicant to Available before assigning another client.'
     );
   }
 

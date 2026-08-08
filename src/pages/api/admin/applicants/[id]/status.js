@@ -78,58 +78,31 @@ export default async function handler(
       );
     }
 
-    if (
-      accountStatus === 'suspended'
-    ) {
-      const {
-        error: assignmentDeleteError,
-      } = await supabase
-        .from(
-          'client_applicant_assignments'
-        )
-        .delete()
-        .eq(
-          'applicant_id',
-          applicant.id
-        );
-
-      if (assignmentDeleteError) {
-        console.error(
-          'Unable to remove paused Applicant assignments:',
-          assignmentDeleteError
-        );
-
-        throw new ApiError(
-          500,
-          'The Applicant assignments could not be removed.'
-        );
-      }
-    }
-
     const {
-      data: profile,
-      error: profileError,
-    } = await supabase
-      .from('profiles')
-      .update({
-        account_status: accountStatus,
-      })
-      .eq('id', applicant.user_id)
-      .eq('role', 'applicant')
-      .select(`
-        id,
-        account_status,
-        updated_at
-      `)
-      .single();
+      data: statusRows,
+      error: statusError,
+    } = await supabase.rpc(
+      'set_applicant_account_status',
+      {
+        p_applicant_id:
+          applicant.id,
+        p_account_status:
+          accountStatus,
+      }
+    );
+
+    const statusResult =
+      Array.isArray(statusRows)
+        ? statusRows[0]
+        : statusRows;
 
     if (
-      profileError ||
-      !profile
+      statusError ||
+      !statusResult
     ) {
       console.error(
         'Unable to update applicant account status:',
-        profileError
+        statusError
       );
 
       throw new ApiError(
@@ -147,9 +120,9 @@ export default async function handler(
         id: applicant.id,
         userId: applicant.user_id,
         accountStatus:
-          profile.account_status,
+          statusResult.account_status,
         updatedAt:
-          profile.updated_at,
+          statusResult.updated_at,
       },
     });
   } catch (error) {
