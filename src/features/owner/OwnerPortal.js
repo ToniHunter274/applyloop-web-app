@@ -11,15 +11,20 @@ import {
   FiChevronDown,
   FiClock,
   FiCheckCircle,
+  FiCopy,
   FiCreditCard,
+  FiDownload,
   FiDollarSign,
   FiEdit2,
   FiFileText,
   FiGrid,
   FiHome,
+  FiKey,
   FiLogOut,
   FiMenu,
   FiMessageSquare,
+  FiPauseCircle,
+  FiPlayCircle,
   FiPlus,
   FiRefreshCw,
   FiSearch,
@@ -29,10 +34,13 @@ import {
   FiUserPlus,
   FiUsers,
   FiX,
+  FiExternalLink,
 } from 'react-icons/fi';
+import PasswordResetConfirmationModal from '../../shared/components/PasswordResetConfirmationModal';
 import { HiOutlineLightBulb, HiOutlineUserGroup } from 'react-icons/hi';
 import { FaCrown, FaRegGem } from 'react-icons/fa';
 import { useAuth } from '../../shared/context/AuthContext';
+import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import CustomSelect from '../../shared/components/CustomSelect';
 import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
@@ -41,6 +49,29 @@ import { AxisBarChart, AxisLineChart, AxisMultiLineChart, ConversionFunnelChart 
 import { AnalyticsReportsPage, ClientDetailsPage, EscalationsIssuesPage, PromptSystemPage, SettingsPage } from './OwnerExtraPages';
 
 const cn = (...values) => values.filter(Boolean).join(' ');
+
+async function getOwnerAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
 
 const NAV_ITEMS = [
   { section: 'dashboard', href: '/owner', label: 'Dashboard', icon: FiHome },
@@ -90,17 +121,7 @@ const dashboardFeed = [
   ['New client onboarded - Pro\nPlan', '31 minutes ago', 'blue'],
 ];
 
-const applicants = [
-  { name: 'Sarah Chen', summary: '187 completed • 2.3 hrs avg', status: 'Available', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Olabanji David', summary: '187 completed • 2.3 hrs avg', status: 'Available', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Ivan Anderson', summary: '187 completed • 2.3 hrs avg', status: 'Available', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Saturn Imam', summary: '187 completed • 2.3 hrs avg', status: 'Available', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Jefferson Stan', summary: '187 completed • 2.3 hrs avg', status: 'Paused', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Waller Amanda', summary: '187 completed • 2.3 hrs avg', status: 'Paused', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Jan Norlan', summary: '187 completed • 2.3 hrs avg', status: 'Paused', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Supe Anderson', summary: '187 completed • 2.3 hrs avg', status: 'Available', tasks: 15, rating: '4.8 ★', completion: 72 },
-  { name: 'Santahs Rue', summary: '187 completed • 2.3 hrs avg', status: 'Paused', tasks: 15, rating: '4.8 ★', completion: 72 },
-];
+const applicants = [];
 
 const chiefs = [
   { initials: 'MW', name: 'Marcus Williams', team: 'Team Alpha', teamSize: 45, completion: 92, accuracy: 96, onTime: 94, reviewed: '1,245' },
@@ -497,39 +518,2038 @@ function ClientManagementPage() {
   );
 }
 
-function ApplicantsManagementPage({ openAddApplicant, openWorkerStats }) {
+function ApplicantsManagementPage({
+  openAddApplicant,
+  onPasswordReset,
+  refreshKey,
+}) {
+  const router = useRouter();
+  const [applicants, setApplicants] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [listError, setListError] = useState('');
+  const [search, setSearch] = useState('');
+  const [
+    resettingApplicantId,
+    setResettingApplicantId,
+  ] = useState(null);
+  const [
+    passwordResetApplicant,
+    setPasswordResetApplicant,
+  ] = useState(null);
+  const [
+    passwordResetError,
+    setPasswordResetError,
+  ] = useState('');
+
+  const [
+    assignmentApplicant,
+    setAssignmentApplicant,
+  ] = useState(null);
+  const [
+    assignmentClients,
+    setAssignmentClients,
+  ] = useState([]);
+  const [
+    isLoadingAssignments,
+    setIsLoadingAssignments,
+  ] = useState(false);
+  const [
+    assigningClientId,
+    setAssigningClientId,
+  ] = useState(null);
+  const [
+    unassigningClientId,
+    setUnassigningClientId,
+  ] = useState(null);
+  const [
+    assignmentError,
+    setAssignmentError,
+  ] = useState('');
+  const [
+    assignmentMessage,
+    setAssignmentMessage,
+  ] = useState('');
+  const [
+    assignmentSearch,
+    setAssignmentSearch,
+  ] = useState('');
+  const [
+    statsApplicant,
+    setStatsApplicant,
+  ] = useState(null);
+  const [
+    statusApplicant,
+    setStatusApplicant,
+  ] = useState(null);
+  const [
+    isSavingApplicantStatus,
+    setIsSavingApplicantStatus,
+  ] = useState(false);
+  const [
+    applicantStatusError,
+    setApplicantStatusError,
+  ] = useState('');
+  const [
+    chatApplicant,
+    setChatApplicant,
+  ] = useState(null);
+  const [
+    chatMessages,
+    setChatMessages,
+  ] = useState([]);
+  const [
+    chatCurrentProfileId,
+    setChatCurrentProfileId,
+  ] = useState('');
+  const [
+    chatDraft,
+    setChatDraft,
+  ] = useState('');
+  const [
+    isLoadingChat,
+    setIsLoadingChat,
+  ] = useState(false);
+  const [
+    isSendingChat,
+    setIsSendingChat,
+  ] = useState(false);
+  const [
+    chatError,
+    setChatError,
+  ] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadApplicants = async () => {
+      setIsLoading(true);
+      setListError('');
+
+      try {
+        const accessToken =
+          await getOwnerAccessToken();
+
+        const response = await fetch(
+          '/api/admin/applicants',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The applicant list could not be loaded.'
+          );
+        }
+
+        if (!cancelled) {
+          setApplicants(
+            result.applicants || []
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setListError(
+            error?.message ||
+              'The applicant list could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadApplicants();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const visibleApplicants = useMemo(() => {
+    const normalizedSearch =
+      search.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return applicants;
+    }
+
+    return applicants.filter(
+      (applicant) =>
+        [
+          applicant.fullName,
+          applicant.email,
+          applicant.phone,
+          applicant.assignedTeam,
+          (applicant.assignedClients || [])
+            .map(
+              (client) =>
+                client.fullName
+            )
+            .join(' '),
+        ].some((value) =>
+          String(value || '')
+            .toLowerCase()
+            .includes(normalizedSearch)
+        )
+    );
+  }, [applicants, search]);
+
+  const visibleAssignmentClients = useMemo(() => {
+    const normalizedSearch =
+      assignmentSearch.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return assignmentClients;
+    }
+
+    return assignmentClients.filter(
+      (client) =>
+        [
+          client.fullName,
+          client.email,
+          client.phone,
+          client.plan,
+          client.assignedTeam,
+        ].some((value) =>
+          String(value || '')
+            .toLowerCase()
+            .includes(normalizedSearch)
+        )
+    );
+  }, [
+    assignmentClients,
+    assignmentSearch,
+  ]);
+
+  const openAssignmentModal = async (
+    applicant
+  ) => {
+    setAssignmentApplicant(applicant);
+    setAssignmentClients([]);
+    setAssignmentError('');
+    setAssignmentMessage('');
+    setAssignmentSearch('');
+    setIsLoadingAssignments(true);
+
+    try {
+      const accessToken =
+        await getOwnerAccessToken();
+
+      const response = await fetch(
+        `/api/admin/applicants/${applicant.id}/assignments`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The client list could not be loaded.'
+        );
+      }
+
+      setAssignmentClients(
+        result.clients || []
+      );
+    } catch (error) {
+      setAssignmentError(
+        error?.message ||
+          'The client list could not be loaded.'
+      );
+    } finally {
+      setIsLoadingAssignments(false);
+    }
+  };
+
+  const closeAssignmentModal = () => {
+    if (
+      assigningClientId ||
+      unassigningClientId
+    ) {
+      return;
+    }
+
+    setAssignmentApplicant(null);
+    setAssignmentClients([]);
+    setAssignmentError('');
+    setAssignmentMessage('');
+    setAssignmentSearch('');
+  };
+
+  const formatChatTime = (value) => {
+    if (!value) {
+      return '';
+    }
+
+    return new Date(
+      value
+    ).toLocaleString(
+      'en-US',
+      {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }
+    );
+  };
+
+  const loadApplicantChat = async (
+    applicant,
+    silent = false
+  ) => {
+    if (!applicant) {
+      return;
+    }
+
+    if (!silent) {
+      setIsLoadingChat(true);
+    }
+
+    setChatError('');
+
+    try {
+      const accessToken =
+        await getOwnerAccessToken();
+
+      const response = await fetch(
+        `/api/admin/applicants/${applicant.id}/messages`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The conversation could not be loaded.'
+        );
+      }
+
+      setChatMessages(
+        result.messages || []
+      );
+
+      setChatCurrentProfileId(
+        result.currentProfileId || ''
+      );
+    } catch (error) {
+      setChatError(
+        error?.message ||
+          'The conversation could not be loaded.'
+      );
+    } finally {
+      if (!silent) {
+        setIsLoadingChat(false);
+      }
+    }
+  };
+
+  const openApplicantChat = async (
+    applicant
+  ) => {
+    setChatApplicant(applicant);
+    setChatMessages([]);
+    setChatDraft('');
+    setChatError('');
+    setChatCurrentProfileId('');
+
+    await loadApplicantChat(
+      applicant
+    );
+  };
+
+  const closeApplicantChat = () => {
+    if (isSendingChat) {
+      return;
+    }
+
+    setChatApplicant(null);
+    setChatMessages([]);
+    setChatCurrentProfileId('');
+    setChatDraft('');
+    setChatError('');
+  };
+
+  const sendApplicantChatMessage =
+    async () => {
+      if (
+        !chatApplicant ||
+        isSendingChat
+      ) {
+        return;
+      }
+
+      const message =
+        chatDraft.trim();
+
+      if (!message) {
+        setChatError(
+          'Enter a message.'
+        );
+        return;
+      }
+
+      setIsSendingChat(true);
+      setChatError('');
+
+      try {
+        const accessToken =
+          await getOwnerAccessToken();
+
+        const response = await fetch(
+          `/api/admin/applicants/${chatApplicant.id}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              message,
+            }),
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The message could not be sent.'
+          );
+        }
+
+        if (result.message) {
+          setChatMessages(
+            (current) => [
+              ...current,
+              result.message,
+            ]
+          );
+        }
+
+        setChatDraft('');
+      } catch (error) {
+        setChatError(
+          error?.message ||
+            'The message could not be sent.'
+        );
+      } finally {
+        setIsSendingChat(false);
+      }
+    };
+
+  const updateApplicantAccountStatus = async () => {
+    if (!statusApplicant) {
+      return;
+    }
+
+    const nextStatus =
+      statusApplicant.accountStatus ===
+      'suspended'
+        ? 'active'
+        : 'suspended';
+
+    setIsSavingApplicantStatus(true);
+    setApplicantStatusError('');
+    setListError('');
+
+    try {
+      const accessToken =
+        await getOwnerAccessToken();
+
+      const response = await fetch(
+        `/api/admin/applicants/${statusApplicant.id}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            accountStatus: nextStatus,
+          }),
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The applicant account could not be updated.'
+        );
+      }
+
+      setApplicants((current) =>
+        current.map((applicant) =>
+          applicant.id ===
+          statusApplicant.id
+            ? {
+                ...applicant,
+                accountStatus:
+                  result.applicant
+                    ?.accountStatus ||
+                  nextStatus,
+                assignedClients:
+                  nextStatus ===
+                  'suspended'
+                    ? []
+                    : applicant.assignedClients,
+              }
+            : applicant
+        )
+      );
+
+      setStatsApplicant(
+        (current) =>
+          current?.id ===
+          statusApplicant.id
+            ? {
+                ...current,
+                accountStatus:
+                  result.applicant
+                    ?.accountStatus ||
+                  nextStatus,
+                assignedClients:
+                  nextStatus ===
+                  'suspended'
+                    ? []
+                    : current.assignedClients,
+              }
+            : current
+      );
+
+      setStatusApplicant(null);
+      setApplicantStatusError('');
+    } catch (error) {
+      setApplicantStatusError(
+        error?.message ||
+          'The applicant account could not be updated.'
+      );
+    } finally {
+      setIsSavingApplicantStatus(false);
+    }
+  };
+
+  const assignClientToApplicant = async (
+    client
+  ) => {
+    if (
+      !assignmentApplicant ||
+      !client.canAssign
+    ) {
+      return;
+    }
+
+    setAssigningClientId(client.id);
+    setAssignmentError('');
+    setAssignmentMessage('');
+
+    try {
+      const accessToken =
+        await getOwnerAccessToken();
+
+      const response = await fetch(
+        `/api/admin/applicants/${assignmentApplicant.id}/assignments`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            clientId: client.id,
+          }),
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The client could not be assigned.'
+        );
+      }
+
+      setAssignmentClients(
+        (current) =>
+          current.map((item) => {
+            if (item.id !== client.id) {
+              return item;
+            }
+
+            const assignmentCount =
+              Math.min(
+                2,
+                Number(
+                  item.assignmentCount || 0
+                ) + 1
+              );
+
+            return {
+              ...item,
+              assignmentCount,
+              remainingSlots:
+                Math.max(
+                  0,
+                  2 - assignmentCount
+                ),
+              isAssigned: true,
+              canAssign: false,
+            };
+          })
+      );
+
+      setApplicants((current) =>
+        current.map((applicant) => {
+          if (
+            applicant.id !==
+            assignmentApplicant.id
+          ) {
+            return applicant;
+          }
+
+          const assignedClients =
+            applicant.assignedClients ||
+            [];
+
+          if (
+            assignedClients.some(
+              (assignedClient) =>
+                assignedClient.id ===
+                client.id
+            )
+          ) {
+            return applicant;
+          }
+
+          return {
+            ...applicant,
+            assignedClients: [
+              ...assignedClients,
+              {
+                id: client.id,
+                fullName:
+                  client.fullName,
+                email:
+                  client.email || '',
+                plan:
+                  client.plan || '',
+                status:
+                  client.status ||
+                  'active',
+              },
+            ],
+          };
+        })
+      );
+
+      setAssignmentMessage(
+        `${client.fullName} was assigned to ${assignmentApplicant.fullName}.`
+      );
+    } catch (error) {
+      setAssignmentError(
+        error?.message ||
+          'The client could not be assigned.'
+      );
+    } finally {
+      setAssigningClientId(null);
+    }
+  };
+
+  const unassignClientFromApplicant =
+    async (client) => {
+      if (
+        !assignmentApplicant ||
+        !client.isAssigned
+      ) {
+        return;
+      }
+
+      setUnassigningClientId(
+        client.id
+      );
+      setAssignmentError('');
+      setAssignmentMessage('');
+
+      try {
+        const accessToken =
+          await getOwnerAccessToken();
+
+        const response = await fetch(
+          `/api/admin/applicants/${assignmentApplicant.id}/assignments`,
+          {
+            method: 'DELETE',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              clientId: client.id,
+            }),
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The client could not be unassigned.'
+          );
+        }
+
+        setAssignmentClients(
+          (current) =>
+            current.map((item) => {
+              if (
+                item.id !==
+                client.id
+              ) {
+                return item;
+              }
+
+              const assignmentCount =
+                Math.max(
+                  0,
+                  Number(
+                    item.assignmentCount ||
+                      0
+                  ) - 1
+                );
+
+              return {
+                ...item,
+                assignmentCount,
+                remainingSlots:
+                  Math.max(
+                    0,
+                    2 - assignmentCount
+                  ),
+                isAssigned: false,
+                canAssign:
+                  assignmentApplicant
+                    .accountStatus ===
+                    'active' &&
+                  assignmentCount < 2,
+              };
+            })
+        );
+
+        setApplicants(
+          (current) =>
+            current.map(
+              (applicant) => {
+                if (
+                  applicant.id !==
+                  assignmentApplicant.id
+                ) {
+                  return applicant;
+                }
+
+                return {
+                  ...applicant,
+                  assignedClients: (
+                    applicant.assignedClients ||
+                    []
+                  ).filter(
+                    (assignedClient) =>
+                      assignedClient.id !==
+                      client.id
+                  ),
+                };
+              }
+            )
+        );
+
+        setStatsApplicant(
+          (current) => {
+            if (
+              current?.id !==
+              assignmentApplicant.id
+            ) {
+              return current;
+            }
+
+            return {
+              ...current,
+              assignedClients: (
+                current.assignedClients ||
+                []
+              ).filter(
+                (assignedClient) =>
+                  assignedClient.id !==
+                  client.id
+              ),
+            };
+          }
+        );
+
+        setAssignmentMessage(
+          `${client.fullName} was unassigned from ${assignmentApplicant.fullName}.`
+        );
+      } catch (error) {
+        setAssignmentError(
+          error?.message ||
+            'The client could not be unassigned.'
+        );
+      } finally {
+        setUnassigningClientId(
+          null
+        );
+      }
+    };
+
+  const resetApplicantPassword = async (
+    applicant
+  ) => {
+    setResettingApplicantId(
+      applicant.id
+    );
+    setListError('');
+    setPasswordResetError('');
+
+    try {
+      const accessToken =
+        await getOwnerAccessToken();
+
+      const response = await fetch(
+        `/api/admin/applicants/${applicant.id}/reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'A new password could not be generated.'
+        );
+      }
+
+      setPasswordResetApplicant(null);
+      setPasswordResetError('');
+
+      onPasswordReset?.(
+        result.credentials
+      );
+    } catch (error) {
+      const message =
+        error?.message ||
+        'A new password could not be generated.';
+
+      setPasswordResetError(message);
+      setListError(message);
+    } finally {
+      setResettingApplicantId(null);
+    }
+  };
+
+  const totalApplicants = applicants.length;
+
+  const availableApplicants =
+    applicants.filter(
+      (applicant) =>
+        applicant.availability ===
+          'available' &&
+        applicant.accountStatus ===
+          'active'
+    ).length;
+
+  const inactiveApplicants =
+    totalApplicants -
+    availableApplicants;
+
+  const averageCompletionRate =
+    applicants.length > 0
+      ? applicants.reduce(
+          (total, applicant) =>
+            total +
+            Number(
+              applicant.completionRate || 0
+            ),
+          0
+        ) / applicants.length
+      : 0;
+
+  const stats = [
+    {
+      label: 'TOTAL APPLICANTS',
+      value: String(totalApplicants),
+    },
+    {
+      label: 'AVAILABLE',
+      value: String(availableApplicants),
+      tone: 'green',
+    },
+    {
+      label: 'AVG COMPLETION RATE',
+      value:
+        averageCompletionRate === 0
+          ? '0%'
+          : `${averageCompletionRate.toFixed(
+              1
+            )}%`,
+    },
+    {
+      label: 'INACTIVE',
+      value: String(inactiveApplicants),
+    },
+  ];
+
   return (
-    <>
-      <PageHeader section="applicants-management" action={<ActionButton icon={FiUserPlus} onClick={openAddApplicant}>Add New Applicant</ActionButton>} />
-      <div className={styles.statsGridFour}>
-        <StatCard label="TOTAL APPLICANTS" value="892" note="" />
-        <StatCard label="AVAILABLE" value="624" note="" cardTone="green" valueTone="green" icon={FiUsers} iconTone="green" />
-        <StatCard label="AVG COMPLETION RATE" value="88.5%" note="" />
-        <StatCard label="INACTIVE" value="6" note="" />
-      </div>
-      <Card>
-        <SearchFilters placeholder="Search clients by name, plan, or team..." />
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Team Member</th><th>Status</th><th>Active Tasks</th><th>Quality Rating</th><th>Completion Rate</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {applicants.map((item) => (
-              <tr key={item.name}>
-                <td><div className={styles.twoLine}><strong>{item.name}</strong><small>{item.summary}</small></div></td>
-                <td><StatusBadge value={item.status} /></td>
-                <td><span className={styles.taskCount}>{item.tasks}</span></td>
-                <td>{item.rating}</td>
-                <td><div className={styles.inlineProgress}><span>{item.completion}%</span><ProgressBar value={item.completion} /></div></td>
-                <td><div className={styles.buttonGroup}><button className={styles.ghostMini}><FiUserPlus />Assign</button><button className={styles.ghostMini} onClick={openWorkerStats}><FiBarChart2 />Stats</button><button className={styles.ghostMini}><FiMessageSquare />Chat</button></div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-    </>
+    <div
+      className={
+        styles.clientManagementWorkspace
+      }
+    >
+      <section className="mx-auto w-full min-w-0 max-w-full pt-6 sm:pt-8">
+        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Applicants Management
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+              Create applicant accounts, manage
+              availability, assign teams, and monitor
+              performance.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openAddApplicant}
+            className={cn(
+              styles.shineButton,
+              'inline-flex items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-blue-700 to-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-lg'
+            )}
+          >
+            <FiUserPlus className="h-4 w-4" />
+
+            <span className={styles.shineText}>
+              Add New Applicant
+            </span>
+          </button>
+        </div>
+
+        <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className={cn(
+                'rounded-2xl border p-5 shadow-sm transition-all sm:p-6',
+                stat.tone === 'green'
+                  ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white shadow-emerald-100/60'
+                  : 'border-slate-200 bg-white'
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p
+                  className={cn(
+                    'text-xs font-bold tracking-wide',
+                    stat.tone === 'green'
+                      ? 'text-emerald-700'
+                      : 'text-slate-500'
+                  )}
+                >
+                  {stat.label}
+                </p>
+
+                {stat.tone === 'green' && (
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
+                )}
+              </div>
+
+              <p
+                className={cn(
+                  'mt-5 text-3xl font-bold',
+                  stat.tone === 'green'
+                    ? 'text-emerald-700'
+                    : 'text-slate-950'
+                )}
+              >
+                {stat.value}
+              </p>
+
+              {stat.tone === 'green' && (
+                <p className="mt-2 text-xs font-medium text-emerald-600">
+                  Active and ready for assignments
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-5 sm:p-6">
+            <label className="relative block">
+              <FiSearch className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+
+              <input
+                type="search"
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+                placeholder="Search applicants by name, email, phone, or team"
+                className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+          </div>
+
+          {listError && (
+            <div className="m-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 sm:m-6">
+              {listError}
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex min-h-[360px] flex-col items-center justify-center p-8">
+              <div className="h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+              <p className="mt-4 text-sm font-medium text-slate-600">
+                Loading applicants...
+              </p>
+            </div>
+          ) : visibleApplicants.length ===
+            0 ? (
+            <div className="flex min-h-[390px] flex-col items-center justify-center px-6 py-14 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+                <FiUsers className="h-8 w-8 text-blue-600" />
+              </div>
+
+              <h2 className="mt-6 text-xl font-bold text-slate-950">
+                {applicants.length === 0
+                  ? 'No applicants have been added yet'
+                  : 'No matching applicants found'}
+              </h2>
+
+              <p className="mt-3 max-w-lg text-base leading-7 text-slate-600">
+                {applicants.length === 0
+                  ? 'Create your first applicant account to begin assigning teams and managing their work.'
+                  : 'Try changing your search.'}
+              </p>
+
+              {applicants.length === 0 && (
+                <button
+                  type="button"
+                  onClick={openAddApplicant}
+                  className={cn(
+                    styles.shineButton,
+                    'mt-7 inline-flex items-center gap-2 rounded-[14px] border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700'
+                  )}
+                >
+                  <FiPlus className="h-4 w-4" />
+
+                  <span
+                    className={cn(
+                      styles.shineText,
+                      styles.shineTextDark
+                    )}
+                  >
+                    Create First Applicant
+                  </span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1220px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70">
+                      {[
+                        'TEAM MEMBER',
+                        'ASSIGNED CLIENTS',
+                        'STATUS',
+                        'ACTIVE TASKS',
+                        'QUALITY RATING',
+                        'COMPLETION RATE',
+                        'ACTION',
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="px-4 py-4 text-xs font-bold tracking-wide text-slate-500"
+                        >
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {visibleApplicants.map(
+                      (applicant) => {
+                        const completionRate =
+                          Math.min(
+                            100,
+                            Math.max(
+                              0,
+                              Number(
+                                applicant.completionRate ||
+                                  0
+                              )
+                            )
+                          );
+
+                        const qualityRating =
+                          Math.min(
+                            5,
+                            Math.max(
+                              0,
+                              Number(
+                                applicant.qualityRating ||
+                                  0
+                              )
+                            )
+                          );
+
+                        return (
+                          <tr
+                            key={applicant.id}
+                            className="border-b border-slate-100 transition-colors hover:bg-slate-50/80"
+                          >
+                            <td className="px-5 py-5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  router.push({
+                                    pathname:
+                                      '/applicant',
+                                    query: {
+                                      previewApplicantId:
+                                        applicant.id,
+                                    },
+                                  })
+                                }
+                                className="group block text-left"
+                              >
+                                <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
+                                  {applicant.fullName}
+                                </span>
+
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {applicant.email}
+                                </span>
+
+                                <span className="mt-1 block text-xs font-medium text-slate-700">
+                                  {applicant.phone ||
+                                    'No phone number'}
+                                </span>
+
+                                <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                  View as Applicant
+                                  <FiExternalLink className="h-3 w-3" />
+                                </span>
+
+                                <span className="mt-2 block text-xs text-slate-400">
+                                  {applicant.completedTasks}{' '}
+                                  completed
+                                </span>
+                              </button>
+                            </td>
+
+                            <td className="min-w-[190px] px-5 py-5">
+                              {(
+                                applicant.assignedClients ||
+                                []
+                              ).length > 0 ? (
+                                <div className="space-y-1.5">
+                                  {applicant.assignedClients.map(
+                                    (client) => (
+                                      <div
+                                        key={client.id}
+                                        className="inline-flex max-w-[180px] items-center rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700"
+                                      >
+                                        <span className="truncate">
+                                          {client.fullName}
+                                        </span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-slate-400">
+                                  Unassigned
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-5">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold',
+                                  applicant.accountStatus ===
+                                    'active' &&
+                                    applicant.availability ===
+                                      'available'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-600'
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    'h-2 w-2 rounded-full',
+                                    applicant.accountStatus ===
+                                      'active' &&
+                                      applicant.availability ===
+                                        'available'
+                                      ? 'bg-emerald-500'
+                                      : 'bg-slate-400'
+                                  )}
+                                />
+
+                                {applicant.accountStatus ===
+                                  'active' &&
+                                applicant.availability ===
+                                  'available'
+                                  ? 'Available'
+                                  : 'Inactive'}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-5">
+                              <span className="inline-flex min-w-[44px] items-center justify-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800">
+                                {applicant.activeTasks}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-bold text-slate-900">
+                                  {qualityRating.toFixed(
+                                    1
+                                  )}
+                                </span>
+
+                                <span className="text-base text-amber-500">
+                                  ★
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="min-w-[190px] px-5 py-5">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                                  <div
+                                    className="h-full rounded-full bg-blue-600 transition-all"
+                                    style={{
+                                      width: `${completionRate}%`,
+                                    }}
+                                  />
+                                </div>
+
+                                <span className="min-w-[48px] text-right text-sm font-bold text-slate-800">
+                                  {completionRate.toFixed(
+                                    0
+                                  )}
+                                  %
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-5">
+                              <div className="flex min-w-max items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openAssignmentModal(
+                                      applicant
+                                    )
+                                  }
+                                  disabled={
+                                    applicant.accountStatus ===
+                                    'suspended'
+                                  }
+                                  title={
+                                    applicant.accountStatus ===
+                                    'suspended'
+                                      ? 'Reactivate this applicant before assigning another client'
+                                      : 'Assign client'
+                                  }
+                                  className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition',
+                                    applicant.accountStatus ===
+                                      'suspended'
+                                      ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                      : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
+                                  )}
+                                >
+                                  <FiPlus className="h-3.5 w-3.5" />
+                                  Assign
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setStatsApplicant(
+                                      applicant
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                                >
+                                  <FiBarChart2 className="h-3.5 w-3.5" />
+                                  Stats
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openApplicantChat(
+                                      applicant
+                                    )
+                                  }
+                                  title={`Chat with ${applicant.fullName}`}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100"
+                                >
+                                  <FiMessageSquare className="h-3.5 w-3.5" />
+                                  Chat
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setApplicantStatusError(
+                                      ''
+                                    );
+                                    setStatusApplicant(
+                                      applicant
+                                    );
+                                  }}
+                                  title={
+                                    applicant.accountStatus ===
+                                    'suspended'
+                                      ? 'Reactivate account'
+                                      : 'Pause account'
+                                  }
+                                  className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition',
+                                    applicant.accountStatus ===
+                                      'suspended'
+                                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                      : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                  )}
+                                >
+                                  {applicant.accountStatus ===
+                                  'suspended' ? (
+                                    <FiPlayCircle className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <FiPauseCircle className="h-3.5 w-3.5" />
+                                  )}
+
+                                  {applicant.accountStatus ===
+                                  'suspended'
+                                    ? 'Reactivate'
+                                    : 'Pause'}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPasswordResetError(
+                                      ''
+                                    );
+                                    setPasswordResetApplicant(
+                                      applicant
+                                    );
+                                  }}
+                                  disabled={
+                                    resettingApplicantId ===
+                                    applicant.id
+                                  }
+                                  title="Reset temporary password"
+                                  aria-label={`Reset temporary password for ${applicant.fullName}`}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <FiKey className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-slate-200 px-5 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Showing{' '}
+                  {visibleApplicants.length} of{' '}
+                  {applicants.length} applicants
+                </span>
+
+                <span>
+                  Search updates this table instantly.
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <Modal
+        open={Boolean(chatApplicant)}
+        onClose={closeApplicantChat}
+        title={
+          chatApplicant
+            ? `Chat with ${chatApplicant.fullName}`
+            : 'Applicant Chat'
+        }
+        subtitle={
+          chatApplicant?.email ||
+          'Team conversation'
+        }
+        wide
+      >
+        <div className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                Team Conversation
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Messages are shared with this Applicant&apos;s workspace.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                loadApplicantChat(
+                  chatApplicant
+                )
+              }
+              disabled={
+                isLoadingChat ||
+                isSendingChat
+              }
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Refresh conversation"
+              title="Refresh conversation"
+            >
+              <FiRefreshCw
+                className={cn(
+                  'h-4 w-4',
+                  isLoadingChat &&
+                    'animate-spin'
+                )}
+              />
+            </button>
+          </div>
+
+          <div className="max-h-[430px] min-h-[330px] overflow-y-auto bg-slate-50/30 px-5 py-5">
+            {isLoadingChat ? (
+              <div className="flex min-h-[280px] flex-col items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+                <p className="mt-3 text-sm text-slate-500">
+                  Loading conversation...
+                </p>
+              </div>
+            ) : chatMessages.length ===
+              0 ? (
+              <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+                  <FiMessageSquare className="h-6 w-6" />
+                </div>
+
+                <p className="mt-4 font-semibold text-slate-900">
+                  No messages yet
+                </p>
+
+                <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                  Send the first message to start a conversation with this Applicant.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {chatMessages.map(
+                  (message) => {
+                    const isMine =
+                      message.senderProfileId ===
+                      chatCurrentProfileId;
+
+                    const roleLabel =
+                      message.senderRole ===
+                      'applicant'
+                        ? 'Applicant'
+                        : 'Team Member';
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={cn(
+                          'flex',
+                          isMine
+                            ? 'justify-end'
+                            : 'justify-start'
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'max-w-[78%]',
+                            isMine
+                              ? 'text-right'
+                              : 'text-left'
+                          )}
+                        >
+                          <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                            <span
+                              className={cn(
+                                'font-semibold text-slate-600',
+                                isMine &&
+                                  'ml-auto'
+                              )}
+                            >
+                              {message.senderName}
+                            </span>
+
+                            <span>
+                              {roleLabel}
+                            </span>
+
+                            <span>
+                              {formatChatTime(
+                                message.createdAt
+                              )}
+                            </span>
+
+                            {isMine && (
+                              <span
+                                className={cn(
+                                  'font-medium',
+                                  message.readAt
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-400'
+                                )}
+                              >
+                                {message.readAt
+                                  ? 'Seen'
+                                  : 'Sent'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div
+                            className={cn(
+                              'rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm',
+                              isMine
+                                ? 'rounded-br-md bg-blue-600 text-white'
+                                : 'rounded-bl-md border border-slate-200 bg-white text-slate-700'
+                            )}
+                          >
+                            <p className="whitespace-pre-wrap break-words">
+                              {message.message}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-100 bg-white p-4">
+            {chatError && (
+              <div
+                role="alert"
+                className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+              >
+                {chatError}
+              </div>
+            )}
+
+            <div className="flex items-end gap-3">
+              <textarea
+                value={chatDraft}
+                onChange={(event) =>
+                  setChatDraft(
+                    event.target.value
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key ===
+                      'Enter' &&
+                    !event.shiftKey
+                  ) {
+                    event.preventDefault();
+                    sendApplicantChatMessage();
+                  }
+                }}
+                rows={2}
+                maxLength={4000}
+                placeholder={`Message ${chatApplicant?.fullName || 'Applicant'}...`}
+                className="min-h-[52px] flex-1 resize-none rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              />
+
+              <button
+                type="button"
+                onClick={
+                  sendApplicantChatMessage
+                }
+                disabled={
+                  isSendingChat ||
+                  !chatDraft.trim()
+                }
+                className="inline-flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FiMessageSquare className="h-4 w-4" />
+
+                {isSendingChat
+                  ? 'Sending...'
+                  : 'Send'}
+              </button>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="text-[11px] text-slate-400">
+                Press Enter to send. Shift + Enter adds a new line.
+              </p>
+
+              <p className="text-[11px] text-slate-400">
+                {chatDraft.length}/4000
+              </p>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(statusApplicant)}
+        onClose={() => {
+          if (
+            !isSavingApplicantStatus
+          ) {
+            setStatusApplicant(null);
+            setApplicantStatusError('');
+          }
+        }}
+        title={
+          statusApplicant?.accountStatus ===
+          'suspended'
+            ? 'Reactivate Account'
+            : 'Pause Account'
+        }
+        subtitle={
+          statusApplicant?.fullName || ''
+        }
+        footer={
+          <>
+            <button
+              type="button"
+              className={styles.modalGhost}
+              disabled={
+                isSavingApplicantStatus
+              }
+              onClick={() => {
+                if (
+                  !isSavingApplicantStatus
+                ) {
+                  setStatusApplicant(null);
+                  setApplicantStatusError('');
+                }
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                isSavingApplicantStatus
+              }
+              onClick={
+                updateApplicantAccountStatus
+              }
+              className={cn(
+                'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60',
+                statusApplicant?.accountStatus ===
+                  'suspended'
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-amber-500 hover:bg-amber-600'
+              )}
+            >
+              {statusApplicant?.accountStatus ===
+              'suspended' ? (
+                <FiPlayCircle />
+              ) : (
+                <FiPauseCircle />
+              )}
+
+              {isSavingApplicantStatus
+                ? 'Updating...'
+                : statusApplicant?.accountStatus ===
+                    'suspended'
+                  ? 'Reactivate Account'
+                  : 'Pause Account'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          {applicantStatusError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            >
+              {applicantStatusError}
+            </div>
+          )}
+
+          <div
+            className={cn(
+              'rounded-2xl border p-5',
+              statusApplicant?.accountStatus ===
+                'suspended'
+                ? 'border-emerald-200 bg-emerald-50'
+                : 'border-amber-200 bg-amber-50'
+            )}
+          >
+            <h3 className="font-bold text-slate-900">
+              {statusApplicant?.accountStatus ===
+              'suspended'
+                ? 'Reactivating this Applicant will:'
+                : 'Pausing this Applicant will:'}
+            </h3>
+
+            {statusApplicant?.accountStatus ===
+            'suspended' ? (
+              <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+                <li>
+                  • Restore login access.
+                </li>
+                <li>
+                  • Allow new Client assignments.
+                </li>
+                <li>
+                  • Previous Client assignments will not be restored automatically.
+                </li>
+              </ul>
+            ) : (
+              <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+                <li>
+                  • Block the Applicant from logging in.
+                </li>
+                <li>
+                  • Prevent new Client assignments.
+                </li>
+                <li>
+                  • Remove all current Client assignments.
+                </li>
+                <li>
+                  • Keep completed work and account history.
+                </li>
+              </ul>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(assignmentApplicant)}
+        onClose={closeAssignmentModal}
+        title="Manage Client Assignments"
+        subtitle={
+          assignmentApplicant
+            ? `Assign or unassign clients for ${assignmentApplicant.fullName}`
+            : ''
+        }
+        wide
+        footer={
+          <button
+            type="button"
+            className={styles.modalGhost}
+            onClick={closeAssignmentModal}
+            disabled={Boolean(
+              assigningClientId ||
+                unassigningClientId
+            )}
+          >
+            Close
+          </button>
+        }
+      >
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+            <p className="text-sm font-semibold text-blue-900">
+              Each client can have a maximum of
+              two Applicants.
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-blue-700">
+              Clients at 2/2 are full and cannot
+              receive another assignment.
+            </p>
+          </div>
+
+          <label className="relative block">
+            <FiSearch className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+            <input
+              type="search"
+              value={assignmentSearch}
+              onChange={(event) =>
+                setAssignmentSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Search clients by name, email, phone, plan, or team"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          {assignmentMessage && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+              {assignmentMessage}
+            </div>
+          )}
+
+          {assignmentError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            >
+              {assignmentError}
+            </div>
+          )}
+
+          {isLoadingAssignments ? (
+            <div className="flex min-h-[220px] flex-col items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+              <p className="mt-3 text-sm text-slate-500">
+                Loading clients...
+              </p>
+            </div>
+          ) : visibleAssignmentClients.length ===
+            0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-10 text-center">
+              <p className="font-semibold text-slate-900">
+                No matching clients found
+              </p>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Try changing your search.
+              </p>
+            </div>
+          ) : (
+            <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1">
+              {visibleAssignmentClients.map(
+                (client) => {
+                  const isFull =
+                    Number(
+                      client.assignmentCount ||
+                        0
+                    ) >= 2;
+
+                  const isBusy =
+                    Boolean(
+                      assigningClientId ||
+                        unassigningClientId
+                    );
+
+                  return (
+                    <div
+                      key={client.id}
+                      className={cn(
+                        'rounded-2xl border p-4 transition',
+                        client.isAssigned
+                          ? 'border-emerald-200 bg-emerald-50/50'
+                          : isFull
+                            ? 'border-slate-200 bg-slate-50'
+                            : 'border-slate-200 bg-white hover:border-blue-300'
+                      )}
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-slate-950">
+                              {client.fullName}
+                            </p>
+
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600">
+                              {client.plan}
+                            </span>
+                          </div>
+
+                          <p className="mt-1 truncate text-xs text-slate-500">
+                            {client.email}
+                          </p>
+
+                          {client.phone && (
+                            <p className="mt-1 text-xs font-medium text-slate-600">
+                              {client.phone}
+                            </p>
+                          )}
+
+                          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                            <span className="font-semibold text-slate-700">
+                              {client.assignmentCount}
+                              /2 Applicants assigned
+                            </span>
+
+                            <span
+                              className={cn(
+                                'font-semibold',
+                                isFull
+                                  ? 'text-red-600'
+                                  : 'text-emerald-600'
+                              )}
+                            >
+                              {client.remainingSlots}{' '}
+                              {client.remainingSlots ===
+                              1
+                                ? 'slot'
+                                : 'slots'}{' '}
+                              remaining
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            client.isAssigned
+                              ? unassignClientFromApplicant(
+                                  client
+                                )
+                              : assignClientToApplicant(
+                                  client
+                                )
+                          }
+                          disabled={
+                            isBusy ||
+                            (!client.isAssigned &&
+                              !client.canAssign)
+                          }
+                          className={cn(
+                            'inline-flex min-w-[110px] items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+                            client.isAssigned
+                              ? 'border border-red-200 bg-red-50 text-red-600 hover:border-red-300 hover:bg-red-100'
+                              : isFull
+                                ? 'cursor-not-allowed bg-slate-200 text-slate-500'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                          )}
+                        >
+                          {client.isAssigned
+                            ? unassigningClientId ===
+                              client.id
+                              ? 'Unassigning...'
+                              : 'Unassign'
+                            : isFull
+                              ? 'Full'
+                              : assigningClientId ===
+                                  client.id
+                                ? 'Assigning...'
+                                : 'Assign'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <WorkerPerformanceModal
+        open={Boolean(statsApplicant)}
+        applicant={statsApplicant}
+        onClose={() =>
+          setStatsApplicant(null)
+        }
+      />
+
+      <PasswordResetConfirmationModal
+        open={Boolean(passwordResetApplicant)}
+        name={
+          passwordResetApplicant?.fullName ||
+          ''
+        }
+        email={
+          passwordResetApplicant?.email ||
+          ''
+        }
+        error={passwordResetError}
+        isSubmitting={
+          resettingApplicantId ===
+          passwordResetApplicant?.id
+        }
+        onClose={() => {
+          if (!resettingApplicantId) {
+            setPasswordResetApplicant(null);
+            setPasswordResetError('');
+          }
+        }}
+        onConfirm={() =>
+          passwordResetApplicant &&
+          resetApplicantPassword(
+            passwordResetApplicant
+          )
+        }
+      />
+    </div>
   );
 }
 
@@ -720,35 +2740,859 @@ function PauseAccountModal({ open, onClose }) {
   );
 }
 
-function AddNewApplicantModal({ open, onClose }) {
+function AddNewApplicantModal({
+  open,
+  onClose,
+  onCreated,
+  initialCredentials = null,
+  credentialContext = 'created',
+}) {
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+  const [formError, setFormError] =
+    useState('');
+  const [credentials, setCredentials] =
+    useState(null);
+  const [
+    credentialsSaved,
+    setCredentialsSaved,
+  ] = useState(false);
+  const [copied, setCopied] =
+    useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setFormError('');
+    setCredentials(
+      initialCredentials
+    );
+    setCredentialsSaved(false);
+    setCopied(false);
+  }, [
+    open,
+    initialCredentials,
+  ]);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const previousOverflow =
+      document.body.style.overflow;
+
+    const handleKeyDown = (event) => {
+      if (
+        event.key === 'Escape' &&
+        !isSubmitting &&
+        (!credentials ||
+          credentialsSaved)
+      ) {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow =
+      'hidden';
+
+    window.addEventListener(
+      'keydown',
+      handleKeyDown
+    );
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow;
+
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown
+      );
+    };
+  }, [
+    open,
+    onClose,
+    isSubmitting,
+    credentials,
+    credentialsSaved,
+  ]);
+
+  if (!open) {
+    return null;
+  }
+
+  const fieldClassName =
+    'mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      const formData = new FormData(
+        event.currentTarget
+      );
+
+      const payload =
+        Object.fromEntries(
+          formData.entries()
+        );
+
+      const accessToken =
+        await getOwnerAccessToken();
+
+      const response = await fetch(
+        '/api/admin/applicants',
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The applicant could not be created.'
+        );
+      }
+
+      setCredentials(
+        result.credentials
+      );
+
+      setCredentialsSaved(false);
+      onCreated?.();
+    } catch (error) {
+      setFormError(
+        error?.message ||
+          'The applicant could not be created.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const copyCredentials = async () => {
+    if (!credentials) {
+      return;
+    }
+
+    const text = [
+      `Email: ${credentials.email}`,
+      `Temporary password: ${credentials.temporaryPassword}`,
+    ].join('\n');
+
+    await navigator.clipboard.writeText(
+      text
+    );
+
+    setCopied(true);
+    setCredentialsSaved(true);
+
+    window.setTimeout(() => {
+      setCopied(false);
+    }, 1800);
+  };
+
+  const downloadCredentials = () => {
+    if (!credentials) {
+      return;
+    }
+
+    const content = [
+      'ApplyLoop Applicant Login',
+      '',
+      `Email: ${credentials.email}`,
+      `Temporary password: ${credentials.temporaryPassword}`,
+      '',
+      'Please change this password after signing in.',
+    ].join('\n');
+
+    const blob = new Blob(
+      [content],
+      {
+        type: 'text/plain;charset=utf-8',
+      }
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const anchor =
+      document.createElement('a');
+
+    anchor.href = url;
+    const safeEmail =
+      credentials.email.replace(
+        /[^a-z0-9]+/gi,
+        '-'
+      );
+
+    anchor.download =
+      `${safeEmail}-applyloop-login.txt`;
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    URL.revokeObjectURL(url);
+
+    setCredentialsSaved(true);
+  };
+
+  const requestClose = () => {
+    if (
+      isSubmitting ||
+      (credentials &&
+        !credentialsSaved)
+    ) {
+      return;
+    }
+
+    onClose();
+  };
+
   return (
-    <Modal open={open} onClose={onClose} title="Add New Applicant" subtitle="Create new applicant or chief applicant account" footer={<><button className={styles.modalGhost} onClick={onClose}>Cancel</button><button className={styles.modalPrimary}>Create Applicant</button></>}>
-      <FormGrid>
-        <InputField label="Applicant Name *" placeholder="e.g., Olabanji David T." />
-        <InputField label="Email Address *" placeholder="e.g., John Smith" />
-        <InputField label="Phone Number" placeholder="+1 (555) 123-4567" />
-        <SelectField label="Designated Role" placeholder="Select a role" />
-        <InputField label="Work Email Address" placeholder="banjidavid@applyloop.com" />
-        <InputField label="Default Password" placeholder="#734912%773w" />
-        <SelectField label="Assigned Team *" placeholder="Assign a team" />
-        <InputField label="Availability" />
-      </FormGrid>
-      <InputField label="Skills and Expertise" placeholder="e.g., Resume writing, etc." icon="clip" />
-      <TextAreaField label="Experience Level" placeholder="Additional information about the client..." rows={4} />
-      <div className={styles.paymentCard}><h3>Payment Information</h3><p>Workers are paid per application based on configured rates. You can customize rates in Settings.</p><div className={styles.paymentRow}><span>Full Application</span><strong>$4.00</strong></div></div>
-    </Modal>
+    <div
+      role="presentation"
+      onMouseDown={(event) => {
+        if (
+          event.target ===
+            event.currentTarget &&
+          !isSubmitting &&
+          (!credentials ||
+            credentialsSaved)
+        ) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/55 px-4 py-8 backdrop-blur-sm"
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        className="my-auto w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+      >
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-950">
+              {credentials
+                ? credentialContext === 'reset'
+                  ? 'Temporary Password Reset'
+                  : 'Applicant Created'
+                : 'Add New Applicant'}
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600">
+              {credentials
+                ? credentialContext === 'reset'
+                  ? 'The previous password has been replaced. Save this new temporary password now.'
+                  : 'Copy or download these credentials before closing. The temporary password is shown only once.'
+                : 'Create the applicant account and set their initial work details.'}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={requestClose}
+            disabled={
+              isSubmitting ||
+              (credentials &&
+                !credentialsSaved)
+            }
+            aria-label="Close"
+            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <FiX className="h-5 w-5" />
+          </button>
+        </div>
+
+        {credentials ? (
+          <div className="px-6 py-8 sm:px-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                <FiCheckCircle className="h-8 w-8 text-emerald-600" />
+              </div>
+
+              <h3 className="mt-5 text-xl font-bold text-slate-950">
+                {credentialContext === 'reset'
+                  ? 'A new temporary password is ready'
+                  : 'The applicant account is ready'}
+              </h3>
+
+              <p className="mt-2 max-w-lg text-sm leading-6 text-slate-600">
+                {credentialContext === 'reset'
+                  ? 'The previous password will no longer work. Send this new password securely to the applicant.'
+                  : 'The new applicant is now visible in the table.'}
+              </p>
+            </div>
+
+            <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Email address
+              </p>
+
+              <p className="mt-2 break-all text-base font-semibold text-slate-950">
+                {credentials.email}
+              </p>
+
+              <div className="mt-5 border-t border-slate-200 pt-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Temporary password
+                </p>
+
+                <p className="mt-2 break-all font-mono text-base font-bold text-slate-950">
+                  {credentials.temporaryPassword}
+                </p>
+              </div>
+            </div>
+
+            {!credentialsSaved && (
+              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                Copy or download these credentials now. They
+                will not be shown again after you leave this
+                screen.
+              </div>
+            )}
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              <button
+                type="button"
+                onClick={downloadCredentials}
+                className={cn(
+                  styles.shineButton,
+                  'inline-flex items-center justify-center gap-2 rounded-[14px] border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700'
+                )}
+              >
+                <FiDownload />
+
+                <span
+                  className={cn(
+                    styles.shineText,
+                    styles.shineTextDark
+                  )}
+                >
+                  Download Credentials
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={copyCredentials}
+                className={cn(
+                  styles.shineButton,
+                  'inline-flex items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-blue-700 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg'
+                )}
+              >
+                {copied ? (
+                  <FiCheckCircle />
+                ) : (
+                  <FiCopy />
+                )}
+
+                <span className={styles.shineText}>
+                  {copied
+                    ? 'Credentials Copied'
+                    : 'Copy Credentials'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={requestClose}
+                disabled={!credentialsSaved}
+                className={cn(
+                  styles.shineButton,
+                  'inline-flex items-center justify-center gap-2 rounded-[14px] bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-45'
+                )}
+              >
+                <FiCheckCircle />
+
+                <span className={styles.shineText}>
+                  Done, I Saved Them
+                </span>
+              </button>
+            </div>
+
+            <p className="mt-4 text-center text-xs leading-5 text-slate-500">
+              You can reset the applicant&apos;s password later
+              using the key icon in the Actions column.
+            </p>
+          </div>
+        ) : (
+          <form
+            onSubmit={handleSubmit}
+            className="px-6 py-6 sm:px-8"
+          >
+            {formError && (
+              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {formError}
+              </div>
+            )}
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="text-sm font-semibold text-slate-700">
+                Applicant Name
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
+
+                <input
+                  type="text"
+                  name="fullName"
+                  required
+                  placeholder="e.g., Sarah Johnson"
+                  className={fieldClassName}
+                />
+              </label>
+
+              <label className="text-sm font-semibold text-slate-700">
+                Email Address
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
+
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="e.g., sarah@example.com"
+                  className={fieldClassName}
+                />
+              </label>
+
+              <label className="text-sm font-semibold text-slate-700">
+                Phone Number
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
+
+                <input
+                  type="tel"
+                  name="phone"
+                  required
+                  placeholder="+1 (555) 123-4567"
+                  className={fieldClassName}
+                />
+              </label>
+
+              <label className="text-sm font-semibold text-slate-700">
+                Assigned Team
+
+                <input
+                  type="text"
+                  name="assignedTeam"
+                  placeholder="e.g., Team Alpha"
+                  className={fieldClassName}
+                />
+              </label>
+
+              <CustomSelect
+                label="Availability"
+                name="availability"
+                required
+                defaultValue="available"
+                options={[
+                  {
+                    value: 'available',
+                    label: 'Available',
+                  },
+                  {
+                    value: 'inactive',
+                    label: 'Inactive',
+                  },
+                ]}
+              />
+
+              <label className="text-sm font-semibold text-slate-700">
+                Active Tasks
+                <span className="ml-1 text-red-500">
+                  *
+                </span>
+
+                <input
+                  type="number"
+                  name="activeTasks"
+                  required
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  defaultValue="0"
+                  className={fieldClassName}
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4">
+              <p className="text-sm leading-6 text-blue-800">
+                A secure temporary password will be
+                generated when the applicant account
+                is created.
+              </p>
+            </div>
+
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={requestClose}
+                disabled={isSubmitting}
+                className={cn(
+                  styles.shineButton,
+                  'rounded-[14px] border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 disabled:opacity-50'
+                )}
+              >
+                <span
+                  className={cn(
+                    styles.shineText,
+                    styles.shineTextDark
+                  )}
+                >
+                  Cancel
+                </span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={cn(
+                  styles.shineButton,
+                  'inline-flex items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-blue-700 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-60'
+                )}
+              >
+                <FiUserPlus />
+
+                <span
+                  className={
+                    styles.shineText
+                  }
+                >
+                  {isSubmitting
+                    ? 'Creating Applicant...'
+                    : 'Create Applicant Account'}
+                </span>
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    </div>
   );
 }
 
-function WorkerPerformanceModal({ open, onClose }) {
+function WorkerPerformanceModal({
+  open,
+  onClose,
+  applicant,
+}) {
+  if (!open || !applicant) {
+    return null;
+  }
+
+  const completionRate = Math.min(
+    100,
+    Math.max(
+      0,
+      Number(
+        applicant.completionRate || 0
+      )
+    )
+  );
+
+  const qualityRating = Math.min(
+    5,
+    Math.max(
+      0,
+      Number(
+        applicant.qualityRating || 0
+      )
+    )
+  );
+
+  const initials = String(
+    applicant.fullName || 'Applicant'
+  )
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+
+  const joinDate = applicant.createdAt
+    ? new Date(
+        applicant.createdAt
+      ).toLocaleDateString(
+        'en-US',
+        {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }
+      )
+    : 'Not available';
+
+  const isAvailable =
+    applicant.accountStatus ===
+      'active' &&
+    applicant.availability ===
+      'available';
+
+  const assignedClients =
+    applicant.assignedClients || [];
+
+  const metrics = [
+    {
+      label: 'Active Tasks',
+      value: String(
+        applicant.activeTasks || 0
+      ),
+      icon: FiTrendingUp,
+      card:
+        'border-blue-200 bg-blue-50/70',
+      iconWrap:
+        'bg-blue-600 text-white',
+      valueClass:
+        'text-blue-700',
+    },
+    {
+      label: 'Completion Rate',
+      value: `${completionRate.toFixed(
+        1
+      )}%`,
+      icon: FiCheckCircle,
+      card:
+        'border-emerald-200 bg-emerald-50/70',
+      iconWrap:
+        'bg-emerald-600 text-white',
+      valueClass:
+        'text-emerald-700',
+    },
+    {
+      label: 'Quality Rating',
+      value: `${qualityRating.toFixed(
+        1
+      )}/5.0`,
+      icon: HiOutlineLightBulb,
+      card:
+        'border-amber-200 bg-amber-50/70',
+      iconWrap:
+        'bg-amber-500 text-white',
+      valueClass:
+        'text-amber-700',
+    },
+    {
+      label: 'Total Completed',
+      value: String(
+        applicant.completedTasks || 0
+      ),
+      icon: FiClock,
+      card:
+        'border-violet-200 bg-violet-50/70',
+      iconWrap:
+        'bg-violet-600 text-white',
+      valueClass:
+        'text-violet-700',
+    },
+  ];
+
   return (
-    <Modal open={open} onClose={onClose} title="Sarah Johnson" subtitle="Worker Performance Dashboard" initials="SJ" wide footer={<><button className={styles.modalGhost} onClick={onClose}>Close</button><button className={styles.modalDangerAlt}>Remove Worker</button></>}>
-      <div className={styles.metricStripFour}><MetricMini icon={FiTrendingUp} tone="blue" title="Active Tasks" value="12" /><MetricMini icon={FiCheckCircle} tone="green" title="Completion Rate" value="94%" /><MetricMini icon={HiOutlineLightBulb} tone="amber" title="Quality Score" value="4.8/5.0" /><MetricMini icon={FiClock} tone="purple" title="Total Completed" value="342" /></div>
-      <div className={styles.splitCharts}>
-        <Card className={styles.modalInnerCard}><PanelTitle>Weekly Performance Trend</PanelTitle><AxisMultiLineChart xLabels={['Week 1', 'Week 2', 'Week 3', 'Week 4']} maxY={20} yStep={5} series={[{ label: 'Completed Tasks', color: '#3b82f6', values: [12, 15, 14, 18] }, { label: 'Quality Score', color: '#10b981', values: [4.5, 4.8, 4.6, 4.9] }]} /></Card>
-        <Card className={styles.modalInnerCard}><PanelTitle>Task Breakdown (This Month)</PanelTitle><AxisBarChart values={[45, 45, 45]} xLabels={['Resumes', 'Cover Letters', 'Applications']} maxY={60} yStep={15} color="#8b5cf6" /></Card>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={applicant.fullName}
+      subtitle="Applicant Performance"
+      initials={initials}
+      wide
+    >
+      <div className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((metric) => {
+            const Icon = metric.icon;
+
+            return (
+              <div
+                key={metric.label}
+                className={cn(
+                  'rounded-[18px] border p-5 transition-shadow duration-200 hover:shadow-md',
+                  metric.card
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={cn(
+                      'flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] shadow-sm',
+                      metric.iconWrap
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-500">
+                      {metric.label}
+                    </p>
+
+                    <p
+                      className={cn(
+                        'mt-1 text-[28px] font-bold leading-none tracking-tight',
+                        metric.valueClass
+                      )}
+                    >
+                      {metric.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <section className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-950">
+                Applicant Information
+              </h3>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Account, availability and assignment details
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold',
+                  isAvailable
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-slate-100 text-slate-600'
+                )}
+              >
+                <span
+                  className={cn(
+                    'h-2 w-2 rounded-full',
+                    isAvailable
+                      ? 'bg-emerald-500'
+                      : 'bg-slate-400'
+                  )}
+                />
+
+                {isAvailable
+                  ? 'Available'
+                  : 'Inactive'}
+              </span>
+
+            </div>
+          </div>
+
+          <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
+            <div className="border-b border-slate-100 px-6 py-5 md:border-r xl:border-b-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Email
+              </p>
+
+              <p className="mt-2 break-all text-sm font-semibold text-slate-900">
+                {applicant.email ||
+                  'Not available'}
+              </p>
+            </div>
+
+            <div className="border-b border-slate-100 px-6 py-5 xl:border-b-0 xl:border-r">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Phone
+              </p>
+
+              <p className="mt-2 text-sm font-semibold text-slate-900">
+                {applicant.phone ||
+                  'Not available'}
+              </p>
+            </div>
+
+            <div className="border-b border-slate-100 px-6 py-5 md:border-r xl:border-b-0 xl:border-r-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Joined
+              </p>
+
+              <p className="mt-2 text-sm font-semibold text-slate-900">
+                {joinDate}
+              </p>
+            </div>
+
+            <div className="border-b border-slate-100 px-6 py-5 xl:border-b-0 xl:border-r">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Status
+              </p>
+
+              <div className="mt-2">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold',
+                    isAvailable
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-slate-100 text-slate-600'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'h-2 w-2 rounded-full',
+                      isAvailable
+                        ? 'bg-emerald-500'
+                        : 'bg-slate-400'
+                    )}
+                  />
+
+                  {isAvailable
+                    ? 'Available'
+                    : 'Inactive'}
+                </span>
+              </div>
+            </div>
+
+            <div className="px-6 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Assigned Clients
+              </p>
+
+              {assignedClients.length >
+              0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {assignedClients.map(
+                    (client) => (
+                      <span
+                        key={client.id}
+                        className="inline-flex max-w-full items-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
+                      >
+                        <span className="truncate">
+                          {client.fullName}
+                        </span>
+                      </span>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm font-medium text-slate-400">
+                  No clients assigned
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
-      <Card className={styles.modalInnerCard}><PanelTitle>Worker Information</PanelTitle><div className={styles.infoGridFour}><div><span>Status</span><StatusBadge value="Available" /></div><div><span>Assigned Team</span><strong>Team Alpha</strong></div><div><span>Join Date</span><strong>Jan 15, 2026</strong></div><div><span>Earnings (MTD)</span><strong className={styles.greenText}>$720.00</strong></div></div></Card>
     </Modal>
   );
 }
@@ -861,6 +3705,21 @@ export default function OwnerPortal() {
   const detail = getDetail(router);
 
 
+  const [
+    applicantRefreshKey,
+    setApplicantRefreshKey,
+  ] = useState(0);
+
+  const [
+    applicantResetCredentials,
+    setApplicantResetCredentials,
+  ] = useState(null);
+
+  const [
+    applicantCredentialContext,
+    setApplicantCredentialContext,
+  ] = useState('created');
+
   const [modals, setModals] = useState({
     addClient: false,
     clientPerformance: false,
@@ -883,7 +3742,33 @@ export default function OwnerPortal() {
     if (section === 'dashboard') return <DashboardPage />;
     if (section === 'client-management' && detail) return <ClientDetailsPage />;
     if (section === 'client-management') return <ClientManagementPage />;
-    if (section === 'applicants-management') return <ApplicantsManagementPage openAddApplicant={() => openModal('addApplicant')} openWorkerStats={() => openModal('workerStats')} />;
+    if (section === 'applicants-management') return (
+      <ApplicantsManagementPage
+        openAddApplicant={() => {
+          setApplicantResetCredentials(
+            null
+          );
+          setApplicantCredentialContext(
+            'created'
+          );
+          openModal(
+            'addApplicant'
+          );
+        }}
+        onPasswordReset={(credentials) => {
+          setApplicantResetCredentials(
+            credentials
+          );
+          setApplicantCredentialContext(
+            'reset'
+          );
+          openModal(
+            'addApplicant'
+          );
+        }}
+        refreshKey={applicantRefreshKey}
+      />
+    );
     if (section === 'chief-applicants') return <ChiefApplicantsPage openChiefStats={() => openModal('chiefStats')} />;
     if (section === 'application-operations') return <ApplicationOperationsPage openAddApplicant={() => openModal('addApplicant')} openReassign={() => openModal('reassign')} openForcePriority={() => openModal('forcePriority')} openEscalate={() => openModal('escalate')} />;
     if (section === 'subscription-revenue') return <SubscriptionRevenuePage openManagePlans={() => openModal('managePlans')} openEditSubscription={() => openModal('editSubscription')} />;
@@ -893,7 +3778,7 @@ export default function OwnerPortal() {
     if (section === 'escalations-issues') return <EscalationsIssuesPage />;
     if (section === 'settings') return <SettingsPage />;
     return <PlaceholderPage section={section} />;
-  }, [detail, section]);
+  }, [applicantRefreshKey, detail, section]);
 
   const [title, subtitle] = PAGE_META[section] || PAGE_META.dashboard;
 
@@ -908,7 +3793,31 @@ export default function OwnerPortal() {
         <AddNewClientModal open={modals.addClient} onClose={() => closeModal('addClient')} />
         <ClientPerformanceModal open={modals.clientPerformance} onClose={() => closeModal('clientPerformance')} />
         <PauseAccountModal open={modals.pauseAccount} onClose={() => closeModal('pauseAccount')} />
-        <AddNewApplicantModal open={modals.addApplicant} onClose={() => closeModal('addApplicant')} />
+        <AddNewApplicantModal
+          open={modals.addApplicant}
+          initialCredentials={
+            applicantResetCredentials
+          }
+          credentialContext={
+            applicantCredentialContext
+          }
+          onClose={() => {
+            closeModal(
+              'addApplicant'
+            );
+            setApplicantResetCredentials(
+              null
+            );
+            setApplicantCredentialContext(
+              'created'
+            );
+          }}
+          onCreated={() =>
+            setApplicantRefreshKey(
+              (current) => current + 1
+            )
+          }
+        />
         <WorkerPerformanceModal open={modals.workerStats} onClose={() => closeModal('workerStats')} />
         <ChiefStatsModal open={modals.chiefStats} onClose={() => closeModal('chiefStats')} />
         <ReassignApplicationModal open={modals.reassign} onClose={() => closeModal('reassign')} />

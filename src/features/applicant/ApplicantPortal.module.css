@@ -2019,3 +2019,268 @@
     background: rgba(15, 23, 42, .35);
   }
 }
+
+.teamChatShell {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+}
+
+.teamChatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #eef1f5;
+  background: #fafbfc;
+}
+
+.teamChatHeader h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.teamChatHeader p {
+  margin: 4px 0 0;
+  color: #7b8494;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.teamChatRefresh {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dde3ec;
+  border-radius: 10px;
+  background: #fff;
+  color: #667085;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.teamChatRefresh:hover:not(:disabled) {
+  border-color: #b9c9ef;
+  background: #f4f7ff;
+  color: #2b62d2;
+}
+
+.teamChatRefresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.teamChatMessages {
+  min-height: 360px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 22px 20px;
+  background: #fcfcfd;
+}
+
+.teamChatEmpty {
+  display: flex;
+  min-height: 310px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8a92a0;
+  text-align: center;
+}
+
+.teamChatEmptyIcon {
+  display: inline-flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  border-radius: 15px;
+  background: #eef3ff;
+  color: #2b62d2;
+  font-size: 22px;
+}
+
+.teamChatEmpty strong {
+  color: #293244;
+  font-size: 13px;
+}
+
+.teamChatEmpty p {
+  max-width: 310px;
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.teamChatSpinning {
+  animation: teamChatSpin 0.8s linear infinite;
+}
+
+@keyframes teamChatSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.teamChatMessageRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.teamChatMessageOwn {
+  justify-content: flex-end;
+}
+
+.teamChatMessageWrap {
+  width: fit-content;
+  max-width: 76%;
+}
+
+.teamChatMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  color: #9299a5;
+  font-size: 9px;
+}
+
+.teamChatMeta strong {
+  color: #4b5565;
+  font-size: 9px;
+}
+
+.teamChatMetaOwn {
+  justify-content: flex-end;
+}
+
+.teamChatBubble {
+  padding: 11px 14px;
+  border: 1px solid #e2e6ec;
+  border-radius: 15px 15px 15px 4px;
+  background: #fff;
+  color: #323844;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.teamChatBubbleOwn {
+  border-color: #2b62d2;
+  border-radius: 15px 15px 4px 15px;
+  background: #2b62d2;
+  color: #fff;
+}
+
+.teamChatComposer {
+  padding: 16px 18px;
+  border-top: 1px solid #eef1f5;
+  background: #fff;
+}
+
+.teamChatError {
+  margin-bottom: 10px;
+  padding: 9px 11px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b42318;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.teamChatComposerRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.teamChatComposer textarea {
+  min-height: 58px;
+  flex: 1;
+  resize: none;
+  border: 1px solid #d9dee7;
+  border-radius: 13px;
+  outline: none;
+  background: #f9fafb;
+  padding: 11px 13px;
+  color: #292f3b;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.55;
+  transition: 0.18s ease;
+}
+
+.teamChatComposer textarea:focus {
+  border-color: #7fa1e8;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(43, 98, 210, 0.1);
+}
+
+.teamChatSend {
+  display: inline-flex;
+  min-width: 88px;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 12px;
+  background: #2b62d2;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.teamChatSend:hover:not(:disabled) {
+  background: #234fb0;
+}
+
+.teamChatSend:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.teamChatComposerMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 7px;
+  color: #9aa1ad;
+  font-size: 8px;
+}
+
+@media (max-width: 700px) {
+  .teamChatMessages {
+    min-height: 320px;
+    padding: 16px 14px;
+  }
+
+  .teamChatMessageWrap {
+    max-width: 88%;
+  }
+
+  .teamChatComposerRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .teamChatSend {
+    width: 100%;
+  }
+}

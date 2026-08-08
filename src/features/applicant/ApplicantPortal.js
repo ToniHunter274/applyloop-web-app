@@ -37,9 +37,9 @@ import {
   FiX,
 } from 'react-icons/fi';
 import { useAuth } from '../../shared/context/AuthContext';
+import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  ADMIN_FEEDBACK,
   APPLICANT_APPLICATIONS,
   APPLICANT_CLIENTS,
   CLIENT_FEEDBACK,
@@ -59,6 +59,52 @@ const NAVIGATION = [
 ];
 
 const classNames = (...values) => values.filter(Boolean).join(' ');
+
+async function getApplicantAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (
+    error ||
+    !session?.access_token
+  ) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
+
+const formatConversationTime = (
+  value
+) => {
+  if (!value) {
+    return '';
+  }
+
+  return new Date(
+    value
+  ).toLocaleString(
+    'en-US',
+    {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }
+  );
+};
 
 const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'AL';
 
@@ -103,17 +149,37 @@ function NotificationButton() {
   );
 }
 
-function ApplicantShell({ section, children }) {
+function ApplicantShell({
+  section,
+  children,
+  displayUser,
+  isPreview = false,
+  previewApplicantId = '',
+  onExitPreview,
+}) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const shellUser =
+    displayUser || user;
+
+  const getNavigationHref = (href) =>
+    isPreview
+      ? {
+          pathname: href,
+          query: {
+            previewApplicantId,
+          },
+        }
+      : href;
 
   return (
     <div className={styles.app}>
       <div className={styles.shell}>
         {mobileOpen && <button type="button" aria-label="Close menu" className={styles.backdrop} onClick={() => setMobileOpen(false)} />}
         <aside className={classNames(styles.sidebar, mobileOpen && styles.sidebarOpen)}>
-          <Link href="/applicant" className={styles.brand} onClick={() => setMobileOpen(false)}>
+          <Link href={getNavigationHref('/applicant')} className={styles.brand} onClick={() => setMobileOpen(false)}>
             <img src="/logo.svg" alt="ApplyLoop" className={styles.brandLogo} />
             <span>ApplyLoop</span>
           </Link>
@@ -123,7 +189,7 @@ function ApplicantShell({ section, children }) {
               return (
                 <Link
                   key={item.section}
-                  href={item.href}
+                  href={getNavigationHref(item.href)}
                   onClick={() => setMobileOpen(false)}
                   className={classNames(styles.navLink, section === item.section && styles.navLinkActive)}
                 >
@@ -135,21 +201,66 @@ function ApplicantShell({ section, children }) {
           </nav>
           <div className={styles.profileWrap}>
             <button type="button" className={styles.profile} onClick={() => setProfileOpen((value) => !value)}>
-              <Avatar name={user?.name || 'Olabanji David T.'} />
+              <Avatar name={shellUser?.name || 'Applicant'} />
               <span className={styles.profileText}>
-                <span className={styles.profileName}>{user?.name || 'Olabanji David T.'}</span>
-                <span className={styles.profileEmail}>{user?.email || 'banjidhevid216@gmail.com'}</span>
+                <span className={styles.profileName}>
+                  {shellUser?.name || 'Applicant'}
+                </span>
+                <span className={styles.profileEmail}>
+                  {shellUser?.email || ''}
+                </span>
               </span>
             </button>
             {profileOpen && (
               <div className={styles.profileMenu}>
-                <button type="button" onClick={logout}><FiLogOut /> Sign out</button>
+                {isPreview ? (
+                  <button
+                    type="button"
+                    onClick={onExitPreview}
+                  >
+                    <FiArrowLeft />
+                    Back to Applicants Management
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={logout}
+                  >
+                    <FiLogOut />
+                    Sign out
+                  </button>
+                )}
               </div>
             )}
           </div>
         </aside>
 
         <div className={styles.mainRail}>
+          {isPreview && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200 bg-blue-50 px-5 py-3 text-sm">
+              <div className="flex min-w-0 items-center gap-2 text-blue-900">
+                <FiUser className="h-4 w-4 shrink-0" />
+
+                <span className="truncate">
+                  Viewing as{' '}
+                  <strong>
+                    {shellUser?.name ||
+                      'Applicant'}
+                  </strong>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={onExitPreview}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
+              >
+                <FiArrowLeft className="h-3.5 w-3.5" />
+                Back to Applicants Management
+              </button>
+            </div>
+          )}
+
           <div className={styles.mobileBar}>
             <button type="button" aria-label="Open menu" onClick={() => setMobileOpen(true)}><FiMenu size={22} /></button>
             <span>ApplyLoop</span>
@@ -674,61 +785,546 @@ function WorkshopPage({ onRecordApplication, onPreview }) {
   );
 }
 
-function FeedbackPage() {
-  const [tab, setTab] = useState('client');
-  const [selectedId, setSelectedId] = useState(ADMIN_FEEDBACK[0].id);
-  const [response, setResponse] = useState('');
-  const [sent, setSent] = useState(false);
-  const selected = ADMIN_FEEDBACK.find((item) => item.id === selectedId) || ADMIN_FEEDBACK[0];
+function FeedbackPage({
+  previewApplicantId = '',
+  isPreview = false,
+}) {
+  const [tab, setTab] =
+    useState('client');
+  const [
+    teamMessages,
+    setTeamMessages,
+  ] = useState([]);
+  const [
+    currentProfileId,
+    setCurrentProfileId,
+  ] = useState('');
+  const [
+    messageDraft,
+    setMessageDraft,
+  ] = useState('');
+  const [
+    isLoadingMessages,
+    setIsLoadingMessages,
+  ] = useState(false);
+  const [
+    isSendingMessage,
+    setIsSendingMessage,
+  ] = useState(false);
+  const [
+    messageError,
+    setMessageError,
+  ] = useState('');
+  const [
+    messageRefreshKey,
+    setMessageRefreshKey,
+  ] = useState(0);
+
+  useEffect(() => {
+    if (tab !== 'admin') {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadMessages = async () => {
+      setIsLoadingMessages(true);
+      setMessageError('');
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const messagesEndpoint =
+          previewApplicantId
+            ? `/api/admin/applicants/${previewApplicantId}/messages`
+            : '/api/applicant/messages';
+
+        const response = await fetch(
+          messagesEndpoint,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Your messages could not be loaded.'
+          );
+        }
+
+        if (!cancelled) {
+          setTeamMessages(
+            result.messages || []
+          );
+
+          setCurrentProfileId(
+            result.currentProfileId ||
+              ''
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessageError(
+            error?.message ||
+              'Your messages could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingMessages(false);
+        }
+      }
+    };
+
+    loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tab,
+    messageRefreshKey,
+    previewApplicantId,
+  ]);
+
+  const sendTeamMessage =
+    async () => {
+      if (isPreview) {
+        setMessageError(
+          'Applicant preview is read-only. Send messages from Applicants Management.'
+        );
+        return;
+      }
+
+      const message =
+        messageDraft.trim();
+
+      if (
+        !message ||
+        isSendingMessage
+      ) {
+        return;
+      }
+
+      setIsSendingMessage(true);
+      setMessageError('');
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response = await fetch(
+          '/api/applicant/messages',
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              message,
+            }),
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Your message could not be sent.'
+          );
+        }
+
+        if (result.message) {
+          setTeamMessages(
+            (current) => [
+              ...current,
+              result.message,
+            ]
+          );
+        }
+
+        setMessageDraft('');
+      } catch (error) {
+        setMessageError(
+          error?.message ||
+            'Your message could not be sent.'
+        );
+      } finally {
+        setIsSendingMessage(false);
+      }
+    };
 
   return (
     <>
-      <PageHeader title="Feedback & Messages" subtitle="Review and respond to feedback from clients and admins" />
-      <div className={styles.feedbackTabs}>
-        <button type="button" className={classNames(styles.tab, tab === 'client' && styles.tabActive)} onClick={() => setTab('client')}>Client Feedback (2)</button>
-        <button type="button" className={classNames(styles.tab, tab === 'admin' && styles.tabActive)} onClick={() => setTab('admin')}>Admin Feedback</button>
+      <PageHeader
+        title="Feedback & Messages"
+        subtitle="Review client feedback and communicate with the ApplyLoop team"
+      />
+
+      <div
+        className={
+          styles.feedbackTabs
+        }
+      >
+        <button
+          type="button"
+          className={classNames(
+            styles.tab,
+            tab === 'client' &&
+              styles.tabActive
+          )}
+          onClick={() =>
+            setTab('client')
+          }
+        >
+          Client Feedback (
+          {CLIENT_FEEDBACK.length})
+        </button>
+
+        <button
+          type="button"
+          className={classNames(
+            styles.tab,
+            tab === 'admin' &&
+              styles.tabActive
+          )}
+          onClick={() =>
+            setTab('admin')
+          }
+        >
+          Team Messages
+        </button>
       </div>
+
       {tab === 'client' ? (
-        <div className={styles.feedbackList} style={{ maxWidth: 540 }}>
-          {CLIENT_FEEDBACK.map((item) => (
-            <article key={item.id} className={styles.feedbackCard}>
-              <div className={styles.feedbackCardHead}>
-                <div><strong>{item.client}</strong><div className={styles.feedbackRole}>{item.role}</div></div>
-                <span className={classNames(styles.statusSelect, item.status === 'Received' ? styles.statusOffer : styles.statusWaiting)}>{item.status}</span>
-              </div>
-              <p className={styles.feedbackMessage}>{item.message}</p>
-              <p className={styles.feedbackDate}>{item.date}</p>
-            </article>
-          ))}
+        <div
+          className={
+            styles.feedbackList
+          }
+          style={{
+            maxWidth: 540,
+          }}
+        >
+          {CLIENT_FEEDBACK.map(
+            (item) => (
+              <article
+                key={item.id}
+                className={
+                  styles.feedbackCard
+                }
+              >
+                <div
+                  className={
+                    styles.feedbackCardHead
+                  }
+                >
+                  <div>
+                    <strong>
+                      {item.client}
+                    </strong>
+
+                    <div
+                      className={
+                        styles.feedbackRole
+                      }
+                    >
+                      {item.role}
+                    </div>
+                  </div>
+
+                  <span
+                    className={classNames(
+                      styles.statusSelect,
+                      item.status ===
+                        'Received'
+                        ? styles.statusOffer
+                        : styles.statusWaiting
+                    )}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+
+                <p
+                  className={
+                    styles.feedbackMessage
+                  }
+                >
+                  {item.message}
+                </p>
+
+                <p
+                  className={
+                    styles.feedbackDate
+                  }
+                >
+                  {item.date}
+                </p>
+              </article>
+            )
+          )}
         </div>
       ) : (
-        <div className={styles.feedbackLayout}>
-          <div className={styles.feedbackList}>
-            {ADMIN_FEEDBACK.map((item) => (
-              <button key={item.id} type="button" className={classNames(styles.feedbackCard, item.id === selectedId && styles.feedbackCardActive)} onClick={() => { setSelectedId(item.id); setSent(false); }}>
-                <div className={styles.feedbackCardHead}>
-                  <div><strong>{item.sender}</strong><div className={styles.feedbackRole}>{item.role}</div></div>
-                  <span className={classNames(styles.statusSelect, item.status === 'Resolved' ? styles.statusOffer : styles.statusWaiting)}>{item.status}</span>
-                </div>
-                <p className={styles.feedbackMessage}>{item.message}</p>
-                <p className={styles.feedbackDate}>{item.date}</p>
-              </button>
-            ))}
-          </div>
-          <section className={styles.feedbackDetails}>
-            <h3>Feedback Details</h3>
-            <div className={styles.feedbackMeta}><strong>John Smith</strong><br />Job ID: 2026-1003-401<br /><br />Re: Google - Senior Software Engineer<br />Please emphasize my leadership experience more. Also, add more details about the recent services project.</div>
-            <div className={styles.responseBox}>
-              <label className={styles.fieldLabel}>Your Response</label>
-              <textarea className={styles.textArea} value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Type your response..." />
-              <div className={styles.responseActions}>
-                <button type="button" className={styles.primaryButton} onClick={() => setSent(true)}><FiSend /> Send Reply</button>
-                <button type="button" className={styles.secondaryButton}><FiCheckCircle /> Mark as Resolved</button>
-              </div>
-              {sent && <p style={{ color: '#159a66', fontSize: 9, marginTop: 9 }}>Reply sent successfully.</p>}
+        <section
+          className={
+            styles.teamChatShell
+          }
+        >
+          <div
+            className={
+              styles.teamChatHeader
+            }
+          >
+            <div>
+              <h3>
+                ApplyLoop Team
+              </h3>
+
+              <p>
+                Messages from Owners and Admins appear here.
+              </p>
             </div>
-          </section>
-        </div>
+
+            <button
+              type="button"
+              className={
+                styles.teamChatRefresh
+              }
+              onClick={() =>
+                setMessageRefreshKey(
+                  (current) =>
+                    current + 1
+                )
+              }
+              disabled={
+                isLoadingMessages ||
+                isSendingMessage
+              }
+              title="Refresh messages"
+              aria-label="Refresh messages"
+            >
+              <FiRefreshCw
+                className={
+                  isLoadingMessages
+                    ? styles.teamChatSpinning
+                    : ''
+                }
+              />
+            </button>
+          </div>
+
+          <div
+            className={
+              styles.teamChatMessages
+            }
+          >
+            {isLoadingMessages ? (
+              <div
+                className={
+                  styles.teamChatEmpty
+                }
+              >
+                <FiRefreshCw
+                  className={
+                    styles.teamChatSpinning
+                  }
+                />
+
+                <strong>
+                  Loading messages...
+                </strong>
+              </div>
+            ) : teamMessages.length ===
+              0 ? (
+              <div
+                className={
+                  styles.teamChatEmpty
+                }
+              >
+                <span
+                  className={
+                    styles.teamChatEmptyIcon
+                  }
+                >
+                  <FiMessageSquare />
+                </span>
+
+                <strong>
+                  No team messages yet
+                </strong>
+
+                <p>
+                  Messages from the ApplyLoop team will appear here.
+                </p>
+              </div>
+            ) : (
+              teamMessages.map(
+                (message) => {
+                  const isMine =
+                    message.senderProfileId ===
+                    currentProfileId;
+
+                  const roleLabel =
+                    message.senderRole ===
+                    'applicant'
+                      ? 'Applicant'
+                      : 'Team Member';
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={classNames(
+                        styles.teamChatMessageRow,
+                        isMine &&
+                          styles.teamChatMessageOwn
+                      )}
+                    >
+                      <div
+                        className={
+                          styles.teamChatMessageWrap
+                        }
+                      >
+                        <div
+                          className={classNames(
+                            styles.teamChatMeta,
+                            isMine &&
+                              styles.teamChatMetaOwn
+                          )}
+                        >
+                          <strong>
+                            {message.senderName}
+                          </strong>
+
+                          <span>
+                            {roleLabel}
+                          </span>
+
+                          <span>
+                            {formatConversationTime(
+                              message.createdAt
+                            )}
+                          </span>
+
+                          {isMine && (
+                            <span>
+                              {message.readAt
+                                ? 'Seen'
+                                : 'Sent'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          className={classNames(
+                            styles.teamChatBubble,
+                            isMine &&
+                              styles.teamChatBubbleOwn
+                          )}
+                        >
+                          {message.message}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              )
+            )}
+          </div>
+
+          <div
+            className={
+              styles.teamChatComposer
+            }
+          >
+            {messageError && (
+              <div
+                role="alert"
+                className={
+                  styles.teamChatError
+                }
+              >
+                {messageError}
+              </div>
+            )}
+
+            <div
+              className={
+                styles.teamChatComposerRow
+              }
+            >
+              <textarea
+                value={messageDraft}
+                onChange={(event) =>
+                  setMessageDraft(
+                    event.target.value
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key ===
+                      'Enter' &&
+                    !event.shiftKey
+                  ) {
+                    event.preventDefault();
+                    sendTeamMessage();
+                  }
+                }}
+                maxLength={4000}
+                rows={2}
+                placeholder="Reply to the ApplyLoop team..."
+              />
+
+              <button
+                type="button"
+                className={
+                  styles.teamChatSend
+                }
+                onClick={
+                  sendTeamMessage
+                }
+                disabled={
+                  isSendingMessage ||
+                  !messageDraft.trim()
+                }
+              >
+                <FiSend />
+
+                {isSendingMessage
+                  ? 'Sending...'
+                  : 'Send'}
+              </button>
+            </div>
+
+            <div
+              className={
+                styles.teamChatComposerMeta
+              }
+            >
+              <span>
+                Enter to send · Shift + Enter for a new line
+              </span>
+
+              <span>
+                {messageDraft.length}/4000
+              </span>
+            </div>
+          </div>
+        </section>
       )}
     </>
   );
@@ -896,6 +1492,36 @@ function PreviewModal({ type, onClose }) {
 export default function ApplicantPortal() {
   const router = useRouter();
   const { user } = useAuth();
+
+  const previewApplicantId =
+    typeof router.query
+      ?.previewApplicantId ===
+    'string'
+      ? router.query.previewApplicantId
+      : '';
+
+  const isApplicantPreview =
+    Boolean(
+      previewApplicantId &&
+        [
+          USER_ROLES.OWNER,
+          USER_ROLES.ADMIN,
+        ].includes(user?.role)
+    );
+
+  const [
+    previewApplicant,
+    setPreviewApplicant,
+  ] = useState(null);
+  const [
+    isLoadingApplicantPreview,
+    setIsLoadingApplicantPreview,
+  ] = useState(false);
+  const [
+    applicantPreviewError,
+    setApplicantPreviewError,
+  ] = useState('');
+
   const parts = getParts(router);
   const section = parts[0] || 'dashboard';
   const clientId = parts[1];
@@ -905,8 +1531,123 @@ export default function ApplicantPortal() {
   const [toast, setToast] = useState('');
 
   useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.APPLICANT) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+    if (
+      !router.isReady ||
+      !user?.role
+    ) {
+      return;
+    }
+
+    if (
+      user.role !==
+        USER_ROLES.APPLICANT &&
+      !isApplicantPreview
+    ) {
+      router.replace(
+        getRoleHome(user.role)
+      );
+    }
+  }, [
+    isApplicantPreview,
+    router,
+    router.isReady,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !isApplicantPreview
+    ) {
+      setPreviewApplicant(null);
+      setApplicantPreviewError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplicantPreview =
+      async () => {
+        setIsLoadingApplicantPreview(
+          true
+        );
+        setApplicantPreviewError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const response = await fetch(
+            '/api/admin/applicants',
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          const result = await response
+            .json()
+            .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'The Applicant preview could not be loaded.'
+            );
+          }
+
+          const applicantRows =
+            Array.isArray(result)
+              ? result
+              : result.applicants ||
+                [];
+
+          const selected =
+            applicantRows.find(
+              (applicantItem) =>
+                applicantItem.id ===
+                previewApplicantId
+            );
+
+          if (!selected) {
+            throw new Error(
+              'The Applicant could not be found.'
+            );
+          }
+
+          if (!cancelled) {
+            setPreviewApplicant(
+              selected
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setApplicantPreviewError(
+              error?.message ||
+                'The Applicant preview could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingApplicantPreview(
+              false
+            );
+          }
+        }
+      };
+
+    loadApplicantPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isApplicantPreview,
+    previewApplicantId,
+    router.isReady,
+  ]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -950,7 +1691,18 @@ export default function ApplicantPortal() {
   } else if (section === 'workshop') {
     page = <WorkshopPage onRecordApplication={recordApplication} onPreview={setPreviewType} />;
   } else if (section === 'feedback') {
-    page = <FeedbackPage />;
+    page = (
+      <FeedbackPage
+        previewApplicantId={
+          isApplicantPreview
+            ? previewApplicantId
+            : ''
+        }
+        isPreview={
+          isApplicantPreview
+        }
+      />
+    );
   } else if (section === 'performance') {
     page = <PerformancePage />;
   } else if (section === 'settings') {
@@ -959,10 +1711,96 @@ export default function ApplicantPortal() {
     page = <Dashboard applications={applications} onChangeRecord={changeApplication} onOpenApplication={openApplication} />;
   }
 
+  if (
+    isApplicantPreview &&
+    isLoadingApplicantPreview &&
+    !previewApplicant
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading Applicant preview...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isApplicantPreview &&
+    applicantPreviewError
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">
+            Applicant preview unavailable
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {applicantPreviewError}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                '/owner/applicants-management'
+              )
+            }
+            className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Back to Applicants Management
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const applicantDisplayUser =
+    isApplicantPreview &&
+    previewApplicant
+      ? {
+          name:
+            previewApplicant.fullName ||
+            'Applicant',
+          email:
+            previewApplicant.email ||
+            '',
+        }
+      : user;
+
+  const exitApplicantPreview = () => {
+    router.push(
+      user?.role === USER_ROLES.ADMIN
+        ? '/admin'
+        : '/owner/applicants-management'
+    );
+  };
+
   return (
     <>
       <Head><title>Applicant Workspace | ApplyLoop</title><meta name="description" content="ApplyLoop applicant workspace" /></Head>
-      <ApplicantShell section={section}>{page}</ApplicantShell>
+      <ApplicantShell
+        section={section}
+        displayUser={
+          applicantDisplayUser
+        }
+        isPreview={
+          isApplicantPreview
+        }
+        previewApplicantId={
+          previewApplicantId
+        }
+        onExitPreview={
+          exitApplicantPreview
+        }
+      >
+        {page}
+      </ApplicantShell>
       <PreviewModal type={previewType} onClose={() => setPreviewType(null)} />
       {toast && <div className={styles.toast}>{toast}</div>}
     </>
