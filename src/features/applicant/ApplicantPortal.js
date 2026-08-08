@@ -41,7 +41,6 @@ import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
   APPLICANT_APPLICATIONS,
-  APPLICANT_CLIENTS,
   CLIENT_FEEDBACK,
   LINK_SOURCE_OPTIONS,
   PERFORMANCE_PERIODS,
@@ -120,6 +119,91 @@ const getStatusClass = (status) => {
   if (status === 'Rejected') return styles.statusRejected;
   return styles.statusSubmitted;
 };
+
+const normalizeAssignedClient = (
+  client = {}
+) => ({
+  id: client.id,
+  name:
+    client.name ||
+    client.fullName ||
+    'Unnamed Client',
+  role:
+    client.role ||
+    'Client',
+  email:
+    client.email || '',
+  phone:
+    client.phone || '',
+  nationality:
+    client.nationality ||
+    client.country ||
+    'Not provided',
+  state:
+    client.state || '',
+  gender:
+    client.gender ||
+    'Not provided',
+  disability:
+    client.disability ||
+    'Not provided',
+  veteran:
+    client.veteran ||
+    'Not provided',
+  workType:
+    client.workType ||
+    'Not provided',
+  schedule:
+    client.schedule ||
+    'Not provided',
+  contract:
+    client.contract ||
+    client.plan ||
+    'Not provided',
+  locations:
+    Array.isArray(
+      client.locations
+    )
+      ? client.locations
+      : [],
+  targetCountries:
+    client.targetCountries ||
+    client.country ||
+    'Not provided',
+  progress:
+    Number(
+      client.progress || 0
+    ),
+  rejectedRoles:
+    Number(
+      client.rejectedRoles || 0
+    ),
+  selectedRoles:
+    Number(
+      client.selectedRoles || 0
+    ),
+  interviews:
+    Number(
+      client.interviews || 0
+    ),
+  feedbacks:
+    Number(
+      client.feedbacks || 0
+    ),
+  offers:
+    Number(
+      client.offers || 0
+    ),
+  applications:
+    Number(
+      client.applications || 0
+    ),
+  status:
+    client.status || 'active',
+  notes:
+    client.notes ||
+    'No admin notes available.',
+});
 
 const createApplicationRecords = () => {
   const companies = ['Google', 'Meta', 'Amazon', 'Apple', 'Microsoft', 'Shopify', 'HubSpot', 'Atlassian'];
@@ -413,7 +497,12 @@ function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilte
   );
 }
 
-function Dashboard({ applications, onChangeRecord, onOpenApplication }) {
+function Dashboard({
+  applications,
+  clients,
+  onChangeRecord,
+  onOpenApplication,
+}) {
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState('');
 
@@ -421,16 +510,34 @@ function Dashboard({ applications, onChangeRecord, onOpenApplication }) {
     <>
       <PageHeader title="Dashboard" subtitle="Welcome back! Here’s your overview for today." searchable search={search} onSearch={setSearch} />
       <div className={styles.statsGrid}>
-        <StatCard label="Total Clients" value="12" />
-        <StatCard label="Active Clients" value="9" />
-        <StatCard label="Completed Applications" value="120" />
-        <StatCard label="Client Feedback" value="5" />
+        <StatCard
+          label="Total Clients"
+          value={clients.length}
+        />
+        <StatCard
+          label="Active Clients"
+          value={
+            clients.filter(
+              (client) =>
+                client.status ===
+                'active'
+            ).length
+          }
+        />
+        <StatCard
+          label="Completed Applications"
+          value={applications.length}
+        />
+        <StatCard
+          label="Client Feedback"
+          value="0"
+        />
       </div>
       <div className={styles.sectionTitleRow}>
         <h2 className={styles.sectionTitle}>All Assigned Clients</h2>
         <select className={styles.selectPlain} value={clientFilter} onChange={(event) => setClientFilter(event.target.value)}>
           <option value="">Select Client</option>
-          {APPLICANT_CLIENTS.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+          {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
       </div>
       <ApplicationTable
@@ -464,32 +571,77 @@ function ClientCard({ client, onOpen }) {
   );
 }
 
-function ClientsPage({ onOpenClient }) {
+function ClientsPage({
+  clients,
+  onOpenClient,
+}) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all');
-  const visible = useMemo(() => APPLICANT_CLIENTS.filter((client) => {
+  const visible = useMemo(() => clients.filter((client) => {
     const query = search.trim().toLowerCase();
     const match = !query || `${client.name} ${client.role}`.toLowerCase().includes(query);
     const tabMatch = tab === 'all' || client.status === tab;
     return match && tabMatch;
-  }).slice(0, tab === 'all' ? 4 : 2), [search, tab]);
+  }), [clients, search, tab]);
 
   return (
     <>
       <PageHeader title="Assigned Clients" subtitle="Welcome back! Here’s your overview for today." />
       <div className={styles.statsGrid}>
-        <StatCard label="Total Clients" value="4" />
-        <StatCard label="Total Applications" value="50" />
-        <StatCard label="Completed Applications" value="12" />
-        <StatCard label="Client Feedback" value="5" />
+        <StatCard
+          label="Total Clients"
+          value={clients.length}
+        />
+        <StatCard
+          label="Total Applications"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.applications ||
+                    0
+                ),
+              0
+            )
+          }
+        />
+        <StatCard
+          label="Completed Applications"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.applications ||
+                    0
+                ),
+              0
+            )
+          }
+        />
+        <StatCard
+          label="Client Feedback"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.feedbacks ||
+                    0
+                ),
+              0
+            )
+          }
+        />
       </div>
       <label className={styles.toolbarSearch}>
         <FiSearch />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Clients" />
       </label>
       <div className={styles.tabs}>
-        <button type="button" className={classNames(styles.tab, tab === 'all' && styles.tabActive)} onClick={() => setTab('all')}>All Clients (10)</button>
-        <button type="button" className={classNames(styles.tab, tab === 'active' && styles.tabActive)} onClick={() => setTab('active')}>Active Clients (4)</button>
+        <button type="button" className={classNames(styles.tab, tab === 'all' && styles.tabActive)} onClick={() => setTab('all')}>All Clients ({clients.length})</button>
+        <button type="button" className={classNames(styles.tab, tab === 'active' && styles.tabActive)} onClick={() => setTab('active')}>Active Clients ({clients.filter((client) => client.status === 'active').length})</button>
         <button type="button" className={classNames(styles.tab, tab === 'inactive' && styles.tabActive)} onClick={() => setTab('inactive')}>Inactive Clients</button>
       </div>
       <div className={styles.clientGrid}>
@@ -663,13 +815,17 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
   );
 }
 
-function WorkshopPage({ onRecordApplication, onPreview }) {
+function WorkshopPage({
+  clients,
+  onRecordApplication,
+  onPreview,
+}) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [jobUrl, setJobUrl] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [analysisState, setAnalysisState] = useState('neutral');
   const [processing, setProcessing] = useState(false);
-  const selectedClient = APPLICANT_CLIENTS.find((client) => client.id === selectedClientId);
+  const selectedClient = clients.find((client) => client.id === selectedClientId);
   const score = analysisState === 'green' ? { resume: 80, fit: 100 } : { resume: 0, fit: 0 };
 
   const runAnalysis = () => {
@@ -699,7 +855,7 @@ function WorkshopPage({ onRecordApplication, onPreview }) {
           <label className={styles.fieldLabel}>Select Client</label>
           <select value={selectedClientId} onChange={(event) => { setSelectedClientId(event.target.value); setAnalysisState('neutral'); }}>
             <option value="">Select a client</option>
-            {APPLICANT_CLIENTS.slice(0, 4).map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
           </select>
         </div>
         {selectedClient && (
@@ -1527,8 +1683,127 @@ export default function ApplicantPortal() {
   const clientId = parts[1];
   const applicationId = parts[2] === 'applications' ? parts[3] : null;
   const [applications, setApplications] = useState(createApplicationRecords);
+  const [
+    assignedClients,
+    setAssignedClients,
+  ] = useState([]);
+  const [
+    isLoadingAssignedClients,
+    setIsLoadingAssignedClients,
+  ] = useState(false);
+  const [
+    assignedClientsError,
+    setAssignedClientsError,
+  ] = useState('');
   const [previewType, setPreviewType] = useState(null);
   const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !user?.role
+    ) {
+      return undefined;
+    }
+
+    if (
+      user.role !==
+        USER_ROLES.APPLICANT &&
+      !isApplicantPreview
+    ) {
+      setAssignedClients([]);
+      setAssignedClientsError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadAssignedClients =
+      async () => {
+        setIsLoadingAssignedClients(
+          true
+        );
+        setAssignedClientsError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const endpoint =
+            isApplicantPreview
+              ? `/api/admin/applicants/${previewApplicantId}/assignments`
+              : '/api/applicant/clients';
+
+          const response =
+            await fetch(
+              endpoint,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Assigned Clients could not be loaded.'
+            );
+          }
+
+          const clientRows =
+            isApplicantPreview
+              ? (
+                  result.clients ||
+                  []
+                ).filter(
+                  (client) =>
+                    client.isAssigned
+                )
+              : result.clients ||
+                [];
+
+          if (!cancelled) {
+            setAssignedClients(
+              clientRows.map(
+                normalizeAssignedClient
+              )
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setAssignedClients([]);
+            setAssignedClientsError(
+              error?.message ||
+                'Assigned Clients could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingAssignedClients(
+              false
+            );
+          }
+        }
+      };
+
+    loadAssignedClients();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isApplicantPreview,
+    previewApplicantId,
+    router.isReady,
+    user?.role,
+  ]);
 
   useEffect(() => {
     if (
@@ -1655,11 +1930,43 @@ export default function ApplicantPortal() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  const visibleApplications =
+    useMemo(() => {
+      const assignedClientIds =
+        new Set(
+          assignedClients.map(
+            (client) => client.id
+          )
+        );
+
+      return applications.filter(
+        (application) =>
+          assignedClientIds.has(
+            application.clientId
+          )
+      );
+    }, [
+      applications,
+      assignedClients,
+    ]);
+
+  const getApplicantRoute = (
+    pathname
+  ) =>
+    isApplicantPreview
+      ? {
+          pathname,
+          query: {
+            previewApplicantId,
+          },
+        }
+      : pathname;
+
   const changeApplication = (id, patch) => setApplications((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
-  const openApplication = (application) => router.push(`/applicant/clients/${application.clientId}/applications/${application.id}`);
-  const openClient = (client) => router.push(`/applicant/clients/${client.id}`);
-  const selectedClient = APPLICANT_CLIENTS.find((client) => client.id === clientId);
-  const selectedApplication = applications.find((application) => application.id === applicationId);
+  const openApplication = (application) => router.push(getApplicantRoute(`/applicant/clients/${application.clientId}/applications/${application.id}`));
+  const openClient = (client) => router.push(getApplicantRoute(`/applicant/clients/${client.id}`));
+  const selectedClient = assignedClients.find((client) => client.id === clientId);
+  const selectedApplication = visibleApplications.find((application) => application.id === applicationId);
 
   const recordApplication = (client, jobUrl, jobDescription) => {
     const next = {
@@ -1683,13 +1990,13 @@ export default function ApplicantPortal() {
 
   let page;
   if (section === 'clients' && applicationId && selectedApplication) {
-    page = <ApplicationDetail application={selectedApplication} onBack={() => router.push(`/applicant/clients/${selectedApplication.clientId}`)} />;
+    page = <ApplicationDetail application={selectedApplication} onBack={() => router.push(getApplicantRoute(`/applicant/clients/${selectedApplication.clientId}`))} />;
   } else if (section === 'clients' && selectedClient) {
-    page = <ClientDetail client={selectedClient} onBack={() => router.push('/applicant/clients')} />;
+    page = <ClientDetail client={selectedClient} onBack={() => router.push(getApplicantRoute('/applicant/clients'))} />;
   } else if (section === 'clients') {
-    page = <ClientsPage onOpenClient={openClient} />;
+    page = <ClientsPage clients={assignedClients} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
-    page = <WorkshopPage onRecordApplication={recordApplication} onPreview={setPreviewType} />;
+    page = <WorkshopPage clients={assignedClients} onRecordApplication={recordApplication} onPreview={setPreviewType} />;
   } else if (section === 'feedback') {
     page = (
       <FeedbackPage
@@ -1708,7 +2015,41 @@ export default function ApplicantPortal() {
   } else if (section === 'settings') {
     page = <SettingsPage />;
   } else {
-    page = <Dashboard applications={applications} onChangeRecord={changeApplication} onOpenApplication={openApplication} />;
+    page = <Dashboard clients={assignedClients} applications={visibleApplications} onChangeRecord={changeApplication} onOpenApplication={openApplication} />;
+  }
+
+  if (
+    isLoadingAssignedClients &&
+    assignedClients.length === 0
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading assigned Clients...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    assignedClientsError &&
+    !isApplicantPreview
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">
+            Assigned Clients unavailable
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {assignedClientsError}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (

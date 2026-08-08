@@ -333,27 +333,41 @@ async function createAssignment(req, res) {
   }
 
   const {
-    data: assignment,
+    data: assignmentRows,
     error: assignmentError,
-  } = await supabase
-    .from('client_applicant_assignments')
-    .insert({
-      client_id: clientId,
-      applicant_id: applicantId,
-      assigned_by: adminProfile.id,
-    })
-    .select(`
-      id,
-      client_id,
-      applicant_id,
-      assigned_by,
-      created_at
-    `)
-    .single();
+  } = await supabase.rpc(
+    'create_client_applicant_assignment',
+    {
+      p_applicant_id:
+        applicantId,
+      p_client_id:
+        clientId,
+      p_assigned_by:
+        adminProfile.id,
+    }
+  );
 
-  if (assignmentError) {
+  const assignment =
+    Array.isArray(assignmentRows)
+      ? assignmentRows[0]
+      : assignmentRows;
+
+  if (
+    assignmentError ||
+    !assignment
+  ) {
+    const assignmentMessage =
+      assignmentError?.message ||
+      '';
+
+    const normalizedMessage =
+      assignmentMessage
+        .toLowerCase();
+
     if (
-      assignmentError.code === '23505'
+      normalizedMessage.includes(
+        'already assigned to this applicant'
+      )
     ) {
       throw new ApiError(
         409,
@@ -362,15 +376,60 @@ async function createAssignment(req, res) {
     }
 
     if (
-      assignmentError.message
-        ?.toLowerCase()
-        .includes(
-          'maximum of 2 applicants'
-        )
+      normalizedMessage.includes(
+        'maximum of 2 applicants'
+      )
     ) {
       throw new ApiError(
         409,
         'This client already has the maximum of 2 applicants assigned.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'reactivate this applicant'
+      )
+    ) {
+      throw new ApiError(
+        409,
+        'Reactivate this applicant before assigning another client.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'set this applicant to available'
+      )
+    ) {
+      throw new ApiError(
+        409,
+        'Set this applicant to Available before assigning another client.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'client not found'
+      )
+    ) {
+      throw new ApiError(
+        404,
+        'The client could not be found.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'applicant not found'
+      ) ||
+      normalizedMessage.includes(
+        'applicant profile not found'
+      )
+    ) {
+      throw new ApiError(
+        404,
+        'The applicant could not be found.'
       );
     }
 
