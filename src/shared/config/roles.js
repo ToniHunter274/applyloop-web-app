@@ -24,6 +24,7 @@ export const USER_ROLES = {
   CHIEF_AUDITOR: 'chief_auditor',
   OWNER: 'owner',
   OPERATIONS: 'operations',
+  ADMIN: 'admin',
 };
 
 export const ROLE_LABELS = {
@@ -35,6 +36,7 @@ export const ROLE_LABELS = {
   [USER_ROLES.CHIEF_AUDITOR]: 'Chief Auditor',
   [USER_ROLES.OWNER]: 'Owner',
   [USER_ROLES.OPERATIONS]: 'Operations',
+  [USER_ROLES.ADMIN]: 'Administrator',
 };
 
 export const ROLE_SLUGS = {
@@ -45,6 +47,7 @@ export const ROLE_SLUGS = {
   [USER_ROLES.CHIEF_AUDITOR]: 'chief-auditor',
   [USER_ROLES.OWNER]: 'owner',
   [USER_ROLES.OPERATIONS]: 'operations',
+  [USER_ROLES.ADMIN]: 'admin',
 };
 
 export const ROLE_FROM_SLUG = Object.fromEntries(
@@ -103,6 +106,9 @@ export const ROLE_NAVIGATION = {
     { label: 'Escalations', href: 'escalations', icon: FiAlertTriangle },
     { label: 'Quality Analytics', href: 'quality', icon: FiBarChart2 },
     { label: 'Reports', href: 'reports', icon: FiFileText },
+  ]),
+    [USER_ROLES.ADMIN]: withBase('admin', [
+    { label: 'Client Management', href: '', icon: FiUsers },
   ]),
   [USER_ROLES.OWNER]: withBase('owner', [
     { label: 'Overview', href: '', icon: FiHome },
@@ -209,6 +215,14 @@ export const ROLE_PAGE_META = {
     quality: ['Quality Analytics', 'Analyze defect patterns and team-wide quality.'],
     reports: ['Audit Reports', 'Create and export audit performance reports.'],
   },
+
+  [USER_ROLES.ADMIN]: {
+    dashboard: [
+      'Client Management',
+      'Create and manage ApplyLoop client accounts.',
+    ],
+  },
+
   [USER_ROLES.OWNER]: {
     dashboard: ['Overview', 'Monitor ApplyLoop operations, growth, and service health.'],
     users: ['User Management', 'Manage staff, applicants, roles, and access.'],

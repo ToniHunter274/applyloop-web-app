@@ -36,6 +36,7 @@ import {
   FiUsers,
   FiX,
 } from 'react-icons/fi';
+import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '../../shared/context/AuthContext';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
@@ -48,6 +49,25 @@ import {
   STATUS_OPTIONS,
 } from '../../data/applicantData';
 import styles from './ApplicantPortal.module.css';
+
+async function getAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error('The Supabase connection is unavailable.');
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+
+  return session.access_token;
+}
 
 const NAVIGATION = [
   { section: 'dashboard', label: 'Dashboard', icon: FiHome, href: '/applicant' },
@@ -90,6 +110,36 @@ const createApplicationRecords = () => {
     };
   });
 };
+
+const mapAssignedClient = (client) => ({
+  id: client.id,
+  name: client.fullName,
+  role: client.assignedTeam || client.planLabel || 'Client',
+  email: client.email,
+  phone: client.phone,
+  nationality: client.country || '',
+  state: '',
+  gender: client.gender || '',
+  disability: 'N/A',
+  veteran: 'N/A',
+  workType: '',
+  schedule: client.timezone || '',
+  contract: '',
+  locations: client.country ? [client.country] : [],
+  targetCountries: client.country || '',
+  progress: client.onboarding?.progressPercent || 0,
+  rejectedRoles: 0,
+  interviews: client.interviews || 0,
+  feedbacks: 0,
+  offers: 0,
+  applications: client.applicationsCompleted || 0,
+  status: client.status,
+  notes: client.notes || '',
+  plan: client.plan,
+  priority: client.priority,
+  hasResume: client.hasResume,
+  resumeFilename: client.resumeFilename,
+});
 
 function Avatar({ name, large = false }) {
   return <span className={large ? styles.avatarLarge : styles.avatar}>{initials(name)}</span>;
@@ -353,15 +403,15 @@ function ClientCard({ client, onOpen }) {
   );
 }
 
-function ClientsPage({ onOpenClient }) {
+function ClientsPage({ clients, onOpenClient }) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all');
-  const visible = useMemo(() => APPLICANT_CLIENTS.filter((client) => {
+  const visible = useMemo(() => clients.filter((client) => {
     const query = search.trim().toLowerCase();
     const match = !query || `${client.name} ${client.role}`.toLowerCase().includes(query);
     const tabMatch = tab === 'all' || client.status === tab;
     return match && tabMatch;
-  }).slice(0, tab === 'all' ? 4 : 2), [search, tab]);
+  }).slice(0, tab === 'all' ? 4 : 2), [clients, search, tab]);
 
   return (
     <>
@@ -775,7 +825,7 @@ function Toggle({ value, onChange, label }) {
 }
 
 function SettingsPage() {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, changePassword, logout } = useAuth();
   const nameParts = (user?.name || '')
     .trim()
     .split(/\s+/)
@@ -789,10 +839,50 @@ function SettingsPage() {
     country: user?.country || '',
     timezone: user?.timezone || '',
   });
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(user?.emailNotifications ?? true);
+  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? false);
   const [saved, setSaved] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState('');
   const update = (key, value) => setProfile((current) => ({ ...current, [key]: value }));
+
+  const handleNotificationChange = async (key, value) => {
+    if (key === 'emailNotifications') setEmailNotifications(value);
+    if (key === 'pushNotifications') setPushNotifications(value);
+
+    const result = await updateProfile({
+      name: `${profile.firstName} ${profile.lastName}`,
+      [key]: value,
+    });
+
+    if (!result.success) {
+      if (key === 'emailNotifications') setEmailNotifications(!value);
+      if (key === 'pushNotifications') setPushNotifications(!value);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordStatus('');
+
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus('New passwords do not match.');
+      return;
+    }
+
+    const result = await changePassword({ currentPassword, newPassword });
+
+    if (result.success) {
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordStatus('Password updated successfully.');
+      return;
+    }
+
+    setPasswordStatus(result.error);
+  };
 
   return (
     <div className={styles.settingsPage}>
@@ -834,16 +924,17 @@ function SettingsPage() {
       <section className={styles.settingsSection}>
         <h3>Security</h3>
         <div className={styles.settingsSingle}>
-          <div className={styles.field}><label>Current Password</label><input type="password" placeholder="••••••••" /></div>
-          <div className={styles.field} style={{ marginTop: 11 }}><label>New Password</label><input type="password" placeholder="••••••••" /></div>
-          <div className={styles.field} style={{ marginTop: 11 }}><label>Confirm New Password</label><input type="password" placeholder="••••••••" /></div>
-          <button type="button" className={styles.primaryButton} style={{ marginTop: 13 }}><FiLock /> Change Password</button>
+          <div className={styles.field}><label>Current Password</label><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Enter current password" /></div>
+          <div className={styles.field} style={{ marginTop: 11 }}><label>New Password</label><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Enter new password" /></div>
+          <div className={styles.field} style={{ marginTop: 11 }}><label>Confirm New Password</label><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm new password" /></div>
+          <button type="button" className={styles.primaryButton} style={{ marginTop: 13 }} onClick={handlePasswordChange}><FiLock /> Change Password</button>
+          {passwordStatus && <p style={{ marginTop: 10, fontSize: 9, color: passwordStatus === "Password updated successfully." ? "#159a66" : "#d14343" }}>{passwordStatus}</p>}
         </div>
       </section>
       <section className={styles.settingsSection}>
         <h3>Notification Preferences</h3>
-        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle value={emailNotifications} onChange={setEmailNotifications} label="Email notifications" /></div>
-        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle value={pushNotifications} onChange={setPushNotifications} label="Push notifications" /></div>
+        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle value={emailNotifications} onChange={(value) => handleNotificationChange('emailNotifications', value)} label="Email notifications" /></div>
+        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle value={pushNotifications} onChange={(value) => handleNotificationChange('pushNotifications', value)} label="Push notifications" /></div>
       </section>
       <section className={styles.settingsSection}>
         <h3>Company · ApplyLoop</h3>
@@ -901,6 +992,9 @@ export default function ApplicantPortal() {
   const clientId = parts[1];
   const applicationId = parts[2] === 'applications' ? parts[3] : null;
   const [applications, setApplications] = useState(createApplicationRecords);
+  const [assignedClients, setAssignedClients] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [clientsError, setClientsError] = useState('');
   const [previewType, setPreviewType] = useState(null);
   const [toast, setToast] = useState('');
 
@@ -909,15 +1003,58 @@ export default function ApplicantPortal() {
   }, [router, user?.role]);
 
   useEffect(() => {
+    if (user?.role !== USER_ROLES.APPLICANT) return;
+
+    let active = true;
+
+    const loadAssignedClients = async () => {
+      setClientsLoading(true);
+      setClientsError('');
+
+      try {
+        const accessToken = await getAccessToken();
+        const response = await fetch('/api/applicant/clients', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Your assigned clients could not be loaded.');
+        }
+
+        if (active) {
+          setAssignedClients(result.clients || []);
+        }
+      } catch (error) {
+        if (active) {
+          setClientsError(error.message || 'Your assigned clients could not be loaded.');
+        }
+      } finally {
+        if (active) setClientsLoading(false);
+      }
+    };
+
+    loadAssignedClients();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.role]);
+
+  useEffect(() => {
     if (!toast) return undefined;
     const timer = window.setTimeout(() => setToast(''), 2400);
     return () => window.clearTimeout(timer);
   }, [toast]);
 
   const changeApplication = (id, patch) => setApplications((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const clientRecords = useMemo(() => assignedClients.map(mapAssignedClient), [assignedClients]);
   const openApplication = (application) => router.push(`/applicant/clients/${application.clientId}/applications/${application.id}`);
   const openClient = (client) => router.push(`/applicant/clients/${client.id}`);
-  const selectedClient = APPLICANT_CLIENTS.find((client) => client.id === clientId);
+  const selectedClient = clientRecords.find((client) => client.id === clientId);
   const selectedApplication = applications.find((application) => application.id === applicationId);
 
   const recordApplication = (client, jobUrl, jobDescription) => {
@@ -946,7 +1083,7 @@ export default function ApplicantPortal() {
   } else if (section === 'clients' && selectedClient) {
     page = <ClientDetail client={selectedClient} onBack={() => router.push('/applicant/clients')} />;
   } else if (section === 'clients') {
-    page = <ClientsPage onOpenClient={openClient} />;
+    page = <ClientsPage clients={clientRecords} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
     page = <WorkshopPage onRecordApplication={recordApplication} onPreview={setPreviewType} />;
   } else if (section === 'feedback') {
