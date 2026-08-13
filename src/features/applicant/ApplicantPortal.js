@@ -602,13 +602,13 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
   );
 }
 
-function WorkshopPage({ onRecordApplication, onPreview }) {
+function WorkshopPage({ clients, onRecordApplication, onPreview }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [jobUrl, setJobUrl] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [analysisState, setAnalysisState] = useState('neutral');
   const [processing, setProcessing] = useState(false);
-  const selectedClient = APPLICANT_CLIENTS.find((client) => client.id === selectedClientId);
+  const selectedClient = clients.find((client) => client.id === selectedClientId);
   const score = analysisState === 'green' ? { resume: 80, fit: 100 } : { resume: 0, fit: 0 };
 
   const runAnalysis = () => {
@@ -638,7 +638,7 @@ function WorkshopPage({ onRecordApplication, onPreview }) {
           <label className={styles.fieldLabel}>Select Client</label>
           <select value={selectedClientId} onChange={(event) => { setSelectedClientId(event.target.value); setAnalysisState('neutral'); }}>
             <option value="">Select a client</option>
-            {APPLICANT_CLIENTS.slice(0, 4).map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
           </select>
         </div>
         {selectedClient && (
@@ -853,7 +853,6 @@ function SettingsPage() {
     if (key === 'pushNotifications') setPushNotifications(value);
 
     const result = await updateProfile({
-      name: `${profile.firstName} ${profile.lastName}`,
       [key]: value,
     });
 
@@ -1085,7 +1084,7 @@ export default function ApplicantPortal() {
   } else if (section === 'clients') {
     page = <ClientsPage clients={clientRecords} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
-    page = <WorkshopPage onRecordApplication={recordApplication} onPreview={setPreviewType} />;
+    page = <WorkshopPage clients={clientRecords} onRecordApplication={recordApplication} onPreview={setPreviewType} />;
   } else if (section === 'feedback') {
     page = <FeedbackPage />;
   } else if (section === 'performance') {
