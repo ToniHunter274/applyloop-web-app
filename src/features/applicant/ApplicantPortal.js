@@ -409,9 +409,9 @@ function ClientsPage({ clients, onOpenClient }) {
   const visible = useMemo(() => clients.filter((client) => {
     const query = search.trim().toLowerCase();
     const match = !query || `${client.name} ${client.role}`.toLowerCase().includes(query);
-    const tabMatch = tab === 'all' || client.status === tab;
+    const tabMatch = tab === 'all' || (tab === 'inactive' ? ['paused', 'completed'].includes(client.status) : client.status === tab);
     return match && tabMatch;
-  }).slice(0, tab === 'all' ? 4 : 2), [clients, search, tab]);
+  }), [clients, search, tab]);
 
   return (
     <>

@@ -23,7 +23,6 @@ async function listClients(req, res) {
         portfolio_url,
         linkedin_url,
         resume_path,
-        notes,
         status,
         priority,
         created_at,
@@ -92,7 +91,6 @@ async function listClients(req, res) {
         status,
         completed_at,
         update_source,
-        notes,
         updated_at
       `)
       .in('client_id', clientIds)
@@ -127,7 +125,6 @@ async function listClients(req, res) {
       status: step.status,
       completedAt: step.completed_at,
       updateSource: step.update_source,
-      notes: step.notes || '',
       updatedAt: step.updated_at,
     });
 
@@ -178,7 +175,6 @@ async function listClients(req, res) {
         ? storedResumeName.replace(/^\d+-/, '')
         : null,
       hasResume: Boolean(client.resume_path),
-      notes: client.notes || '',
       status: client.status,
       priority: client.priority || 'high',
       onboarding: {
