@@ -27,15 +27,34 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { FiPlus, FiX, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
 import SEO from '../shared/components/SEO';
 import DashboardLayout from '../shared/components/DashboardLayout';
+import { createClient } from '../lib/supabase/client';
+
+async function getAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error('The Supabase connection is unavailable.');
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+
+  return session.access_token;
+}
 
 // ─── Centralized mock data (replace with API calls when backend is ready) ────
 // Backend: GET /api/users/profile, GET /api/users/preferences, etc.
 import {
-  MOCK_USER_PROFILE,
   MOCK_WORK_PREFERENCES,
   MOCK_WORK_AUTHORIZATION,
   DROPDOWN_OPTIONS,
@@ -109,7 +128,16 @@ function StyledSelect({ value, onChange, options, className = '' }) {
 }
 
 // ─── Reusable: Text input with label ─────────────────────────────────────────
-function FormInput({ label, id, type = 'text', value, onChange, colSpan, ...rest }) {
+function FormInput({
+  label,
+  id,
+  type = 'text',
+  value,
+  onChange,
+  colSpan,
+  disabled = false,
+  ...rest
+}) {
   return (
     <div className={colSpan ? 'md:col-span-2' : ''}>
       <label htmlFor={id} className="block text-xs font-semibold text-gray-900 dark:text-gray-300 mb-2">
@@ -121,7 +149,12 @@ function FormInput({ label, id, type = 'text', value, onChange, colSpan, ...rest
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#1E50C3] focus:border-transparent outline-none transition-all placeholder-gray-400"
+        disabled={disabled}
+        className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all placeholder-gray-400 ${
+          disabled
+            ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500'
+            : 'border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-[#1E50C3] focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+        }`}
         autoComplete="off"
         {...rest}
       />
@@ -135,13 +168,93 @@ export default function Settings() {
 
   // ── Tab 1: Basic Information State ──
   // TODO(Backend): Replace with useEffect + applyLoopApi.users.getProfile()
-  const [profile, setProfile] = useState(MOCK_USER_PROFILE);
+  const [profile, setProfile] = useState({
+    fullName: '',
+    gender: '',
+    email: '',
+    phone: '',
+    address: '',
+    nationality: '',
+    state: '',
+    disability: '',
+    veteran: '',
+    portfolioLink: '',
+    linkedinUrl: '',
+  });
   const [extraLinks, setExtraLinks] = useState([]); // Additional link rows beyond the 2 defaults
+  const [savedProfile, setSavedProfile] = useState(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsMessage, setSettingsMessage] = useState('');
   const fileInputRef = useRef(null);
 
   const updateProfile = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadClientSettings = async () => {
+      setIsLoadingSettings(true);
+      setSettingsError('');
+
+      try {
+        const accessToken = await getAccessToken();
+
+        const response = await fetch('/api/client/settings', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || 'Unable to load your settings.'
+          );
+        }
+
+        if (!mounted) return;
+
+        const loadedProfile = {
+          fullName: data.fullName || '',
+          gender: data.gender || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          address: data.address || '',
+          nationality: data.country || '',
+          state: data.state || '',
+          disability: data.disability || '',
+          veteran: data.veteran || '',
+          portfolioLink: data.portfolioLink || '',
+          linkedinUrl: data.linkedinUrl || '',
+        };
+
+        setProfile(loadedProfile);
+        setSavedProfile(loadedProfile);
+      } catch (error) {
+        if (mounted) {
+          setSettingsError(
+            error.message || 'Unable to load your settings.'
+          );
+        }
+      } finally {
+        if (mounted) {
+          setIsLoadingSettings(false);
+        }
+      }
+    };
+
+    loadClientSettings();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // ── Tab 2: Work Preferences State ──
   // TODO(Backend): Replace with useEffect + applyLoopApi.users.getPreferences()
@@ -183,6 +296,17 @@ export default function Settings() {
   return (
     <DashboardLayout>
       <SEO title="Settings" />
+
+      {isLoadingSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-11 w-11 animate-spin rounded-full border-4 border-blue-100 border-t-[#1E50C3]" />
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Loading your settings...
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Hidden file input for profile image upload */}
       <input
@@ -242,16 +366,114 @@ export default function Settings() {
            * ═══════════════════════════════════════════════════════════════ */}
           {activeTab === 'Basic Information' && (
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                // TODO(Backend): PUT /api/users/profile
-                // Payload: { ...profile, extraLinks }
-                // Security: Sanitize all string inputs to prevent XSS.
-                // Security: Include CSRF token in request headers.
-                console.log('Saving profile:', profile, extraLinks);
+
+                if (!isEditingProfile) return;
+
+                setIsSavingProfile(true);
+                setSettingsError('');
+                setSettingsMessage('');
+
+                try {
+                  const accessToken = await getAccessToken();
+
+                  const response = await fetch('/api/client/settings', {
+                    method: 'PATCH',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      fullName: profile.fullName,
+                      phone: profile.phone,
+                      country: profile.nationality,
+                      gender: profile.gender,
+                      address: profile.address,
+                      state: profile.state,
+                      disability: profile.disability,
+                      veteran: profile.veteran,
+                      portfolioLink: profile.portfolioLink,
+                      linkedinUrl: profile.linkedinUrl,
+                    }),
+                  });
+
+                  const data = await response.json();
+
+                  if (!response.ok) {
+                    throw new Error(
+                      data.error || 'Unable to save your settings.'
+                    );
+                  }
+
+                  const updatedProfile = {
+                    ...profile,
+                    fullName: data.fullName || '',
+                    gender: data.gender || '',
+                    email: data.email || '',
+                    phone: data.phone || '',
+                    address: data.address || '',
+                    nationality: data.country || '',
+                    state: data.state || '',
+                    disability: data.disability || '',
+                    veteran: data.veteran || '',
+                    portfolioLink: data.portfolioLink || '',
+                    linkedinUrl: data.linkedinUrl || '',
+                  };
+
+                  setProfile(updatedProfile);
+                  setSavedProfile(updatedProfile);
+                  setIsEditingProfile(false);
+                  setSettingsMessage(
+                    'Settings updated successfully.'
+                  );
+                } catch (error) {
+                  setSettingsError(
+                    error.message || 'Unable to save your settings.'
+                  );
+                } finally {
+                  setIsSavingProfile(false);
+                }
               }}
               className="max-w-4xl space-y-8 animate-fadeIn"
             >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Basic Information
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Your information is locked until you choose to edit it.
+                  </p>
+                </div>
+
+                {!isEditingProfile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingProfile(true);
+                      setSettingsError('');
+                      setSettingsMessage('');
+                    }}
+                    className="px-5 py-2.5 text-sm font-semibold text-[#1E50C3] border border-[#1E50C3] rounded-xl hover:bg-blue-50 transition-all"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              {settingsError && (
+                <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {settingsError}
+                </div>
+              )}
+
+              {settingsMessage && (
+                <div className="rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  {settingsMessage}
+                </div>
+              )}
+
               {/* Profile Image */}
               <div className="flex items-center gap-6">
                 <img
@@ -262,7 +484,12 @@ export default function Settings() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                  disabled={!isEditingProfile}
+                  className={`px-5 py-2.5 text-sm font-semibold border rounded-xl transition-all ${
+                    isEditingProfile
+                      ? 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
+                      : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed dark:bg-gray-900 dark:text-gray-600 dark:border-gray-700'
+                  }`}
                 >
                   Update Profile Image
                 </button>
@@ -270,15 +497,15 @@ export default function Settings() {
 
               {/* Personal Details Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormInput label="Full Name" id="fullName" value={profile.fullName} onChange={(v) => updateProfile('fullName', v)} />
-                <FormInput label="Gender" id="gender" value={profile.gender} onChange={(v) => updateProfile('gender', v)} />
-                <FormInput label="Email Address" id="email" type="email" value={profile.email} onChange={(v) => updateProfile('email', v)} />
-                <FormInput label="Phone Number" id="phone" type="tel" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
-                <FormInput label="Physical Address" id="address" value={profile.address} onChange={(v) => updateProfile('address', v)} colSpan />
-                <FormInput label="Nationality" id="nationality" value={profile.nationality} onChange={(v) => updateProfile('nationality', v)} />
-                <FormInput label="State/Province" id="state" value={profile.state} onChange={(v) => updateProfile('state', v)} />
-                <FormInput label="Disability" id="disability" value={profile.disability} onChange={(v) => updateProfile('disability', v)} />
-                <FormInput label="Veteran" id="veteran" value={profile.veteran} onChange={(v) => updateProfile('veteran', v)} />
+                <FormInput label="Full Name" id="fullName" value={profile.fullName} onChange={(v) => updateProfile('fullName', v)} disabled={!isEditingProfile} />
+                <FormInput label="Gender" id="gender" value={profile.gender} onChange={(v) => updateProfile('gender', v)} disabled={!isEditingProfile} />
+                <FormInput label="Email Address" id="email" type="email" value={profile.email} onChange={(v) => updateProfile('email', v)} disabled />
+                <FormInput label="Phone Number" id="phone" type="tel" value={profile.phone} onChange={(v) => updateProfile('phone', v)} disabled={!isEditingProfile} />
+                <FormInput label="Physical Address" id="address" value={profile.address} onChange={(v) => updateProfile('address', v)} colSpan disabled={!isEditingProfile} />
+                <FormInput label="Nationality" id="nationality" value={profile.nationality} onChange={(v) => updateProfile('nationality', v)} disabled={!isEditingProfile} />
+                <FormInput label="State/Province" id="state" value={profile.state} onChange={(v) => updateProfile('state', v)} disabled={!isEditingProfile} />
+                <FormInput label="Disability" id="disability" value={profile.disability} onChange={(v) => updateProfile('disability', v)} disabled={!isEditingProfile} />
+                <FormInput label="Veteran" id="veteran" value={profile.veteran} onChange={(v) => updateProfile('veteran', v)} disabled={!isEditingProfile} />
               </div>
 
               {/* Links and Portfolio */}
@@ -286,8 +513,8 @@ export default function Settings() {
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6">Links and Portfolio</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <FormInput label="Portfolio Link" id="portfolioLink" type="url" value={profile.portfolioLink} onChange={(v) => updateProfile('portfolioLink', v)} />
-                  <FormInput label="LinkedIn URL" id="linkedinUrl" type="url" value={profile.linkedinUrl} onChange={(v) => updateProfile('linkedinUrl', v)} />
+                  <FormInput label="Portfolio Link" id="portfolioLink" type="url" value={profile.portfolioLink} onChange={(v) => updateProfile('portfolioLink', v)} disabled={!isEditingProfile} />
+                  <FormInput label="LinkedIn URL" id="linkedinUrl" type="url" value={profile.linkedinUrl} onChange={(v) => updateProfile('linkedinUrl', v)} disabled={!isEditingProfile} />
 
                   {/* Dynamic extra link rows */}
                   {extraLinks.map((link, idx) => (
@@ -330,15 +557,41 @@ export default function Settings() {
                 </button>
               </div>
 
-              {/* Save Button */}
-              <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 text-sm font-semibold text-white bg-[#1E50C3] hover:bg-[#1A45A7] rounded-xl hover:shadow-lg hover:shadow-blue-500/10 transition-all active:scale-[0.98]"
-                >
-                  Save Changes
-                </button>
-              </div>
+              {isEditingProfile && (
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    type="button"
+                    disabled={isSavingProfile}
+                    onClick={() => {
+                      if (savedProfile) {
+                        setProfile(savedProfile);
+                      }
+
+                      setIsEditingProfile(false);
+                      setSettingsError('');
+                      setSettingsMessage('');
+                    }}
+                    className="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="inline-flex min-w-[145px] items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-[#1E50C3] hover:bg-[#1A45A7] rounded-xl transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
+                </div>
+              )}
             </form>
           )}
 
@@ -443,7 +696,7 @@ export default function Settings() {
                   <FiPlus className="text-lg" />
                   <span>Add New Job</span>
                 </button>
-                <p className="text-[10px] text-gray-500">* a minimum of 10% per application spread</p>
+                <p className="text-[14px] text-gray-500">* a minimum of 10% per application spread</p>
               </div>
 
               {/* Industry & Specialization */}
