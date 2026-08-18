@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -36,38 +36,16 @@ import {
   FiUsers,
   FiX,
 } from 'react-icons/fi';
-import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '../../shared/context/AuthContext';
+import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  ADMIN_FEEDBACK,
-  APPLICANT_APPLICATIONS,
-  APPLICANT_CLIENTS,
   CLIENT_FEEDBACK,
   LINK_SOURCE_OPTIONS,
   PERFORMANCE_PERIODS,
   STATUS_OPTIONS,
 } from '../../data/applicantData';
 import styles from './ApplicantPortal.module.css';
-
-async function getAccessToken() {
-  const supabase = createClient();
-
-  if (!supabase) {
-    throw new Error('The Supabase connection is unavailable.');
-  }
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session?.access_token) {
-    throw new Error('Your session has expired. Please sign in again.');
-  }
-
-  return session.access_token;
-}
 
 const NAVIGATION = [
   { section: 'dashboard', label: 'Dashboard', icon: FiHome, href: '/applicant' },
@@ -79,6 +57,52 @@ const NAVIGATION = [
 ];
 
 const classNames = (...values) => values.filter(Boolean).join(' ');
+
+async function getApplicantAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (
+    error ||
+    !session?.access_token
+  ) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
+
+const formatConversationTime = (
+  value
+) => {
+  if (!value) {
+    return '';
+  }
+
+  return new Date(
+    value
+  ).toLocaleString(
+    'en-US',
+    {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }
+  );
+};
 
 const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'AL';
 
@@ -95,50 +119,93 @@ const getStatusClass = (status) => {
   return styles.statusSubmitted;
 };
 
-const createApplicationRecords = () => {
-  const companies = ['Google', 'Meta', 'Amazon', 'Apple', 'Microsoft', 'Shopify', 'HubSpot', 'Atlassian'];
-  return Array.from({ length: 48 }, (_, index) => {
-    const seed = APPLICANT_APPLICATIONS[index % APPLICANT_APPLICATIONS.length];
-    const day = 18 - Math.floor(index / 8);
-    return {
-      ...seed,
-      id: index < APPLICANT_APPLICATIONS.length ? seed.id : `application-${String(index + 1).padStart(3, '0')}`,
-      company: index < APPLICANT_APPLICATIONS.length ? seed.company : companies[index % companies.length],
-      date: index < APPLICANT_APPLICATIONS.length ? seed.date : `Feb ${Math.max(day, 1)}, 2026`,
-      status: STATUS_OPTIONS[index % STATUS_OPTIONS.length],
-      linkSource: LINK_SOURCE_OPTIONS[index % LINK_SOURCE_OPTIONS.length],
-    };
-  });
-};
-
-const mapAssignedClient = (client) => ({
+const normalizeAssignedClient = (
+  client = {}
+) => ({
   id: client.id,
-  name: client.fullName,
-  role: client.assignedTeam || client.planLabel || 'Client',
-  email: client.email,
-  phone: client.phone,
-  nationality: client.country || '',
-  state: '',
-  gender: client.gender || '',
-  disability: 'N/A',
-  veteran: 'N/A',
-  workType: '',
-  schedule: client.timezone || '',
-  contract: '',
-  locations: client.country ? [client.country] : [],
-  targetCountries: client.country || '',
-  progress: client.onboarding?.progressPercent || 0,
-  rejectedRoles: 0,
-  interviews: client.interviews || 0,
-  feedbacks: 0,
-  offers: 0,
-  applications: client.applicationsCompleted || 0,
-  status: client.status,
-  notes: client.notes || '',
-  plan: client.plan,
-  priority: client.priority,
-  hasResume: client.hasResume,
-  resumeFilename: client.resumeFilename,
+  name:
+    client.name ||
+    client.fullName ||
+    'Unnamed Client',
+  role:
+    client.role ||
+    'Client',
+  email:
+    client.email || '',
+  phone:
+    client.phone || '',
+  nationality:
+    client.nationality ||
+    client.country ||
+    'Not provided',
+  state:
+    client.state || '',
+  gender:
+    client.gender ||
+    'Not provided',
+  disability:
+    client.disability ||
+    'Not provided',
+  veteran:
+    client.veteran ||
+    'Not provided',
+  workType:
+    client.workType ||
+    'Not provided',
+  schedule:
+    client.schedule ||
+    'Not provided',
+  contract:
+    client.contract ||
+    client.plan ||
+    'Not provided',
+  locations:
+    Array.isArray(
+      client.locations
+    )
+      ? client.locations
+      : [],
+  targetCountries:
+    client.targetCountries ||
+    client.country ||
+    'Not provided',
+  progress:
+    Number(
+      client.progress || 0
+    ),
+  rejectedRoles:
+    Number(
+      client.rejectedRoles || 0
+    ),
+  selectedRoles:
+    Number(
+      client.selectedRoles || 0
+    ),
+  interviews:
+    Number(
+      client.interviews || 0
+    ),
+  feedbacks:
+    Number(
+      client.feedbacks || 0
+    ),
+  offers:
+    Number(
+      client.offers || 0
+    ),
+  applications:
+    Number(
+      client.applications || 0
+    ),
+  applicationLimit:
+    Number(
+      client.applicationLimit || 0
+    ),
+  status:
+    client.status || 'active',
+  notes:
+    client.notes ||
+    'No admin notes available.',
 });
 
 function Avatar({ name, large = false }) {
@@ -153,17 +220,37 @@ function NotificationButton() {
   );
 }
 
-function ApplicantShell({ section, children }) {
+function ApplicantShell({
+  section,
+  children,
+  displayUser,
+  isPreview = false,
+  previewApplicantId = '',
+  onExitPreview,
+}) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const shellUser =
+    displayUser || user;
+
+  const getNavigationHref = (href) =>
+    isPreview
+      ? {
+          pathname: href,
+          query: {
+            previewApplicantId,
+          },
+        }
+      : href;
 
   return (
     <div className={styles.app}>
       <div className={styles.shell}>
         {mobileOpen && <button type="button" aria-label="Close menu" className={styles.backdrop} onClick={() => setMobileOpen(false)} />}
         <aside className={classNames(styles.sidebar, mobileOpen && styles.sidebarOpen)}>
-          <Link href="/applicant" className={styles.brand} onClick={() => setMobileOpen(false)}>
+          <Link href={getNavigationHref('/applicant')} className={styles.brand} onClick={() => setMobileOpen(false)}>
             <img src="/logo.svg" alt="ApplyLoop" className={styles.brandLogo} />
             <span>ApplyLoop</span>
           </Link>
@@ -173,7 +260,7 @@ function ApplicantShell({ section, children }) {
               return (
                 <Link
                   key={item.section}
-                  href={item.href}
+                  href={getNavigationHref(item.href)}
                   onClick={() => setMobileOpen(false)}
                   className={classNames(styles.navLink, section === item.section && styles.navLinkActive)}
                 >
@@ -185,21 +272,66 @@ function ApplicantShell({ section, children }) {
           </nav>
           <div className={styles.profileWrap}>
             <button type="button" className={styles.profile} onClick={() => setProfileOpen((value) => !value)}>
-              <Avatar name={user?.name || 'Olabanji David T.'} />
+              <Avatar name={shellUser?.name || 'Applicant'} />
               <span className={styles.profileText}>
-                <span className={styles.profileName}>{user?.name || 'Olabanji David T.'}</span>
-                <span className={styles.profileEmail}>{user?.email || 'banjidhevid216@gmail.com'}</span>
+                <span className={styles.profileName}>
+                  {shellUser?.name || 'Applicant'}
+                </span>
+                <span className={styles.profileEmail}>
+                  {shellUser?.email || ''}
+                </span>
               </span>
             </button>
             {profileOpen && (
               <div className={styles.profileMenu}>
-                <button type="button" onClick={logout}><FiLogOut /> Sign out</button>
+                {isPreview ? (
+                  <button
+                    type="button"
+                    onClick={onExitPreview}
+                  >
+                    <FiArrowLeft />
+                    Back to Applicants Management
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={logout}
+                  >
+                    <FiLogOut />
+                    Sign out
+                  </button>
+                )}
               </div>
             )}
           </div>
         </aside>
 
         <div className={styles.mainRail}>
+          {isPreview && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200 bg-blue-50 px-5 py-3 text-sm">
+              <div className="flex min-w-0 items-center gap-2 text-blue-900">
+                <FiUser className="h-4 w-4 shrink-0" />
+
+                <span className="truncate">
+                  Viewing as{' '}
+                  <strong>
+                    {shellUser?.name ||
+                      'Applicant'}
+                  </strong>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={onExitPreview}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
+              >
+                <FiArrowLeft className="h-3.5 w-3.5" />
+                Back to Applicants Management
+              </button>
+            </div>
+          )}
+
           <div className={styles.mobileBar}>
             <button type="button" aria-label="Open menu" onClick={() => setMobileOpen(true)}><FiMenu size={22} /></button>
             <span>ApplyLoop</span>
@@ -243,7 +375,14 @@ function StatCard({ label, value, foot, positive = false, warning = false }) {
   );
 }
 
-function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilter }) {
+function ApplicationTable({
+  records,
+  onChangeRecord,
+  onOpen,
+  search,
+  clientFilter,
+  readOnly = false,
+}) {
   const [page, setPage] = useState(1);
   const pageSize = 8;
   const filtered = useMemo(() => {
@@ -310,6 +449,7 @@ function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilte
                   <select
                     aria-label={`Status for ${record.company}`}
                     value={record.status}
+                    disabled={readOnly}
                     className={classNames(styles.statusSelect, getStatusClass(record.status))}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => onChangeRecord(record.id, { status: event.target.value })}
@@ -322,6 +462,7 @@ function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilte
                     <select
                       aria-label={`Link source for ${record.company}`}
                       value={record.linkSource}
+                      disabled={readOnly}
                       className={styles.sourceSelect}
                       onClick={(event) => event.stopPropagation()}
                       onChange={(event) => onChangeRecord(record.id, { linkSource: event.target.value })}
@@ -352,7 +493,14 @@ function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilte
   );
 }
 
-function Dashboard({ applications, onChangeRecord, onOpenApplication }) {
+function Dashboard({
+  applications,
+  applicationTotal,
+  clients,
+  onChangeRecord,
+  onOpenApplication,
+  readOnly = false,
+}) {
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState('');
 
@@ -360,16 +508,34 @@ function Dashboard({ applications, onChangeRecord, onOpenApplication }) {
     <>
       <PageHeader title="Dashboard" subtitle="Welcome back! Here’s your overview for today." searchable search={search} onSearch={setSearch} />
       <div className={styles.statsGrid}>
-        <StatCard label="Total Clients" value="12" />
-        <StatCard label="Active Clients" value="9" />
-        <StatCard label="Completed Applications" value="120" />
-        <StatCard label="Client Feedback" value="5" />
+        <StatCard
+          label="Total Clients"
+          value={clients.length}
+        />
+        <StatCard
+          label="Active Clients"
+          value={
+            clients.filter(
+              (client) =>
+                client.status ===
+                'active'
+            ).length
+          }
+        />
+        <StatCard
+          label="Completed Applications"
+          value={applicationTotal}
+        />
+        <StatCard
+          label="Client Feedback"
+          value="0"
+        />
       </div>
       <div className={styles.sectionTitleRow}>
         <h2 className={styles.sectionTitle}>All Assigned Clients</h2>
         <select className={styles.selectPlain} value={clientFilter} onChange={(event) => setClientFilter(event.target.value)}>
           <option value="">Select Client</option>
-          {APPLICANT_CLIENTS.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+          {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
       </div>
       <ApplicationTable
@@ -378,6 +544,7 @@ function Dashboard({ applications, onChangeRecord, onOpenApplication }) {
         clientFilter={clientFilter}
         onChangeRecord={onChangeRecord}
         onOpen={onOpenApplication}
+        readOnly={readOnly}
       />
     </>
   );
@@ -403,13 +570,27 @@ function ClientCard({ client, onOpen }) {
   );
 }
 
-function ClientsPage({ clients, onOpenClient }) {
+function ClientsPage({
+  clients,
+  onOpenClient,
+}) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all');
   const visible = useMemo(() => clients.filter((client) => {
     const query = search.trim().toLowerCase();
     const match = !query || `${client.name} ${client.role}`.toLowerCase().includes(query);
-    const tabMatch = tab === 'all' || (tab === 'inactive' ? ['paused', 'completed'].includes(client.status) : client.status === tab);
+    const tabMatch =
+      tab === 'all' ||
+      (
+        tab === 'inactive'
+          ? [
+              'paused',
+              'completed',
+            ].includes(
+              client.status
+            )
+          : client.status === tab
+      );
     return match && tabMatch;
   }), [clients, search, tab]);
 
@@ -417,19 +598,83 @@ function ClientsPage({ clients, onOpenClient }) {
     <>
       <PageHeader title="Assigned Clients" subtitle="Welcome back! Here’s your overview for today." />
       <div className={styles.statsGrid}>
-        <StatCard label="Total Clients" value="4" />
-        <StatCard label="Total Applications" value="50" />
-        <StatCard label="Completed Applications" value="12" />
-        <StatCard label="Client Feedback" value="5" />
+        <StatCard
+          label="Total Clients"
+          value={clients.length}
+        />
+        <StatCard
+          label="Total Applications"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.applications ||
+                    0
+                ),
+              0
+            )
+          }
+        />
+        <StatCard
+          label="Completed Applications"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.applications ||
+                    0
+                ),
+              0
+            )
+          }
+        />
+        <StatCard
+          label="Client Feedback"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.feedbacks ||
+                    0
+                ),
+              0
+            )
+          }
+        />
       </div>
       <label className={styles.toolbarSearch}>
         <FiSearch />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Clients" />
       </label>
       <div className={styles.tabs}>
-        <button type="button" className={classNames(styles.tab, tab === 'all' && styles.tabActive)} onClick={() => setTab('all')}>All Clients (10)</button>
-        <button type="button" className={classNames(styles.tab, tab === 'active' && styles.tabActive)} onClick={() => setTab('active')}>Active Clients (4)</button>
-        <button type="button" className={classNames(styles.tab, tab === 'inactive' && styles.tabActive)} onClick={() => setTab('inactive')}>Inactive Clients</button>
+        <button type="button" className={classNames(styles.tab, tab === 'all' && styles.tabActive)} onClick={() => setTab('all')}>All Clients ({clients.length})</button>
+        <button type="button" className={classNames(styles.tab, tab === 'active' && styles.tabActive)} onClick={() => setTab('active')}>Active Clients ({clients.filter((client) => client.status === 'active').length})</button>
+        <button
+          type="button"
+          className={classNames(
+            styles.tab,
+            tab === 'inactive' &&
+              styles.tabActive
+          )}
+          onClick={() =>
+            setTab('inactive')
+          }
+        >
+          Inactive Clients ({
+            clients.filter(
+              (client) =>
+                [
+                  'paused',
+                  'completed',
+                ].includes(
+                  client.status
+                )
+            ).length
+          })
+        </button>
       </div>
       <div className={styles.clientGrid}>
         {visible.map((client) => <ClientCard key={client.id} client={client} onOpen={onOpenClient} />)}
@@ -450,7 +695,11 @@ function ReadonlyField({ label, value, copy = false }) {
   );
 }
 
-function ClientDetail({ client, onBack }) {
+function ClientDetail({
+  client,
+  onBack,
+  showInternalNotes = false,
+}) {
   return (
     <>
       <div className={styles.detailHeader}>
@@ -464,7 +713,10 @@ function ClientDetail({ client, onBack }) {
         <NotificationButton />
       </div>
       <div className={classNames(styles.statsGrid, styles.statsGridFive)}>
-        <StatCard label="Total Applications" value={`${client.applications}/100`} />
+        <StatCard
+          label="Total Applications"
+          value={`${client.applications}/${client.applicationLimit}`}
+        />
         <StatCard label="Upcoming Interviews" value={client.interviews} />
         <StatCard label="Total Rejected Roles" value={client.rejectedRoles} />
         <StatCard label="Total Selected Roles" value={client.selectedRoles ?? 3} />
@@ -509,10 +761,21 @@ function ClientDetail({ client, onBack }) {
           </div>
         </div>
       </section>
-      <section className={styles.noteBlock}>
-        <div className={styles.noteTitle}><FiFileText /> Notes from Admin</div>
-        <p>{client.notes}</p>
-      </section>
+      {showInternalNotes && (
+        <section
+          className={styles.noteBlock}
+        >
+          <div
+            className={
+              styles.noteTitle
+            }
+          >
+            <FiFileText />
+            Internal Notes
+          </div>
+          <p>{client.notes}</p>
+        </section>
+      )}
     </>
   );
 }
@@ -549,40 +812,91 @@ function ApplicationDetail({ application, onBack }) {
         <dt><FiLink /> Job Link</dt><dd><u>{application.jobLink}</u></dd>
       </dl>
       <div className={styles.documentRow}>
-        <PdfDocument name="Submitted Resume.pdf" />
-        <PdfDocument name="Submitted Cover letter.pdf" />
+        <PdfDocument
+          name={
+            application.resume ||
+            'N/A'
+          }
+        />
+        <PdfDocument
+          name={
+            application.coverLetter ||
+            'N/A'
+          }
+        />
       </div>
+
       <section className={styles.copySection}>
         <h3>Job Details</h3>
         <ul>
-          <li>Work with team members to develop streamlined user experience processes.</li>
-          <li>Proactively pursue opportunities to improve the strategy to better address client and user objectives.</li>
-          <li>Capable of defining consumers, processes, and ideas from an objective point of view based on research and insight.</li>
-          <li>Communicate this point of view with senior management on both the agency and client sides.</li>
-          <li>Take personal responsibility for on-time deliverables.</li>
-          <li>Actively educate internal groups about user experience and provide a significant contribution to client relationships.</li>
-          <li>Be an advocate on behalf of user experience within the agency at large.</li>
-          <li>Adept at utilizing AI tools to inform and streamline their design process, from research to prototyping.</li>
-          <li>Experience working within or contributing to white-label design systems.</li>
+          {(
+            application.jobDetails ||
+            []
+          ).length > 0 ? (
+            application.jobDetails.map(
+              (item, index) => (
+                <li
+                  key={`${index}-${item}`}
+                >
+                  {item}
+                </li>
+              )
+            )
+          ) : (
+            <li>
+              No job details recorded.
+            </li>
+          )}
         </ul>
       </section>
+
       <section className={styles.copySection}>
-        <h3>Qualities and Characteristics</h3>
+        <h3>
+          Qualities and Characteristics
+        </h3>
         <ul>
-          <li>A portfolio of work demonstrating experience designing complex systems across multiple platforms, including mobile and touch-based interfaces.</li>
-          <li>A minimum of 3 years’ experience in experience and interaction design, and a thorough understanding of existing interaction design patterns across web, mobile, and other digital platforms.</li>
-          <li>Proficiency using user-centric design processes and designing for user needs based on research.</li>
-          <li>Excellent knowledge of Figma, including setting up and utilizing Figma libraries.</li>
-          <li>Strong proficiency with leading industry-standard UX design and prototyping tools.</li>
+          {(
+            application.qualities ||
+            []
+          ).length > 0 ? (
+            application.qualities.map(
+              (item, index) => (
+                <li
+                  key={`${index}-${item}`}
+                >
+                  {item}
+                </li>
+              )
+            )
+          ) : (
+            <li>
+              No qualities recorded.
+            </li>
+          )}
         </ul>
       </section>
+
       <section className={styles.copySection}>
         <h3>Other Details</h3>
         <ul>
-          <li>Remote (United States only) position.</li>
-          <li>Available during normal business hours, US Eastern Time Zone.</li>
-          <li>Full-time work schedule (40hrs/wk).</li>
-          <li>Anticipated weekly pay range between $2,600–$2,800.</li>
+          {(
+            application.otherDetails ||
+            []
+          ).length > 0 ? (
+            application.otherDetails.map(
+              (item, index) => (
+                <li
+                  key={`${index}-${item}`}
+                >
+                  {item}
+                </li>
+              )
+            )
+          ) : (
+            <li>
+              No other details recorded.
+            </li>
+          )}
         </ul>
       </section>
     </div>
@@ -602,13 +916,45 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
   );
 }
 
-function WorkshopPage({ clients, onRecordApplication, onPreview }) {
+function WorkshopPage({
+  clients,
+  onRecordApplication,
+  onPreview,
+  isPreview = false,
+  isRecordingApplication = false,
+}) {
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [jobUrl, setJobUrl] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [analysisState, setAnalysisState] = useState('neutral');
   const [processing, setProcessing] = useState(false);
-  const selectedClient = clients.find((client) => client.id === selectedClientId);
+  const activeClients =
+    clients.filter(
+      (client) =>
+        client.status === 'active'
+    );
+
+  const selectedClient =
+    activeClients.find(
+      (client) =>
+        client.id ===
+        selectedClientId
+    );
+
+  const isQuotaReached =
+    Boolean(
+      selectedClient &&
+        Number(
+          selectedClient.applications ||
+            0
+        ) >=
+          Number(
+            selectedClient.applicationLimit ||
+              0
+          )
+    );
+
   const score = analysisState === 'green' ? { resume: 80, fit: 100 } : { resume: 0, fit: 0 };
 
   const runAnalysis = () => {
@@ -631,14 +977,50 @@ function WorkshopPage({ clients, onRecordApplication, onPreview }) {
       <PageHeader
         title="Prompt Center"
         subtitle="Analyze job fit, generate tailored resumes and cover letters"
-        action={selectedClient ? <button type="button" className={styles.primaryButton} onClick={() => onRecordApplication(selectedClient, jobUrl, jobDescription)}><FiSave /> Record Application</button> : null}
+        action={
+          selectedClient &&
+          !isPreview ? (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              disabled={
+                isRecordingApplication ||
+                isQuotaReached
+              }
+              onClick={() =>
+                onRecordApplication(
+                  selectedClient,
+                  companyName,
+                  jobUrl,
+                  jobDescription
+                )
+              }
+            >
+              <FiSave />
+              {isQuotaReached
+                ? 'Application Limit Reached'
+                : isRecordingApplication
+                  ? 'Recording...'
+                  : 'Record Application'}
+            </button>
+          ) : null
+        }
       />
       <section className={styles.workshopPanel}>
         <div className={styles.clientSelector}>
           <label className={styles.fieldLabel}>Select Client</label>
           <select value={selectedClientId} onChange={(event) => { setSelectedClientId(event.target.value); setAnalysisState('neutral'); }}>
             <option value="">Select a client</option>
-            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            {activeClients.map(
+              (client) => (
+                <option
+                  key={client.id}
+                  value={client.id}
+                >
+                  {client.name}
+                </option>
+              )
+            )}
           </select>
         </div>
         {selectedClient && (
@@ -680,6 +1062,26 @@ function WorkshopPage({ clients, onRecordApplication, onPreview }) {
             <ScoreCard label="Resume Match Score" value={score.resume} note="Based on skills & experience alignment" state={analysisState} icon={FiTarget} />
             <ScoreCard label="Applicability Score" value={score.fit} note="Based on client preferences vs job" state={analysisState} icon={FiBriefcase} />
           </div>
+          <div
+            className={styles.field}
+            style={{ marginBottom: 14 }}
+          >
+            <label>
+              Company Name
+            </label>
+            <input
+              value={companyName}
+              onChange={(event) =>
+                setCompanyName(
+                  event.target.value
+                )
+              }
+              placeholder="e.g. Microsoft"
+              required
+              aria-required="true"
+            />
+          </div>
+
           <div className={styles.field} style={{ marginBottom: 14 }}>
             <label>Job Posting URL</label>
             <input value={jobUrl} onChange={(event) => setJobUrl(event.target.value)} placeholder="https://..." />
@@ -724,61 +1126,546 @@ function WorkshopPage({ clients, onRecordApplication, onPreview }) {
   );
 }
 
-function FeedbackPage() {
-  const [tab, setTab] = useState('client');
-  const [selectedId, setSelectedId] = useState(ADMIN_FEEDBACK[0].id);
-  const [response, setResponse] = useState('');
-  const [sent, setSent] = useState(false);
-  const selected = ADMIN_FEEDBACK.find((item) => item.id === selectedId) || ADMIN_FEEDBACK[0];
+function FeedbackPage({
+  previewApplicantId = '',
+  isPreview = false,
+}) {
+  const [tab, setTab] =
+    useState('client');
+  const [
+    teamMessages,
+    setTeamMessages,
+  ] = useState([]);
+  const [
+    currentProfileId,
+    setCurrentProfileId,
+  ] = useState('');
+  const [
+    messageDraft,
+    setMessageDraft,
+  ] = useState('');
+  const [
+    isLoadingMessages,
+    setIsLoadingMessages,
+  ] = useState(false);
+  const [
+    isSendingMessage,
+    setIsSendingMessage,
+  ] = useState(false);
+  const [
+    messageError,
+    setMessageError,
+  ] = useState('');
+  const [
+    messageRefreshKey,
+    setMessageRefreshKey,
+  ] = useState(0);
+
+  useEffect(() => {
+    if (tab !== 'admin') {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadMessages = async () => {
+      setIsLoadingMessages(true);
+      setMessageError('');
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const messagesEndpoint =
+          previewApplicantId
+            ? `/api/admin/applicants/${previewApplicantId}/messages`
+            : '/api/applicant/messages';
+
+        const response = await fetch(
+          messagesEndpoint,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Your messages could not be loaded.'
+          );
+        }
+
+        if (!cancelled) {
+          setTeamMessages(
+            result.messages || []
+          );
+
+          setCurrentProfileId(
+            result.currentProfileId ||
+              ''
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessageError(
+            error?.message ||
+              'Your messages could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingMessages(false);
+        }
+      }
+    };
+
+    loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tab,
+    messageRefreshKey,
+    previewApplicantId,
+  ]);
+
+  const sendTeamMessage =
+    async () => {
+      if (isPreview) {
+        setMessageError(
+          'Applicant preview is read-only. Send messages from Applicants Management.'
+        );
+        return;
+      }
+
+      const message =
+        messageDraft.trim();
+
+      if (
+        !message ||
+        isSendingMessage
+      ) {
+        return;
+      }
+
+      setIsSendingMessage(true);
+      setMessageError('');
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response = await fetch(
+          '/api/applicant/messages',
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              message,
+            }),
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Your message could not be sent.'
+          );
+        }
+
+        if (result.message) {
+          setTeamMessages(
+            (current) => [
+              ...current,
+              result.message,
+            ]
+          );
+        }
+
+        setMessageDraft('');
+      } catch (error) {
+        setMessageError(
+          error?.message ||
+            'Your message could not be sent.'
+        );
+      } finally {
+        setIsSendingMessage(false);
+      }
+    };
 
   return (
     <>
-      <PageHeader title="Feedback & Messages" subtitle="Review and respond to feedback from clients and admins" />
-      <div className={styles.feedbackTabs}>
-        <button type="button" className={classNames(styles.tab, tab === 'client' && styles.tabActive)} onClick={() => setTab('client')}>Client Feedback (2)</button>
-        <button type="button" className={classNames(styles.tab, tab === 'admin' && styles.tabActive)} onClick={() => setTab('admin')}>Admin Feedback</button>
+      <PageHeader
+        title="Feedback & Messages"
+        subtitle="Review client feedback and communicate with the ApplyLoop team"
+      />
+
+      <div
+        className={
+          styles.feedbackTabs
+        }
+      >
+        <button
+          type="button"
+          className={classNames(
+            styles.tab,
+            tab === 'client' &&
+              styles.tabActive
+          )}
+          onClick={() =>
+            setTab('client')
+          }
+        >
+          Client Feedback (
+          {CLIENT_FEEDBACK.length})
+        </button>
+
+        <button
+          type="button"
+          className={classNames(
+            styles.tab,
+            tab === 'admin' &&
+              styles.tabActive
+          )}
+          onClick={() =>
+            setTab('admin')
+          }
+        >
+          Team Messages
+        </button>
       </div>
+
       {tab === 'client' ? (
-        <div className={styles.feedbackList} style={{ maxWidth: 540 }}>
-          {CLIENT_FEEDBACK.map((item) => (
-            <article key={item.id} className={styles.feedbackCard}>
-              <div className={styles.feedbackCardHead}>
-                <div><strong>{item.client}</strong><div className={styles.feedbackRole}>{item.role}</div></div>
-                <span className={classNames(styles.statusSelect, item.status === 'Received' ? styles.statusOffer : styles.statusWaiting)}>{item.status}</span>
-              </div>
-              <p className={styles.feedbackMessage}>{item.message}</p>
-              <p className={styles.feedbackDate}>{item.date}</p>
-            </article>
-          ))}
+        <div
+          className={
+            styles.feedbackList
+          }
+          style={{
+            maxWidth: 540,
+          }}
+        >
+          {CLIENT_FEEDBACK.map(
+            (item) => (
+              <article
+                key={item.id}
+                className={
+                  styles.feedbackCard
+                }
+              >
+                <div
+                  className={
+                    styles.feedbackCardHead
+                  }
+                >
+                  <div>
+                    <strong>
+                      {item.client}
+                    </strong>
+
+                    <div
+                      className={
+                        styles.feedbackRole
+                      }
+                    >
+                      {item.role}
+                    </div>
+                  </div>
+
+                  <span
+                    className={classNames(
+                      styles.statusSelect,
+                      item.status ===
+                        'Received'
+                        ? styles.statusOffer
+                        : styles.statusWaiting
+                    )}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+
+                <p
+                  className={
+                    styles.feedbackMessage
+                  }
+                >
+                  {item.message}
+                </p>
+
+                <p
+                  className={
+                    styles.feedbackDate
+                  }
+                >
+                  {item.date}
+                </p>
+              </article>
+            )
+          )}
         </div>
       ) : (
-        <div className={styles.feedbackLayout}>
-          <div className={styles.feedbackList}>
-            {ADMIN_FEEDBACK.map((item) => (
-              <button key={item.id} type="button" className={classNames(styles.feedbackCard, item.id === selectedId && styles.feedbackCardActive)} onClick={() => { setSelectedId(item.id); setSent(false); }}>
-                <div className={styles.feedbackCardHead}>
-                  <div><strong>{item.sender}</strong><div className={styles.feedbackRole}>{item.role}</div></div>
-                  <span className={classNames(styles.statusSelect, item.status === 'Resolved' ? styles.statusOffer : styles.statusWaiting)}>{item.status}</span>
-                </div>
-                <p className={styles.feedbackMessage}>{item.message}</p>
-                <p className={styles.feedbackDate}>{item.date}</p>
-              </button>
-            ))}
-          </div>
-          <section className={styles.feedbackDetails}>
-            <h3>Feedback Details</h3>
-            <div className={styles.feedbackMeta}><strong>John Smith</strong><br />Job ID: 2026-1003-401<br /><br />Re: Google - Senior Software Engineer<br />Please emphasize my leadership experience more. Also, add more details about the recent services project.</div>
-            <div className={styles.responseBox}>
-              <label className={styles.fieldLabel}>Your Response</label>
-              <textarea className={styles.textArea} value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Type your response..." />
-              <div className={styles.responseActions}>
-                <button type="button" className={styles.primaryButton} onClick={() => setSent(true)}><FiSend /> Send Reply</button>
-                <button type="button" className={styles.secondaryButton}><FiCheckCircle /> Mark as Resolved</button>
-              </div>
-              {sent && <p style={{ color: '#159a66', fontSize: 9, marginTop: 9 }}>Reply sent successfully.</p>}
+        <section
+          className={
+            styles.teamChatShell
+          }
+        >
+          <div
+            className={
+              styles.teamChatHeader
+            }
+          >
+            <div>
+              <h3>
+                ApplyLoop Team
+              </h3>
+
+              <p>
+                Messages from Owners and Admins appear here.
+              </p>
             </div>
-          </section>
-        </div>
+
+            <button
+              type="button"
+              className={
+                styles.teamChatRefresh
+              }
+              onClick={() =>
+                setMessageRefreshKey(
+                  (current) =>
+                    current + 1
+                )
+              }
+              disabled={
+                isLoadingMessages ||
+                isSendingMessage
+              }
+              title="Refresh messages"
+              aria-label="Refresh messages"
+            >
+              <FiRefreshCw
+                className={
+                  isLoadingMessages
+                    ? styles.teamChatSpinning
+                    : ''
+                }
+              />
+            </button>
+          </div>
+
+          <div
+            className={
+              styles.teamChatMessages
+            }
+          >
+            {isLoadingMessages ? (
+              <div
+                className={
+                  styles.teamChatEmpty
+                }
+              >
+                <FiRefreshCw
+                  className={
+                    styles.teamChatSpinning
+                  }
+                />
+
+                <strong>
+                  Loading messages...
+                </strong>
+              </div>
+            ) : teamMessages.length ===
+              0 ? (
+              <div
+                className={
+                  styles.teamChatEmpty
+                }
+              >
+                <span
+                  className={
+                    styles.teamChatEmptyIcon
+                  }
+                >
+                  <FiMessageSquare />
+                </span>
+
+                <strong>
+                  No team messages yet
+                </strong>
+
+                <p>
+                  Messages from the ApplyLoop team will appear here.
+                </p>
+              </div>
+            ) : (
+              teamMessages.map(
+                (message) => {
+                  const isMine =
+                    message.senderProfileId ===
+                    currentProfileId;
+
+                  const roleLabel =
+                    message.senderRole ===
+                    'applicant'
+                      ? 'Applicant'
+                      : 'Team Member';
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={classNames(
+                        styles.teamChatMessageRow,
+                        isMine &&
+                          styles.teamChatMessageOwn
+                      )}
+                    >
+                      <div
+                        className={
+                          styles.teamChatMessageWrap
+                        }
+                      >
+                        <div
+                          className={classNames(
+                            styles.teamChatMeta,
+                            isMine &&
+                              styles.teamChatMetaOwn
+                          )}
+                        >
+                          <strong>
+                            {message.senderName}
+                          </strong>
+
+                          <span>
+                            {roleLabel}
+                          </span>
+
+                          <span>
+                            {formatConversationTime(
+                              message.createdAt
+                            )}
+                          </span>
+
+                          {isMine && (
+                            <span>
+                              {message.readAt
+                                ? 'Seen'
+                                : 'Sent'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          className={classNames(
+                            styles.teamChatBubble,
+                            isMine &&
+                              styles.teamChatBubbleOwn
+                          )}
+                        >
+                          {message.message}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              )
+            )}
+          </div>
+
+          <div
+            className={
+              styles.teamChatComposer
+            }
+          >
+            {messageError && (
+              <div
+                role="alert"
+                className={
+                  styles.teamChatError
+                }
+              >
+                {messageError}
+              </div>
+            )}
+
+            <div
+              className={
+                styles.teamChatComposerRow
+              }
+            >
+              <textarea
+                value={messageDraft}
+                onChange={(event) =>
+                  setMessageDraft(
+                    event.target.value
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key ===
+                      'Enter' &&
+                    !event.shiftKey
+                  ) {
+                    event.preventDefault();
+                    sendTeamMessage();
+                  }
+                }}
+                maxLength={4000}
+                rows={2}
+                placeholder="Reply to the ApplyLoop team..."
+              />
+
+              <button
+                type="button"
+                className={
+                  styles.teamChatSend
+                }
+                onClick={
+                  sendTeamMessage
+                }
+                disabled={
+                  isSendingMessage ||
+                  !messageDraft.trim()
+                }
+              >
+                <FiSend />
+
+                {isSendingMessage
+                  ? 'Sending...'
+                  : 'Send'}
+              </button>
+            </div>
+
+            <div
+              className={
+                styles.teamChatComposerMeta
+              }
+            >
+              <span>
+                Enter to send · Shift + Enter for a new line
+              </span>
+
+              <span>
+                {messageDraft.length}/4000
+              </span>
+            </div>
+          </div>
+        </section>
       )}
     </>
   );
@@ -986,62 +1873,426 @@ function PreviewModal({ type, onClose }) {
 export default function ApplicantPortal() {
   const router = useRouter();
   const { user } = useAuth();
+
+  const previewApplicantId =
+    typeof router.query
+      ?.previewApplicantId ===
+    'string'
+      ? router.query.previewApplicantId
+      : '';
+
+  const isApplicantPreview =
+    Boolean(
+      previewApplicantId &&
+        [
+          USER_ROLES.OWNER,
+          USER_ROLES.ADMIN,
+        ].includes(user?.role)
+    );
+
+  const [
+    previewApplicant,
+    setPreviewApplicant,
+  ] = useState(null);
+  const [
+    isLoadingApplicantPreview,
+    setIsLoadingApplicantPreview,
+  ] = useState(false);
+  const [
+    applicantPreviewError,
+    setApplicantPreviewError,
+  ] = useState('');
+
   const parts = getParts(router);
   const section = parts[0] || 'dashboard';
   const clientId = parts[1];
   const applicationId = parts[2] === 'applications' ? parts[3] : null;
-  const [applications, setApplications] = useState(createApplicationRecords);
-  const [assignedClients, setAssignedClients] = useState([]);
-  const [clientsLoading, setClientsLoading] = useState(true);
-  const [clientsError, setClientsError] = useState('');
+  const [
+    applications,
+    setApplications,
+  ] = useState([]);
+  const [
+    applicationSummary,
+    setApplicationSummary,
+  ] = useState({
+    totalApplications: 0,
+    persistedApplications: 0,
+    historicalApplications: 0,
+  });
+  const [
+    isLoadingApplications,
+    setIsLoadingApplications,
+  ] = useState(false);
+  const [
+    applicationsError,
+    setApplicationsError,
+  ] = useState('');
+  const [
+    assignedClients,
+    setAssignedClients,
+  ] = useState([]);
+  const [
+    isLoadingAssignedClients,
+    setIsLoadingAssignedClients,
+  ] = useState(false);
+  const [
+    assignedClientsError,
+    setAssignedClientsError,
+  ] = useState('');
   const [previewType, setPreviewType] = useState(null);
   const [toast, setToast] = useState('');
+  const [
+    isRecordingApplication,
+    setIsRecordingApplication,
+  ] = useState(false);
+  const recordApplicationInFlight =
+    useRef(false);
 
   useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.APPLICANT) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+    if (
+      !router.isReady ||
+      !user?.role
+    ) {
+      return undefined;
+    }
 
-  useEffect(() => {
-    if (user?.role !== USER_ROLES.APPLICANT) return;
+    if (
+      user.role !==
+        USER_ROLES.APPLICANT &&
+      !isApplicantPreview
+    ) {
+      setAssignedClients([]);
+      setAssignedClientsError('');
+      return undefined;
+    }
 
-    let active = true;
+    let cancelled = false;
 
-    const loadAssignedClients = async () => {
-      setClientsLoading(true);
-      setClientsError('');
+    const loadAssignedClients =
+      async () => {
+        setIsLoadingAssignedClients(
+          true
+        );
+        setAssignedClientsError('');
 
-      try {
-        const accessToken = await getAccessToken();
-        const response = await fetch('/api/applicant/clients', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
 
-        const result = await response.json().catch(() => ({}));
+          const endpoint =
+            isApplicantPreview
+              ? `/api/admin/applicants/${previewApplicantId}/assignments`
+              : '/api/applicant/clients';
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Your assigned clients could not be loaded.');
+          const response =
+            await fetch(
+              endpoint,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Assigned Clients could not be loaded.'
+            );
+          }
+
+          const clientRows =
+            isApplicantPreview
+              ? (
+                  result.clients ||
+                  []
+                ).filter(
+                  (client) =>
+                    client.isAssigned
+                )
+              : result.clients ||
+                [];
+
+          if (!cancelled) {
+            setAssignedClients(
+              clientRows.map(
+                normalizeAssignedClient
+              )
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setAssignedClients([]);
+            setAssignedClientsError(
+              error?.message ||
+                'Assigned Clients could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingAssignedClients(
+              false
+            );
+          }
         }
-
-        if (active) {
-          setAssignedClients(result.clients || []);
-        }
-      } catch (error) {
-        if (active) {
-          setClientsError(error.message || 'Your assigned clients could not be loaded.');
-        }
-      } finally {
-        if (active) setClientsLoading(false);
-      }
-    };
+      };
 
     loadAssignedClients();
 
     return () => {
-      active = false;
+      cancelled = true;
     };
-  }, [user?.role]);
+  }, [
+    isApplicantPreview,
+    previewApplicantId,
+    router.isReady,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !user?.role
+    ) {
+      return undefined;
+    }
+
+    if (
+      user.role !==
+        USER_ROLES.APPLICANT &&
+      !isApplicantPreview
+    ) {
+      setApplications([]);
+      setApplicationSummary({
+        totalApplications: 0,
+        persistedApplications: 0,
+        historicalApplications: 0,
+      });
+      setApplicationsError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplications =
+      async () => {
+        setIsLoadingApplications(
+          true
+        );
+        setApplicationsError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const query =
+            isApplicantPreview
+              ? `?applicantId=${encodeURIComponent(
+                  previewApplicantId
+                )}`
+              : '';
+
+          const response =
+            await fetch(
+              `/api/applications${query}`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Applications could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            const applicationRows =
+              result.applications ||
+              [];
+
+            setApplications(
+              applicationRows
+            );
+
+            setApplicationSummary(
+              result.summary || {
+                totalApplications:
+                  applicationRows.length,
+                persistedApplications:
+                  applicationRows.length,
+                historicalApplications:
+                  0,
+              }
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setApplications([]);
+            setApplicationSummary({
+              totalApplications: 0,
+              persistedApplications: 0,
+              historicalApplications: 0,
+            });
+            setApplicationsError(
+              error?.message ||
+                'Applications could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingApplications(
+              false
+            );
+          }
+        }
+      };
+
+    loadApplications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isApplicantPreview,
+    previewApplicantId,
+    router.isReady,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !user?.role
+    ) {
+      return;
+    }
+
+    if (
+      user.role !==
+        USER_ROLES.APPLICANT &&
+      !isApplicantPreview
+    ) {
+      router.replace(
+        getRoleHome(user.role)
+      );
+    }
+  }, [
+    isApplicantPreview,
+    router,
+    router.isReady,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !isApplicantPreview
+    ) {
+      setPreviewApplicant(null);
+      setApplicantPreviewError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplicantPreview =
+      async () => {
+        setIsLoadingApplicantPreview(
+          true
+        );
+        setApplicantPreviewError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const response = await fetch(
+            '/api/admin/applicants',
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          const result = await response
+            .json()
+            .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'The Applicant preview could not be loaded.'
+            );
+          }
+
+          const applicantRows =
+            Array.isArray(result)
+              ? result
+              : result.applicants ||
+                [];
+
+          const selected =
+            applicantRows.find(
+              (applicantItem) =>
+                applicantItem.id ===
+                previewApplicantId
+            );
+
+          if (!selected) {
+            throw new Error(
+              'The Applicant could not be found.'
+            );
+          }
+
+          if (!cancelled) {
+            setPreviewApplicant(
+              selected
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setApplicantPreviewError(
+              error?.message ||
+                'The Applicant preview could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingApplicantPreview(
+              false
+            );
+          }
+        }
+      };
+
+    loadApplicantPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isApplicantPreview,
+    previewApplicantId,
+    router.isReady,
+  ]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -1049,56 +2300,533 @@ export default function ApplicantPortal() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const changeApplication = (id, patch) => setApplications((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
-  const clientRecords = useMemo(() => assignedClients.map(mapAssignedClient), [assignedClients]);
-  const openApplication = (application) => router.push(`/applicant/clients/${application.clientId}/applications/${application.id}`);
-  const openClient = (client) => router.push(`/applicant/clients/${client.id}`);
-  const selectedClient = clientRecords.find((client) => client.id === clientId);
-  const selectedApplication = applications.find((application) => application.id === applicationId);
+  const visibleApplications =
+    applications;
 
-  const recordApplication = (client, jobUrl, jobDescription) => {
-    const next = {
-      id: `application-${Date.now()}`,
-      clientId: client.id,
-      client: client.name,
-      company: 'New Application',
-      position: jobDescription.split('\n')[0].replace(/^Job Title:\s*/i, '') || client.role,
-      location: 'Remote',
-      date: 'Jul 27, 2026',
-      status: 'Submitted',
-      linkSource: 'Applicant',
-      role: client.role,
-      applicationTime: 'Now',
-      preferences: ['remote', 'full-time'],
-      jobLink: jobUrl || 'Not supplied',
+  const getApplicantRoute = (
+    pathname
+  ) =>
+    isApplicantPreview
+      ? {
+          pathname,
+          query: {
+            previewApplicantId,
+          },
+        }
+      : pathname;
+
+  const changeApplication =
+    async (id, patch) => {
+      if (isApplicantPreview) {
+        setToast(
+          'Applicant preview is read-only.'
+        );
+        return;
+      }
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            `/api/applications/${id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body:
+                JSON.stringify(
+                  patch
+                ),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The Application could not be updated.'
+          );
+        }
+
+        setApplications(
+          (current) =>
+            current.map(
+              (item) =>
+                item.id === id
+                  ? {
+                      ...item,
+                      ...patch,
+                    }
+                  : item
+            )
+        );
+      } catch (error) {
+        setToast(
+          error?.message ||
+            'The Application could not be updated.'
+        );
+      }
     };
-    setApplications((current) => [next, ...current]);
-    setToast('Application recorded in the client database.');
-  };
+  const openApplication = (application) => router.push(getApplicantRoute(`/applicant/clients/${application.clientId}/applications/${application.id}`));
+  const openClient = (client) => router.push(getApplicantRoute(`/applicant/clients/${client.id}`));
+  const selectedClient = assignedClients.find((client) => client.id === clientId);
+  const selectedApplication = visibleApplications.find((application) => application.id === applicationId);
+
+  const recordApplication =
+    async (
+      client,
+      companyName,
+      jobUrl,
+      jobDescription
+    ) => {
+      const company =
+        String(
+          companyName || ''
+        ).trim();
+
+      if (!company) {
+        setToast(
+          'Enter the company name.'
+        );
+        return;
+      }
+
+      if (
+        client.status !== 'active'
+      ) {
+        setToast(
+          'Applications can only be recorded for active Clients.'
+        );
+        return;
+      }
+
+      if (
+        Number(
+          client.applications || 0
+        ) >=
+        Number(
+          client.applicationLimit || 0
+        )
+      ) {
+        setToast(
+          'This Client has reached the application limit.'
+        );
+        return;
+      }
+
+      if (
+        recordApplicationInFlight
+          .current
+      ) {
+        return;
+      }
+
+      recordApplicationInFlight
+        .current = true;
+
+      setIsRecordingApplication(
+        true
+      );
+
+      const position =
+        jobDescription
+          .split('\n')[0]
+          .replace(
+            /^Job Title:\s*/i,
+            ''
+          )
+          .trim() ||
+        client.role ||
+        'Job Application';
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            '/api/applications',
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                clientId:
+                  client.id,
+                company,
+                position,
+                location:
+                  'Remote',
+                status:
+                  'Submitted',
+                linkSource:
+                  'Applicant',
+                role:
+                  client.role ||
+                  position,
+                preferences: [
+                  'remote',
+                  'full-time',
+                ],
+                jobUrl:
+                  jobUrl ||
+                  '',
+                jobDetails:
+                  jobDescription.trim()
+                    ? [
+                        jobDescription.trim(),
+                      ]
+                    : [],
+              }),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The Application could not be recorded.'
+          );
+        }
+
+        if (result.application) {
+          setApplications(
+            (current) => [
+              result.application,
+              ...current,
+            ]
+          );
+
+          setApplicationSummary(
+            (current) => ({
+              totalApplications:
+                Number(
+                  current
+                    .totalApplications ||
+                    0
+                ) + 1,
+              persistedApplications:
+                Number(
+                  current
+                    .persistedApplications ||
+                    0
+                ) + 1,
+              historicalApplications:
+                Number(
+                  current
+                    .historicalApplications ||
+                    0
+                ),
+            })
+          );
+
+          setAssignedClients(
+            (current) =>
+              current.map(
+                (item) => {
+                  if (
+                    item.id !==
+                    client.id
+                  ) {
+                    return item;
+                  }
+
+                  const applications =
+                    Number(
+                      item.applications ||
+                        0
+                    ) + 1;
+
+                  const applicationLimit =
+                    Number(
+                      item.applicationLimit ||
+                        0
+                    );
+
+                  const progress =
+                    applicationLimit > 0
+                      ? Math.min(
+                          100,
+                          Math.round(
+                            (
+                              applications /
+                              applicationLimit
+                            ) * 100
+                          )
+                        )
+                      : 0;
+
+                  return {
+                    ...item,
+                    applications,
+                    progress,
+                  };
+                }
+              )
+          );
+        }
+
+        setToast(
+          'Application recorded in the client database.'
+        );
+      } catch (error) {
+        setToast(
+          error?.message ||
+            'The Application could not be recorded.'
+        );
+      } finally {
+        recordApplicationInFlight
+          .current = false;
+
+        setIsRecordingApplication(
+          false
+        );
+      }
+    };
 
   let page;
   if (section === 'clients' && applicationId && selectedApplication) {
-    page = <ApplicationDetail application={selectedApplication} onBack={() => router.push(`/applicant/clients/${selectedApplication.clientId}`)} />;
+    page = <ApplicationDetail application={selectedApplication} onBack={() => router.push(getApplicantRoute(`/applicant/clients/${selectedApplication.clientId}`))} />;
   } else if (section === 'clients' && selectedClient) {
-    page = <ClientDetail client={selectedClient} onBack={() => router.push('/applicant/clients')} />;
+    page = (
+      <ClientDetail
+        client={selectedClient}
+        onBack={() =>
+          router.push(
+            getApplicantRoute(
+              '/applicant/clients'
+            )
+          )
+        }
+        showInternalNotes={
+          isApplicantPreview
+        }
+      />
+    );
   } else if (section === 'clients') {
-    page = <ClientsPage clients={clientRecords} onOpenClient={openClient} />;
+    page = <ClientsPage clients={assignedClients} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
-    page = <WorkshopPage clients={clientRecords} onRecordApplication={recordApplication} onPreview={setPreviewType} />;
+    page = (
+      <WorkshopPage
+        clients={assignedClients}
+        onRecordApplication={
+          recordApplication
+        }
+        onPreview={setPreviewType}
+        isPreview={
+          isApplicantPreview
+        }
+        isRecordingApplication={
+          isRecordingApplication
+        }
+      />
+    );
   } else if (section === 'feedback') {
-    page = <FeedbackPage />;
+    page = (
+      <FeedbackPage
+        previewApplicantId={
+          isApplicantPreview
+            ? previewApplicantId
+            : ''
+        }
+        isPreview={
+          isApplicantPreview
+        }
+      />
+    );
   } else if (section === 'performance') {
     page = <PerformancePage />;
   } else if (section === 'settings') {
     page = <SettingsPage />;
   } else {
-    page = <Dashboard applications={applications} onChangeRecord={changeApplication} onOpenApplication={openApplication} />;
+    page = <Dashboard
+      clients={assignedClients}
+      applications={visibleApplications}
+      applicationTotal={
+        Number(
+          applicationSummary
+            .totalApplications || 0
+        )
+      }
+      onChangeRecord={changeApplication}
+      onOpenApplication={openApplication}
+      readOnly={isApplicantPreview}
+    />;
   }
+
+  if (
+    isLoadingAssignedClients &&
+    assignedClients.length === 0
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading assigned Clients...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    assignedClientsError &&
+    !isApplicantPreview
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">
+            Assigned Clients unavailable
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {assignedClientsError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isLoadingApplications &&
+    applications.length === 0
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading Applications...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (applicationsError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">
+            Applications unavailable
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {applicationsError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isApplicantPreview &&
+    isLoadingApplicantPreview &&
+    !previewApplicant
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading Applicant preview...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isApplicantPreview &&
+    applicantPreviewError
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">
+            Applicant preview unavailable
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {applicantPreviewError}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                '/owner/applicants-management'
+              )
+            }
+            className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Back to Applicants Management
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const applicantDisplayUser =
+    isApplicantPreview &&
+    previewApplicant
+      ? {
+          name:
+            previewApplicant.fullName ||
+            'Applicant',
+          email:
+            previewApplicant.email ||
+            '',
+        }
+      : user;
+
+  const exitApplicantPreview = () => {
+    router.push(
+      user?.role === USER_ROLES.ADMIN
+        ? '/admin'
+        : '/owner/applicants-management'
+    );
+  };
 
   return (
     <>
       <Head><title>Applicant Workspace | ApplyLoop</title><meta name="description" content="ApplyLoop applicant workspace" /></Head>
-      <ApplicantShell section={section}>{page}</ApplicantShell>
+      <ApplicantShell
+        section={section}
+        displayUser={
+          applicantDisplayUser
+        }
+        isPreview={
+          isApplicantPreview
+        }
+        previewApplicantId={
+          previewApplicantId
+        }
+        onExitPreview={
+          exitApplicantPreview
+        }
+      >
+        {page}
+      </ApplicantShell>
       <PreviewModal type={previewType} onClose={() => setPreviewType(null)} />
       {toast && <div className={styles.toast}>{toast}</div>}
     </>

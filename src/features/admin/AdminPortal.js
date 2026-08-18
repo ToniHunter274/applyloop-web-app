@@ -77,7 +77,7 @@ export default function AdminPortal() {
         />
       </Head>
 
-      <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-white lg:block">
           <div className="flex h-24 items-center border-b border-slate-200 px-6">
             <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ export default function AdminPortal() {
           </div>
         </aside>
 
-        <div className="lg:pl-64">
+        <div className="min-w-0 max-w-full lg:pl-64">
           <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
             <div className="flex min-h-24 items-center justify-between gap-4 px-5 py-4 sm:px-8">
               <div className="flex items-center gap-3 lg:hidden">
@@ -170,8 +170,8 @@ export default function AdminPortal() {
             </div>
           </header>
 
-          <main className="px-5 py-9 sm:px-8 lg:py-10">
-            <ClientManagementWorkspace />
+          <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
+            <ClientManagementWorkspace mode="admin" />
           </main>
         </div>
       </div>

@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { getRoleHome, USER_ROLES } from '../config/roles';
+import { createClient } from '../../lib/supabase/client';
 import { Avatar } from './PortalUI';
 
 const pageMeta = {
@@ -35,7 +36,42 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [title, subtitle] = pageMeta[router.pathname] || ['ApplyLoop', ''];
+  const [previewClient, setPreviewClient] = useState(null);
+  const [previewError, setPreviewError] = useState('');
+
+  const previewClientId = router.isReady
+    ? Array.isArray(router.query.previewClientId)
+      ? router.query.previewClientId[0]
+      : router.query.previewClientId || ''
+    : '';
+
+  const isClientPreview =
+    [
+      USER_ROLES.OWNER,
+      USER_ROLES.ADMIN,
+    ].includes(user?.role) &&
+    Boolean(previewClientId);
+
+  const previewRoleLabel =
+    user?.role === USER_ROLES.ADMIN
+      ? 'Admin'
+      : 'Owner';
+
+  const previewExitHref =
+    user?.role === USER_ROLES.ADMIN
+      ? '/admin'
+      : '/owner/client-management';
+
+  const displayUser =
+    isClientPreview && previewClient
+      ? {
+          name: previewClient.fullName,
+          email: previewClient.email,
+        }
+      : user;
+
+  const [title, subtitle] =
+    pageMeta[router.pathname] || ['ApplyLoop', ''];
 
   const navItems = [
     { icon: FiHome, label: 'Home', href: '/dashboard' },
@@ -45,32 +81,187 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
     { icon: FiSettings, label: 'Settings', href: '/settings' },
   ];
 
-  const handleLogout = () => typeof logoutProp === 'function' ? logoutProp() : logout();
+  const handleLogout = () =>
+    typeof logoutProp === 'function'
+      ? logoutProp()
+      : logout();
 
   useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.USER_CLIENT) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+    if (!router.isReady || !isClientPreview) {
+      setPreviewClient(null);
+      setPreviewError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadPreviewClient = async () => {
+      setPreviewError('');
+
+      try {
+        const supabase = createClient();
+
+        if (!supabase) {
+          throw new Error(
+            'The Supabase connection is unavailable.'
+          );
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (
+          sessionError ||
+          !session?.access_token
+        ) {
+          throw new Error(
+            'Your session has expired.'
+          );
+        }
+
+        const response = await fetch(
+          '/api/admin/clients',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The client could not be loaded.'
+          );
+        }
+
+        const selectedClient =
+          (result.clients || []).find(
+            (client) =>
+              String(client.id) ===
+              String(previewClientId)
+          );
+
+        if (!selectedClient) {
+          throw new Error(
+            'The selected client could not be found.'
+          );
+        }
+
+        if (!cancelled) {
+          setPreviewClient(selectedClient);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPreviewError(
+            error?.message ||
+              'The client preview could not be loaded.'
+          );
+        }
+      }
+    };
+
+    loadPreviewClient();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isClientPreview,
+    previewClientId,
+    router.isReady,
+  ]);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+
+    if (
+      user?.role &&
+      user.role !== USER_ROLES.USER_CLIENT &&
+      !isClientPreview
+    ) {
+      router.replace(getRoleHome(user.role));
+    }
+  }, [
+    isClientPreview,
+    router,
+    router.isReady,
+    user?.role,
+  ]);
 
   return (
     <div className="user-client-compact min-h-screen bg-[#eaf0ff] text-slate-900">
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-slate-200 bg-white transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-[112px] items-center justify-between border-b border-slate-100 px-6">
-          <Link href="/dashboard" className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-[26px] w-[26px]" /><span className="text-[15px] font-semibold tracking-tight">ApplyLoop</span></Link>
+          <Link href={isClientPreview ? `/dashboard?previewClientId=${encodeURIComponent(previewClientId)}` : '/dashboard'} className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-[26px] w-[26px]" /><span className="text-[15px] font-semibold tracking-tight">ApplyLoop</span></Link>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-500 md:hidden"><FiX /></button>
         </div>
         <div className="px-[14px] pt-0"><div className="rounded border border-blue-100 bg-blue-50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-[0.09em] text-blue-500">Workspace</p><p className="mt-1 text-[11px] font-semibold text-blue-950">User/Client portal</p></div></div>
         <nav className="mt-4 flex-1 space-y-[3px] overflow-y-auto px-[14px]">
           {navItems.map(({ icon: Icon, label, href }) => {
-            const active = router.pathname === href || (href === '/dashboard' && router.pathname === '/applications/[id]');
-            return <Link key={href} href={href} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal transition ${active ? 'bg-[#eaf0ff] text-[#1f56c6] font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}><Icon className="h-4 w-4" />{label}</Link>;
+            const active =
+              router.pathname === href ||
+              (href === '/dashboard' &&
+                router.pathname ===
+                  '/applications/[id]');
+
+            const targetHref = isClientPreview
+              ? `${href}?previewClientId=${encodeURIComponent(
+                  previewClientId
+                )}`
+              : href;
+
+            return (
+              <Link
+                key={href}
+                href={targetHref}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal transition ${
+                  active
+                    ? 'bg-[#eaf0ff] text-[#1f56c6] font-semibold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            );
           })}
         </nav>
         <div className="border-t border-slate-100 p-3">
           <button className="mb-1 flex w-full items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal text-slate-500 hover:bg-slate-50"><FiHelpCircle /> Help & Support</button>
           <div className="relative">
-            <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-[4px] px-2 py-2 text-left hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{user?.name || 'User/Client'}</span><span className="block truncate text-[10px] text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
-            {profileOpen && <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"><button onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"><FiLogOut /> Sign out</button></div>}
+            <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-[4px] px-2 py-2 text-left hover:bg-slate-50"><Avatar name={displayUser?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{displayUser?.name || 'User/Client'}</span><span className="block truncate text-[10px] text-slate-500">{displayUser?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
+            {profileOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                {isClientPreview ? (
+                  <Link
+                    href={previewExitHref}
+                    className="flex w-full items-center px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                  >
+                    Back to Client Management
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                  >
+                    <FiLogOut />
+                    Sign out
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -85,7 +276,44 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
             </div>
           </div>
         </header>
-        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-[13px] sm:p-[14px] lg:p-[14px]"><div className="user-client-page-surface">{children}</div></main>
+        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-[13px] sm:p-[14px] lg:p-[14px]">
+          {isClientPreview && (
+            <div className="mb-3 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-600">
+                  {previewRoleLabel} Preview
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-blue-950">
+                  {previewClient
+                    ? `Viewing as ${previewClient.fullName}`
+                    : 'Loading client preview...'}
+                </p>
+
+                <p className="mt-1 text-xs text-blue-700">
+                  You are still signed in as {previewRoleLabel}.
+                </p>
+              </div>
+
+              <Link
+                href={previewExitHref}
+                className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-white px-4 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                Back to Client Management
+              </Link>
+            </div>
+          )}
+
+          {previewError && (
+            <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {previewError}
+            </div>
+          )}
+
+          <div className="user-client-page-surface">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

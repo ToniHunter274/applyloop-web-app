@@ -2368,3 +2368,76 @@
     margin-bottom: 20px;
   }
 }
+
+
+.shineButton {
+  position: relative;
+  transition:
+    transform 300ms ease,
+    box-shadow 300ms ease,
+    background-color 300ms ease,
+    border-color 300ms ease,
+    color 300ms ease;
+}
+
+.shineButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.22);
+}
+
+.shineButton:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.shineText {
+  display: inline-block;
+  color: inherit;
+  background-image: linear-gradient(
+    110deg,
+    currentColor 0%,
+    currentColor 42%,
+    #93c5fd 50%,
+    currentColor 58%,
+    currentColor 100%
+  );
+  background-position: 150% 0;
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ownerTextShine 2.5s ease-in-out infinite;
+}
+
+.shineTextDark {
+  background-image: linear-gradient(
+    110deg,
+    currentColor 0%,
+    currentColor 42%,
+    #60a5fa 50%,
+    currentColor 58%,
+    currentColor 100%
+  );
+}
+
+@keyframes ownerTextShine {
+  0% {
+    background-position: 150% 0;
+  }
+
+  55%,
+  100% {
+    background-position: -150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shineButton {
+    transition: none;
+  }
+
+  .shineText {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}

@@ -192,7 +192,15 @@ async function cleanUpFailedCreation({
 }
 
 async function listClients(req, res) {
-  const { supabase } = await requireAdmin(req);
+  const {
+    profile: adminProfile,
+    supabase,
+  } = await requireAdmin(req);
+
+  const canAccessInternalNotes = [
+    'admin',
+    'owner',
+  ].includes(adminProfile.role);
 
   const { data: clientRows, error: clientsError } =
     await supabase
@@ -209,7 +217,7 @@ async function listClients(req, res) {
         portfolio_url,
         linkedin_url,
         resume_path,
-        notes,
+        ${canAccessInternalNotes ? 'notes,' : ''}
         status,
         priority,
         created_at,
@@ -283,7 +291,7 @@ async function listClients(req, res) {
         status,
         completed_at,
         update_source,
-        notes,
+        ${canAccessInternalNotes ? 'notes,' : ''}
         updated_at
       `)
       .in('client_id', clientIds)
@@ -304,6 +312,193 @@ async function listClients(req, res) {
     onboardingRows = onboardingData || [];
   }
 
+  let clientAssignmentRows = [];
+
+  if (clientIds.length > 0) {
+    const {
+      data: assignments,
+      error: assignmentsError,
+    } = await supabase
+      .from(
+        'client_applicant_assignments'
+      )
+      .select(`
+        client_id,
+        applicant_id
+      `)
+      .in('client_id', clientIds);
+
+    if (assignmentsError) {
+      console.error(
+        'Unable to load client applicant assignments:',
+        assignmentsError
+      );
+
+      throw new ApiError(
+        500,
+        'The client assignments could not be loaded.'
+      );
+    }
+
+    clientAssignmentRows =
+      assignments || [];
+  }
+
+  const assignedApplicantIds = [
+    ...new Set(
+      clientAssignmentRows.map(
+        (assignment) =>
+          assignment.applicant_id
+      )
+    ),
+  ];
+
+  let assignedApplicantRows = [];
+
+  if (
+    assignedApplicantIds.length > 0
+  ) {
+    const {
+      data: applicants,
+      error: applicantsError,
+    } = await supabase
+      .from('applicants')
+      .select(`
+        id,
+        user_id,
+        availability
+      `)
+      .in(
+        'id',
+        assignedApplicantIds
+      );
+
+    if (applicantsError) {
+      console.error(
+        'Unable to load assigned applicants:',
+        applicantsError
+      );
+
+      throw new ApiError(
+        500,
+        'The assigned applicants could not be loaded.'
+      );
+    }
+
+    assignedApplicantRows =
+      applicants || [];
+  }
+
+  const assignedApplicantUserIds = [
+    ...new Set(
+      assignedApplicantRows.map(
+        (applicant) =>
+          applicant.user_id
+      )
+    ),
+  ];
+
+  let assignedApplicantProfiles = [];
+
+  if (
+    assignedApplicantUserIds.length > 0
+  ) {
+    const {
+      data: applicantProfiles,
+      error: applicantProfilesError,
+    } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        email,
+        full_name,
+        account_status
+      `)
+      .in(
+        'id',
+        assignedApplicantUserIds
+      );
+
+    if (applicantProfilesError) {
+      console.error(
+        'Unable to load assigned applicant profiles:',
+        applicantProfilesError
+      );
+
+      throw new ApiError(
+        500,
+        'The assigned applicant profiles could not be loaded.'
+      );
+    }
+
+    assignedApplicantProfiles =
+      applicantProfiles || [];
+  }
+
+  const assignedApplicantRowsById =
+    new Map(
+      assignedApplicantRows.map(
+        (applicant) => [
+          applicant.id,
+          applicant,
+        ]
+      )
+    );
+
+  const assignedApplicantProfilesById =
+    new Map(
+      assignedApplicantProfiles.map(
+        (profile) => [
+          profile.id,
+          profile,
+        ]
+      )
+    );
+
+  const assignedApplicantsByClientId =
+    new Map();
+
+  clientAssignmentRows.forEach(
+    (assignment) => {
+      const applicant =
+        assignedApplicantRowsById.get(
+          assignment.applicant_id
+        );
+
+      if (!applicant) {
+        return;
+      }
+
+      const profile =
+        assignedApplicantProfilesById.get(
+          applicant.user_id
+        );
+
+      const currentApplicants =
+        assignedApplicantsByClientId.get(
+          assignment.client_id
+        ) || [];
+
+      currentApplicants.push({
+        id: applicant.id,
+        fullName:
+          profile?.full_name ||
+          'Unnamed Applicant',
+        email: profile?.email || '',
+        availability:
+          applicant.availability,
+        accountStatus:
+          profile?.account_status ||
+          'active',
+      });
+
+      assignedApplicantsByClientId.set(
+        assignment.client_id,
+        currentApplicants
+      );
+    }
+  );
+
   const onboardingByClientId = new Map();
 
   onboardingRows.forEach((step) => {
@@ -318,7 +513,11 @@ async function listClients(req, res) {
       status: step.status,
       completedAt: step.completed_at,
       updateSource: step.update_source,
-      notes: step.notes || '',
+      ...(canAccessInternalNotes
+        ? {
+            notes: step.notes || '',
+          }
+        : {}),
       updatedAt: step.updated_at,
     });
 
@@ -383,12 +582,26 @@ async function listClients(req, res) {
         client.applications_completed,
       interviews: client.interviews,
       assignedTeam: client.assigned_team || '',
+      assignedApplicants:
+        assignedApplicantsByClientId.get(
+          client.id
+        ) || [],
+      assignmentCount: (
+        assignedApplicantsByClientId.get(
+          client.id
+        ) || []
+      ).length,
+      assignmentLimit: 2,
       gender: client.gender || '',
       portfolioUrl: client.portfolio_url || '',
       linkedinUrl: client.linkedin_url || '',
       resumeFilename,
       hasResume: Boolean(client.resume_path),
-      notes: client.notes || '',
+      ...(canAccessInternalNotes
+        ? {
+            notes: client.notes || '',
+          }
+        : {}),
       status: client.status,
       priority: client.priority || 'high',
       onboarding: {
@@ -453,6 +666,21 @@ async function createClient(req, res) {
       'Notes',
       2000
     );
+
+    const canAccessInternalNotes = [
+      'admin',
+      'owner',
+    ].includes(adminProfile.role);
+
+    if (
+      !canAccessInternalNotes &&
+      notes
+    ) {
+      throw new ApiError(
+        403,
+        'Operations accounts cannot create internal client notes.'
+      );
+    }
 
     const portfolioUrl = validateOptionalUrl(
       getField(fields, 'portfolioUrl'),
@@ -569,7 +797,11 @@ async function createClient(req, res) {
         portfolio_url: portfolioUrl,
         linkedin_url: linkedinUrl,
         resume_path: resumePath,
-        notes,
+        ...(canAccessInternalNotes
+          ? {
+              notes,
+            }
+          : {}),
         status: 'active',
         priority: 'high',
         created_by: adminProfile.id,

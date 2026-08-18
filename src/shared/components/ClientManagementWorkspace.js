@@ -25,6 +25,7 @@ import {
   FiUploadCloud,
   FiX,
 } from 'react-icons/fi';
+import PasswordResetConfirmationModal from './PasswordResetConfirmationModal';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import { createClient } from '../../lib/supabase/client';
 import {
@@ -64,6 +65,25 @@ const statusFilterOptions = [
   {
     value: 'completed',
     label: 'Completed',
+  },
+];
+
+const onboardingFilterOptions = [
+  {
+    value: 'all',
+    label: 'All Onboarding',
+  },
+  {
+    value: 'pre_application',
+    label: 'Pre Application (1-7)',
+  },
+  {
+    value: 'application',
+    label: 'Application (8)',
+  },
+  {
+    value: 'post_application',
+    label: 'Post Application (9-12)',
   },
 ];
 
@@ -403,6 +423,7 @@ function ModalShell({
 function OnboardingTimeline({
   onboarding,
   onEditStep,
+  showInternalNotes = true,
 }) {
   const steps = onboarding?.steps || [];
   const currentStepKey =
@@ -427,8 +448,9 @@ function OnboardingTimeline({
           </h3>
 
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Select any stage to update its status or add
-            internal notes.
+            {showInternalNotes
+              ? 'Select any stage to update its status or add internal notes.'
+              : 'Select any stage to update its status.'}
           </p>
         </div>
 
@@ -572,11 +594,12 @@ function OnboardingTimeline({
                   </span>
                 </span>
 
-                {step.notes && (
-                  <span className="mt-2 block text-xs leading-5 text-slate-500">
-                    {step.notes}
-                  </span>
-                )}
+                {showInternalNotes &&
+                  step.notes && (
+                    <span className="mt-2 block text-xs leading-5 text-slate-500">
+                      {step.notes}
+                    </span>
+                  )}
               </span>
             </button>
           );
@@ -631,6 +654,11 @@ export default function ClientManagementWorkspace({
   mode = 'admin',
 }) {
   const router = useRouter();
+
+  const canAccessInternalNotes = [
+    'admin',
+    'owner',
+  ].includes(mode);
   const allowNextRouteRef = useRef(false);
 
   const [clients, setClients] = useState([]);
@@ -641,6 +669,8 @@ export default function ClientManagementWorkspace({
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
   const [statusFilter, setStatusFilter] =
+    useState('all');
+  const [onboardingFilter, setOnboardingFilter] =
     useState('all');
 
   const [activeModal, setActiveModal] = useState(null);
@@ -675,6 +705,14 @@ export default function ClientManagementWorkspace({
     useState(null);
   const [resettingClientId, setResettingClientId] =
     useState(null);
+  const [
+    passwordResetClient,
+    setPasswordResetClient,
+  ] = useState(null);
+  const [
+    passwordResetError,
+    setPasswordResetError,
+  ] = useState('');
 
   const [onboardingStep, setOnboardingStep] =
     useState(null);
@@ -893,14 +931,35 @@ export default function ClientManagementWorkspace({
         statusFilter === 'all' ||
         client.status === statusFilter;
 
+      const currentStepOrder = Number(
+        client.onboarding?.currentStep
+          ?.stepOrder || 0
+      );
+
+      const matchesOnboarding =
+        onboardingFilter === 'all' ||
+        (onboardingFilter ===
+          'pre_application' &&
+          currentStepOrder >= 1 &&
+          currentStepOrder <= 7) ||
+        (onboardingFilter ===
+          'application' &&
+          currentStepOrder === 8) ||
+        (onboardingFilter ===
+          'post_application' &&
+          currentStepOrder >= 9 &&
+          currentStepOrder <= 12);
+
       return (
         matchesSearch &&
         matchesPlan &&
-        matchesStatus
+        matchesStatus &&
+        matchesOnboarding
       );
     });
   }, [
     clients,
+    onboardingFilter,
     planFilter,
     search,
     statusFilter,
@@ -1057,7 +1116,11 @@ export default function ClientManagementWorkspace({
     setSelectedClient(client);
     setOnboardingStep(step);
     setOnboardingStatus(step.status);
-    setOnboardingNotes(step.notes || '');
+    setOnboardingNotes(
+      canAccessInternalNotes
+        ? step.notes || ''
+        : ''
+    );
     setFormError('');
     setActiveModal('onboarding');
   };
@@ -1084,7 +1147,11 @@ export default function ClientManagementWorkspace({
           body: JSON.stringify({
             stepKey: onboardingStep.stepKey,
             status: onboardingStatus,
-            notes: onboardingNotes,
+            ...(canAccessInternalNotes
+              ? {
+                  notes: onboardingNotes,
+                }
+              : {}),
           }),
         }
       );
@@ -1305,6 +1372,7 @@ export default function ClientManagementWorkspace({
   const resetClientPassword = async (client) => {
     setResettingClientId(client.id);
     setListError('');
+    setPasswordResetError('');
 
     try {
       const accessToken = await getAccessToken();
@@ -1330,6 +1398,8 @@ export default function ClientManagementWorkspace({
         );
       }
 
+      setPasswordResetClient(null);
+      setPasswordResetError('');
       setSelectedClient(client);
       setCredentialContext('reset');
       setCredentialsSaved(false);
@@ -1338,10 +1408,12 @@ export default function ClientManagementWorkspace({
       setCredentials(result.credentials);
       setActiveModal('create');
     } catch (error) {
-      setListError(
+      const message =
         error?.message ||
-          'A new password could not be generated.'
-      );
+        'A new password could not be generated.';
+
+      setPasswordResetError(message);
+      setListError(message);
     } finally {
       setResettingClientId(null);
     }
@@ -1455,7 +1527,7 @@ export default function ClientManagementWorkspace({
         </div>
 
         <div className="mt-9 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="grid gap-4 border-b border-slate-200 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_210px_210px]">
+          <div className="grid gap-4 border-b border-slate-200 p-5 sm:p-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_180px_180px_220px]">
             <label className="relative block">
               <FiSearch className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
 
@@ -1484,6 +1556,14 @@ export default function ClientManagementWorkspace({
               defaultValue="all"
               options={statusFilterOptions}
               onChange={setStatusFilter}
+            />
+
+            <CustomSelect
+              name="onboardingFilter"
+              compact
+              defaultValue="all"
+              options={onboardingFilterOptions}
+              onChange={setOnboardingFilter}
             />
           </div>
 
@@ -1537,8 +1617,8 @@ export default function ClientManagementWorkspace({
             </div>
           ) : (
             <>
-              <div className="client-table-scroll overflow-x-auto">
-                <table className="client-data-table w-full min-w-[1380px] border-collapse text-left">
+              <div className="client-table-scroll w-full min-w-0 max-w-full overflow-x-auto">
+                <table className="client-data-table w-full min-w-[980px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/70">
                       {[
@@ -1546,7 +1626,7 @@ export default function ClientManagementWorkspace({
                         'PLAN TYPE',
                         'APPLICATIONS',
                         'INTERVIEWS',
-                        'ASSIGNED TEAM',
+                        'ASSIGNED APPLICANTS',
                         'STATUS',
                         'PRIORITY',
                         'ONBOARDING',
@@ -1575,13 +1655,32 @@ export default function ClientManagementWorkspace({
                           className="border-b border-slate-100 transition-colors hover:bg-slate-50/80"
                         >
                           <td className="px-5 py-4">
-                            <p className="font-semibold text-slate-900">
-                              {client.fullName}
-                            </p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push({
+                                  pathname: '/dashboard',
+                                  query: {
+                                    previewClientId:
+                                      client.id,
+                                  },
+                                })
+                              }
+                              className="group text-left"
+                            >
+                              <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
+                                {client.fullName}
+                              </span>
 
-                            <p className="mt-1 text-xs text-slate-500">
-                              {client.email}
-                            </p>
+                              <span className="mt-1 block text-xs text-slate-500">
+                                {client.email}
+                              </span>
+
+                              <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                View as Client
+                                <FiExternalLink className="h-3 w-3" />
+                              </span>
+                            </button>
                           </td>
 
                           <td className="px-5 py-4">
@@ -1599,9 +1698,42 @@ export default function ClientManagementWorkspace({
                             {client.interviews}
                           </td>
 
-                          <td className="px-5 py-4 text-sm text-slate-700">
-                            {client.assignedTeam ||
-                              'Unassigned'}
+                          <td className="min-w-[170px] px-5 py-4">
+                            {(
+                              client.assignedApplicants ||
+                              []
+                            ).length > 0 ? (
+                              <div>
+                                <div className="space-y-1">
+                                  {client.assignedApplicants.map(
+                                    (applicant) => (
+                                      <p
+                                        key={applicant.id}
+                                        className="text-xs font-semibold text-slate-800"
+                                      >
+                                        {applicant.fullName}
+                                      </p>
+                                    )
+                                  )}
+                                </div>
+
+                                <span className="mt-2 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">
+                                  {client.assignmentCount ||
+                                    0}
+                                  /2 assigned
+                                </span>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-sm text-slate-400">
+                                  Unassigned
+                                </p>
+
+                                <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+                                  0/2 assigned
+                                </span>
+                              </div>
+                            )}
                           </td>
 
                           <td className="px-5 py-4">
@@ -1632,7 +1764,7 @@ export default function ClientManagementWorkspace({
                             </span>
                           </td>
 
-                          <td className="min-w-[210px] px-5 py-4">
+                          <td className="min-w-[175px] px-5 py-4">
                             <button
                               type="button"
                               onClick={() =>
@@ -1724,7 +1856,7 @@ export default function ClientManagementWorkspace({
                           </td>
 
                           <td className="px-5 py-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
                               <ActionIconButton
                                 label="View client details"
                                 onClick={() =>
@@ -1785,10 +1917,13 @@ export default function ClientManagementWorkspace({
                               </ActionIconButton>
 
                               <ActionIconButton
-                                label="Generate new temporary password"
-                                onClick={() =>
-                                  resetClientPassword(client)
-                                }
+                                label="Reset temporary password"
+                                onClick={() => {
+                                  setPasswordResetError('');
+                                  setPasswordResetClient(
+                                    client
+                                  );
+                                }}
                                 disabled={
                                   resettingClientId ===
                                   client.id
@@ -1844,6 +1979,33 @@ export default function ClientManagementWorkspace({
           )}
         </div>
       </section>
+
+      <PasswordResetConfirmationModal
+        open={Boolean(passwordResetClient)}
+        name={
+          passwordResetClient?.fullName || ''
+        }
+        email={
+          passwordResetClient?.email || ''
+        }
+        error={passwordResetError}
+        isSubmitting={
+          resettingClientId ===
+          passwordResetClient?.id
+        }
+        onClose={() => {
+          if (!resettingClientId) {
+            setPasswordResetClient(null);
+            setPasswordResetError('');
+          }
+        }}
+        onConfirm={() =>
+          passwordResetClient &&
+          resetClientPassword(
+            passwordResetClient
+          )
+        }
+      />
 
       {activeModal === 'details' && selectedClient && (
         <ModalShell
@@ -1940,14 +2102,19 @@ export default function ClientManagementWorkspace({
               )}
             </DetailItem>
 
-            <DetailItem label="Notes">
-              {selectedClient.notes || 'No notes'}
-            </DetailItem>
+            {canAccessInternalNotes && (
+              <DetailItem label="Notes">
+                {selectedClient.notes || 'No notes'}
+              </DetailItem>
+            )}
           </div>
 
           <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7">
             <OnboardingTimeline
               onboarding={selectedClient.onboarding}
+              showInternalNotes={
+                canAccessInternalNotes
+              }
               onEditStep={(step) =>
                 openOnboardingEditor(
                   selectedClient,
@@ -1963,10 +2130,24 @@ export default function ClientManagementWorkspace({
               onClick={() =>
                 copyClientEmail(selectedClient)
               }
-              className="shine-button inline-flex items-center justify-center gap-2 rounded-[14px] border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+              className={cn(
+                'shine-button inline-flex items-center justify-center gap-2 rounded-[14px] border px-5 py-3 text-sm font-semibold',
+                copiedClientId === selectedClient.id
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-slate-300 bg-white text-slate-700'
+              )}
             >
-              <FiCopy />
-              <ShineText dark>Copy Email</ShineText>
+              {copiedClientId === selectedClient.id ? (
+                <FiCheckCircle />
+              ) : (
+                <FiCopy />
+              )}
+
+              <ShineText dark>
+                {copiedClientId === selectedClient.id
+                  ? 'Copied'
+                  : 'Copy Email'}
+              </ShineText>
             </button>
 
             {selectedClient.hasResume && (
@@ -2212,14 +2393,13 @@ export default function ClientManagementWorkspace({
 
               <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-5">
                 <p className="font-bold text-orange-800">
-                  Priority changes will:
+                  Priority changes are saved immediately.
                 </p>
 
-                <ul className="mt-3 space-y-1.5 text-sm text-orange-700">
-                  <li>• Update the client table immediately.</li>
-                  <li>• Appear in both Admin and Owner views.</li>
-                  <li>• Remain saved after refreshing.</li>
-                </ul>
+                <p className="mt-2 text-sm leading-6 text-orange-700">
+                  The selected priority will update the client
+                  table and remain saved after refreshing.
+                </p>
               </div>
             </div>
 
@@ -2318,26 +2498,28 @@ export default function ClientManagementWorkspace({
                 />
               </div>
 
-              <label className="mt-6 block text-sm font-semibold text-slate-700">
-                Internal notes
+              {canAccessInternalNotes && (
+                <label className="mt-6 block text-sm font-semibold text-slate-700">
+                  Internal notes
 
-                <textarea
-                  value={onboardingNotes}
-                  onChange={(event) =>
-                    setOnboardingNotes(
-                      event.target.value
-                    )
-                  }
-                  rows={4}
-                  maxLength={1000}
-                  placeholder="Add useful context about this onboarding stage."
-                  className={`${inputClassName} resize-y`}
-                />
+                  <textarea
+                    value={onboardingNotes}
+                    onChange={(event) =>
+                      setOnboardingNotes(
+                        event.target.value
+                      )
+                    }
+                    rows={4}
+                    maxLength={1000}
+                    placeholder="Add useful context about this onboarding stage."
+                    className={`${inputClassName} resize-y`}
+                  />
 
-                <span className="mt-2 block text-right text-xs text-slate-400">
-                  {onboardingNotes.length}/1000
-                </span>
-              </label>
+                  <span className="mt-2 block text-right text-xs text-slate-400">
+                    {onboardingNotes.length}/1000
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
@@ -2439,9 +2621,9 @@ export default function ClientManagementWorkspace({
 
               {!credentialsSaved && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-                  The close button, Escape key, and background click
-                  are temporarily disabled. Copy or download the
-                  credentials before leaving this screen.
+                  Copy or download these credentials now. They
+                  will not be shown again after you leave this
+                  screen.
                 </div>
               )}
 
@@ -2491,8 +2673,8 @@ export default function ClientManagementWorkspace({
               </div>
 
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-                A lost password can be replaced later using the key
-                icon in the client&apos;s Actions column.
+                You can reset the client&apos;s password later
+                using the key icon in the Actions column.
               </p>
             </div>
           ) : (
@@ -2648,17 +2830,19 @@ export default function ClientManagementWorkspace({
                 </label>
               </div>
 
-              <label className="mt-5 block text-sm font-semibold text-slate-700">
-                Notes
+              {canAccessInternalNotes && (
+                <label className="mt-5 block text-sm font-semibold text-slate-700">
+                  Notes
 
-                <textarea
-                  name="notes"
-                  rows={4}
-                  maxLength={2000}
-                  placeholder="Add any onboarding details or instructions."
-                  className={`${inputClassName} resize-y`}
-                />
-              </label>
+                  <textarea
+                    name="notes"
+                    rows={4}
+                    maxLength={2000}
+                    placeholder="Add any onboarding details or instructions."
+                    className={`${inputClassName} resize-y`}
+                  />
+                </label>
+              )}
 
               <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
                 <button
@@ -2742,8 +2926,27 @@ export default function ClientManagementWorkspace({
 
         .client-data-table th,
         .client-data-table td {
-          padding-left: 0.875rem;
-          padding-right: 0.875rem;
+          padding-left: 0.75rem;
+          padding-right: 0.75rem;
+        }
+
+        @media (max-width: 1700px) {
+          .client-data-table th:nth-child(4),
+          .client-data-table td:nth-child(4),
+          .client-data-table th:nth-child(9),
+          .client-data-table td:nth-child(9),
+          .client-data-table th:nth-child(10),
+          .client-data-table td:nth-child(10) {
+            display: none;
+          }
+        }
+
+        @media (max-width: 1600px) {
+          .client-data-table th,
+          .client-data-table td {
+            padding-left: 0.625rem;
+            padding-right: 0.625rem;
+          }
         }
 
         .client-table-scroll {

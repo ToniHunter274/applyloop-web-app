@@ -297,20 +297,42 @@ export const AuthProvider = ({ children }) => {
 
       const changes = profileData || {};
 
-      const fullName =
-        changes.name?.trim() ||
-        [changes.firstName, changes.lastName]
-          .filter(Boolean)
-          .join(' ')
-          .trim();
+      const hasNameChange =
+        Object.prototype.hasOwnProperty.call(
+          changes,
+          'name'
+        ) ||
+        Object.prototype.hasOwnProperty.call(
+          changes,
+          'firstName'
+        ) ||
+        Object.prototype.hasOwnProperty.call(
+          changes,
+          'lastName'
+        );
 
-      if (!fullName) {
-        throw new Error('Enter your full name.');
+      const profileUpdates = {};
+
+      if (hasNameChange) {
+        const fullName =
+          changes.name?.trim() ||
+          [
+            changes.firstName,
+            changes.lastName,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+        if (!fullName) {
+          throw new Error(
+            'Enter your full name.'
+          );
+        }
+
+        profileUpdates.full_name =
+          fullName;
       }
-
-      const profileUpdates = {
-        full_name: fullName,
-      };
 
       if (Object.prototype.hasOwnProperty.call(changes, 'phone')) {
         profileUpdates.phone = changes.phone?.trim() || null;
@@ -330,6 +352,15 @@ export const AuthProvider = ({ children }) => {
 
       if (Object.prototype.hasOwnProperty.call(changes, 'pushNotifications')) {
         profileUpdates.push_notifications = Boolean(changes.pushNotifications);
+      }
+
+      if (
+        Object.keys(profileUpdates)
+          .length === 0
+      ) {
+        throw new Error(
+          'No profile changes were provided.'
+        );
       }
 
       const supabase = createClient();
