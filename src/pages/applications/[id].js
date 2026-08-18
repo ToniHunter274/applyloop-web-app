@@ -11,9 +11,11 @@ import {
   FiX,
   FiMessageSquare,
   FiFileText,
+  FiCheck,
 } from 'react-icons/fi';
 
 import DashboardLayout from '../../shared/components/DashboardLayout';
+import ApproveModal from '../../shared/components/ApproveModal';
 import { createClient } from '../../lib/supabase/client';
 
 async function getAccessToken() {
@@ -289,6 +291,14 @@ export default function ApplicationDetailPage() {
   ] = useState('');
   const [showFeedback, setShowFeedback] =
     useState(false);
+  const [
+    isApproveModalOpen,
+    setIsApproveModalOpen,
+  ] = useState(false);
+  const [isApproving, setIsApproving] =
+    useState(false);
+  const [approvalError, setApprovalError] =
+    useState('');
 
   useEffect(() => {
     if (!router.isReady) return undefined;
@@ -390,6 +400,61 @@ export default function ApplicationDetailPage() {
           ...current,
           data.message,
         ]);
+      }
+    };
+
+  const handleApproveApplication =
+    async () => {
+      if (!application || isApproving) {
+        return;
+      }
+
+      setIsApproving(true);
+      setApprovalError('');
+
+      try {
+        const accessToken =
+          await getAccessToken();
+
+        const response = await fetch(
+          `/api/client/applications/${application.id}/approve`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Unable to approve this application.'
+          );
+        }
+
+        setApplication((current) => ({
+          ...current,
+          clientApprovalStatus:
+            data.approval?.status ||
+            'approved',
+          clientApprovedAt:
+            data.approval?.approvedAt ||
+            new Date().toISOString(),
+        }));
+
+        setIsApproveModalOpen(false);
+      } catch (error) {
+        setApprovalError(
+          error.message ||
+            'Unable to approve this application.'
+        );
+      } finally {
+        setIsApproving(false);
       }
     };
 
@@ -600,7 +665,35 @@ export default function ApplicationDetailPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex flex-wrap justify-end gap-3 mt-6">
+                {application.clientApprovalStatus ===
+                'approved' ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 text-sm font-semibold cursor-default"
+                  >
+                    <FiCheck className="w-4 h-4" />
+                    Approved
+                  </button>
+                ) : [
+                    'pending',
+                    'changes_requested',
+                  ].includes(
+                    application.clientApprovalStatus
+                  ) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApprovalError('');
+                      setIsApproveModalOpen(true);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-[#1E50C3] text-white text-sm font-semibold hover:bg-[#1A45A7] transition-all active:scale-[0.98]"
+                  >
+                    Approve Application
+                  </button>
+                ) : null}
+
                 <button
                   type="button"
                   onClick={() =>
@@ -663,6 +756,21 @@ export default function ApplicationDetailPage() {
           </div>
         </div>
       </DashboardLayout>
+
+      <ApproveModal
+        isOpen={isApproveModalOpen}
+        onClose={() => {
+          if (!isApproving) {
+            setApprovalError('');
+            setIsApproveModalOpen(false);
+          }
+        }}
+        onConfirm={
+          handleApproveApplication
+        }
+        isSubmitting={isApproving}
+        error={approvalError}
+      />
     </>
   );
 }
