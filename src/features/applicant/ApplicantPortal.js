@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -873,6 +873,7 @@ function WorkshopPage({
   onRecordApplication,
   onPreview,
   isPreview = false,
+  isRecordingApplication = false,
 }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [jobUrl, setJobUrl] = useState('');
@@ -902,7 +903,28 @@ function WorkshopPage({
       <PageHeader
         title="Prompt Center"
         subtitle="Analyze job fit, generate tailored resumes and cover letters"
-        action={selectedClient && !isPreview ? <button type="button" className={styles.primaryButton} onClick={() => onRecordApplication(selectedClient, jobUrl, jobDescription)}><FiSave /> Record Application</button> : null}
+        action={
+          selectedClient &&
+          !isPreview ? (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              disabled={isRecordingApplication}
+              onClick={() =>
+                onRecordApplication(
+                  selectedClient,
+                  jobUrl,
+                  jobDescription
+                )
+              }
+            >
+              <FiSave />
+              {isRecordingApplication
+                ? 'Recording...'
+                : 'Record Application'}
+            </button>
+          ) : null
+        }
       />
       <section className={styles.workshopPanel}>
         <div className={styles.clientSelector}>
@@ -1770,6 +1792,12 @@ export default function ApplicantPortal() {
   ] = useState('');
   const [previewType, setPreviewType] = useState(null);
   const [toast, setToast] = useState('');
+  const [
+    isRecordingApplication,
+    setIsRecordingApplication,
+  ] = useState(false);
+  const recordApplicationInFlight =
+    useRef(false);
 
   useEffect(() => {
     if (
@@ -2211,6 +2239,20 @@ export default function ApplicantPortal() {
       jobUrl,
       jobDescription
     ) => {
+      if (
+        recordApplicationInFlight
+          .current
+      ) {
+        return;
+      }
+
+      recordApplicationInFlight
+        .current = true;
+
+      setIsRecordingApplication(
+        true
+      );
+
       const position =
         jobDescription
           .split('\n')[0]
@@ -2311,6 +2353,51 @@ export default function ApplicantPortal() {
                 ),
             })
           );
+
+          setAssignedClients(
+            (current) =>
+              current.map(
+                (item) => {
+                  if (
+                    item.id !==
+                    client.id
+                  ) {
+                    return item;
+                  }
+
+                  const applications =
+                    Number(
+                      item.applications ||
+                        0
+                    ) + 1;
+
+                  const applicationLimit =
+                    Number(
+                      item.applicationLimit ||
+                        0
+                    );
+
+                  const progress =
+                    applicationLimit > 0
+                      ? Math.min(
+                          100,
+                          Math.round(
+                            (
+                              applications /
+                              applicationLimit
+                            ) * 100
+                          )
+                        )
+                      : 0;
+
+                  return {
+                    ...item,
+                    applications,
+                    progress,
+                  };
+                }
+              )
+          );
         }
 
         setToast(
@@ -2320,6 +2407,13 @@ export default function ApplicantPortal() {
         setToast(
           error?.message ||
             'The Application could not be recorded.'
+        );
+      } finally {
+        recordApplicationInFlight
+          .current = false;
+
+        setIsRecordingApplication(
+          false
         );
       }
     };
@@ -2332,7 +2426,21 @@ export default function ApplicantPortal() {
   } else if (section === 'clients') {
     page = <ClientsPage clients={assignedClients} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
-    page = <WorkshopPage clients={assignedClients} onRecordApplication={recordApplication} onPreview={setPreviewType} isPreview={isApplicantPreview} />;
+    page = (
+      <WorkshopPage
+        clients={assignedClients}
+        onRecordApplication={
+          recordApplication
+        }
+        onPreview={setPreviewType}
+        isPreview={
+          isApplicantPreview
+        }
+        isRecordingApplication={
+          isRecordingApplication
+        }
+      />
+    );
   } else if (section === 'feedback') {
     page = (
       <FeedbackPage
