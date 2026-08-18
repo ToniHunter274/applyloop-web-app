@@ -317,27 +317,6 @@ async function updateApplication(
   const applicationId =
     getApplicationId(req);
 
-  const existing =
-    await loadApplication(
-      supabase,
-      applicationId
-    );
-
-  const allowed =
-    await canAccessApplication(
-      profile,
-      supabase,
-      existing,
-      req
-    );
-
-  if (!allowed) {
-    throw new PortalApiError(
-      403,
-      'You do not have access to this Application.'
-    );
-  }
-
   const changes = {};
 
   if (
@@ -391,6 +370,162 @@ async function updateApplication(
     throw new PortalApiError(
       400,
       'No supported Application changes were provided.'
+    );
+  }
+
+  if (
+    profile.role ===
+    'applicant'
+  ) {
+    const {
+      data: applicationRows,
+      error: updateError,
+    } = await supabase.rpc(
+      'update_applicant_application',
+      {
+        p_actor_id:
+          profile.id,
+        p_application_id:
+          applicationId,
+        p_status:
+          changes.status ||
+          null,
+        p_link_source:
+          changes.link_source ||
+          null,
+      }
+    );
+
+    const application =
+      Array.isArray(
+        applicationRows
+      )
+        ? applicationRows[0]
+        : applicationRows;
+
+    if (
+      updateError ||
+      !application
+    ) {
+      const normalizedMessage =
+        String(
+          updateError?.message ||
+          ''
+        ).toLowerCase();
+
+      if (
+        normalizedMessage.includes(
+          'paused or completed client'
+        )
+      ) {
+        throw new PortalApiError(
+          409,
+          'Applications cannot be edited for a paused or completed Client.'
+        );
+      }
+
+      if (
+        normalizedMessage.includes(
+          'not assigned to you'
+        )
+      ) {
+        throw new PortalApiError(
+          403,
+          'This Client is not assigned to you.'
+        );
+      }
+
+      if (
+        normalizedMessage.includes(
+          'applicant account is not active'
+        )
+      ) {
+        throw new PortalApiError(
+          403,
+          'Your Applicant account cannot update Applications.'
+        );
+      }
+
+      if (
+        normalizedMessage.includes(
+          'applicant not found'
+        )
+      ) {
+        throw new PortalApiError(
+          404,
+          'Your Applicant record could not be found.'
+        );
+      }
+
+      if (
+        normalizedMessage.includes(
+          'application not found'
+        )
+      ) {
+        throw new PortalApiError(
+          404,
+          'The Application could not be found.'
+        );
+      }
+
+      if (
+        normalizedMessage.includes(
+          'client not found'
+        )
+      ) {
+        throw new PortalApiError(
+          404,
+          'The Client could not be found.'
+        );
+      }
+
+      console.error(
+        'Unable to update Application atomically:',
+        updateError
+      );
+
+      throw new PortalApiError(
+        500,
+        'The Application could not be updated.'
+      );
+    }
+
+    return res.status(200).json({
+      message:
+        'Application updated successfully.',
+      application: {
+        id:
+          application.id,
+        clientId:
+          application.client_id,
+        status:
+          application.status,
+        linkSource:
+          application.link_source,
+        updatedAt:
+          application.updated_at,
+      },
+    });
+  }
+
+  const existing =
+    await loadApplication(
+      supabase,
+      applicationId
+    );
+
+  const allowed =
+    await canAccessApplication(
+      profile,
+      supabase,
+      existing,
+      req
+    );
+
+  if (!allowed) {
+    throw new PortalApiError(
+      403,
+      'You do not have access to this Application.'
     );
   }
 
