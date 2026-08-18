@@ -354,19 +354,28 @@ export default function Dashboard() {
                       <span className="whitespace-nowrap">{app.date}</span>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 font-semibold text-gray-900 dark:text-white">
-                      <Link
-                        href={{
-                          pathname: `/applications/${app.id}`,
-                          query: previewClientId
-                            ? {
-                                previewClientId,
-                              }
-                            : {},
-                        }}
-                        className="hover:text-[#1E50C3] hover:underline transition-colors block"
-                      >
-                        {app.company}
-                      </Link>
+                      {app.isLocal ? (
+                        <span
+                          title="This Job Link has not been persisted as an Application."
+                          className="block text-gray-700 dark:text-gray-300"
+                        >
+                          {app.company}
+                        </span>
+                      ) : (
+                        <Link
+                          href={{
+                            pathname: `/applications/${app.id}`,
+                            query: previewClientId
+                              ? {
+                                  previewClientId,
+                                }
+                              : {},
+                          }}
+                          className="hover:text-[#1E50C3] hover:underline transition-colors block"
+                        >
+                          {app.company}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 hidden sm:table-cell">
                       {app.position}
@@ -463,6 +472,7 @@ export default function Dashboard() {
           const newId = `AND${Date.now()}`;
           const newApp = {
             id: newId,
+            isLocal: true,
             number: `#${newId}`,
             date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             company: 'New Company',
@@ -470,6 +480,8 @@ export default function Dashboard() {
             resume: 'Anderson Pdf.',
             coverLetter: 'Anderson..',
             status: 'Pending',
+            jobLink: data.jobLink,
+            feedback: data.comment || '',
           };
           setApplications([newApp, ...applications]);
           setCurrentPage(1); // Jump to first page to show new entry

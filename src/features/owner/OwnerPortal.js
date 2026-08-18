@@ -590,6 +590,10 @@ function ApplicantsManagementPage({
     setApplicantStatusError,
   ] = useState('');
   const [
+    savingAvailabilityApplicantId,
+    setSavingAvailabilityApplicantId,
+  ] = useState(null);
+  const [
     chatApplicant,
     setChatApplicant,
   ] = useState(null);
@@ -967,6 +971,103 @@ function ApplicantsManagementPage({
         );
       } finally {
         setIsSendingChat(false);
+      }
+    };
+
+  const updateApplicantAvailability =
+    async (applicant) => {
+      if (
+        !applicant ||
+        applicant.accountStatus !==
+          'active'
+      ) {
+        return;
+      }
+
+      const nextAvailability =
+        applicant.availability ===
+        'available'
+          ? 'inactive'
+          : 'available';
+
+      setSavingAvailabilityApplicantId(
+        applicant.id
+      );
+      setListError('');
+
+      try {
+        const accessToken =
+          await getOwnerAccessToken();
+
+        const response = await fetch(
+          `/api/admin/applicants/${applicant.id}/availability`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              availability:
+                nextAvailability,
+            }),
+          }
+        );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The applicant availability could not be updated.'
+          );
+        }
+
+        const savedAvailability =
+          result.applicant
+            ?.availability ||
+          nextAvailability;
+
+        setApplicants(
+          (current) =>
+            current.map(
+              (currentApplicant) =>
+                currentApplicant.id ===
+                applicant.id
+                  ? {
+                      ...currentApplicant,
+                      availability:
+                        savedAvailability,
+                    }
+                  : currentApplicant
+            )
+        );
+
+        setStatsApplicant(
+          (current) =>
+            current?.id ===
+            applicant.id
+              ? {
+                  ...current,
+                  availability:
+                    savedAvailability,
+                }
+              : current
+        );
+      } catch (error) {
+        setListError(
+          error?.message ||
+            'The applicant availability could not be updated.'
+        );
+      } finally {
+        setSavingAvailabilityApplicantId(
+          null
+        );
       }
     };
 
@@ -1813,24 +1914,79 @@ function ApplicantsManagementPage({
                                   }
                                   disabled={
                                     applicant.accountStatus ===
-                                    'suspended'
+                                      'suspended' ||
+                                    applicant.availability !==
+                                      'available'
                                   }
                                   title={
                                     applicant.accountStatus ===
                                     'suspended'
                                       ? 'Reactivate this applicant before assigning another client'
-                                      : 'Assign client'
+                                      : applicant.availability !==
+                                          'available'
+                                        ? 'Set this applicant to Available before assigning another client'
+                                        : 'Assign client'
                                   }
                                   className={cn(
                                     'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition',
                                     applicant.accountStatus ===
-                                      'suspended'
+                                      'suspended' ||
+                                    applicant.availability !==
+                                      'available'
                                       ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
                                       : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
                                   )}
                                 >
                                   <FiPlus className="h-3.5 w-3.5" />
                                   Assign
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateApplicantAvailability(
+                                      applicant
+                                    )
+                                  }
+                                  disabled={
+                                    applicant.accountStatus ===
+                                      'suspended' ||
+                                    savingAvailabilityApplicantId ===
+                                      applicant.id
+                                  }
+                                  title={
+                                    applicant.accountStatus ===
+                                    'suspended'
+                                      ? 'Reactivate this applicant before changing availability'
+                                      : applicant.availability ===
+                                          'available'
+                                        ? 'Set applicant to Inactive'
+                                        : 'Set applicant to Available'
+                                  }
+                                  className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+                                    applicant.availability ===
+                                      'available'
+                                      ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                      : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  )}
+                                >
+                                  <FiRefreshCw
+                                    className={cn(
+                                      'h-3.5 w-3.5',
+                                      savingAvailabilityApplicantId ===
+                                        applicant.id &&
+                                        'animate-spin'
+                                    )}
+                                  />
+
+                                  {savingAvailabilityApplicantId ===
+                                  applicant.id
+                                    ? 'Updating...'
+                                    : applicant.availability ===
+                                        'available'
+                                      ? 'Set Inactive'
+                                      : 'Set Available'}
                                 </button>
 
                                 <button
