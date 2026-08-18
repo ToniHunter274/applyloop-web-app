@@ -81,6 +81,7 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [headerSearchValue, setHeaderSearchValue] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [
@@ -102,6 +103,46 @@ export default function DashboardLayout({
   ];
 
   const handleLogout = () => typeof logoutProp === 'function' ? logoutProp() : logout();
+
+  const displayedSearchValue =
+    typeof onSearchChange === 'function'
+      ? searchValue
+      : headerSearchValue;
+
+  const handleHeaderSearchChange = (value) => {
+    if (typeof onSearchChange === 'function') {
+      onSearchChange(value);
+      return;
+    }
+
+    setHeaderSearchValue(value);
+  };
+
+  const handleHeaderSearchSubmit = (event) => {
+    event.preventDefault();
+
+    const query =
+      displayedSearchValue.trim();
+
+    if (!query) {
+      if (router.pathname !== '/dashboard') {
+        router.push('/dashboard');
+      }
+
+      return;
+    }
+
+    if (router.pathname === '/dashboard') {
+      return;
+    }
+
+    router.push({
+      pathname: '/dashboard',
+      query: {
+        search: query,
+      },
+    });
+  };
 
   useEffect(() => {
     if (user?.role && user.role !== USER_ROLES.USER_CLIENT) router.replace(getRoleHome(user.role));
@@ -332,20 +373,27 @@ export default function DashboardLayout({
           <div className="flex min-h-[74px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-[20px] font-medium tracking-[-0.03em] lg:text-[23px]">{title}</h1><p className="mt-1 hidden truncate text-[11px] text-slate-400 sm:block">{subtitle}</p></div></div>
             <div className="flex items-center gap-2">
-              <label className="relative hidden xl:block">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  value={searchValue}
-                  onChange={(event) =>
-                    onSearchChange?.(
-                      event.target.value
-                    )
-                  }
-                  placeholder="Search applications"
-                  className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400"
-                />
-              </label>
+              <form
+                onSubmit={handleHeaderSearchSubmit}
+                className="hidden xl:block"
+              >
+                <label className="relative block">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+
+                  <input
+                    type="search"
+                    value={displayedSearchValue}
+                    onChange={(event) =>
+                      handleHeaderSearchChange(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Search applications"
+                    aria-label="Search applications"
+                    className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400"
+                  />
+                </label>
+              </form>
               <div className="relative">
                 <button
                   type="button"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { 
   FiFileText, 
   FiMail, 
@@ -62,6 +63,8 @@ function formatApplicationDate(value) {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
+
   const [applications, setApplications] = useState([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [applicationsError, setApplicationsError] = useState('');
@@ -73,6 +76,24 @@ export default function Dashboard() {
   const [announcements, setAnnouncements] = useState([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
   const [announcementsError, setAnnouncementsError] = useState('');
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+
+    const searchParam =
+      Array.isArray(router.query.search)
+        ? router.query.search[0]
+        : router.query.search;
+
+    if (typeof searchParam === 'string') {
+      setSearchQuery(searchParam);
+    }
+  }, [
+    router.isReady,
+    router.query.search,
+  ]);
 
   useEffect(() => {
     if (announcements.length <= 1) {
