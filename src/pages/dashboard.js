@@ -38,6 +38,14 @@ export default function Dashboard() {
       : '';
 
   const [applications, setApplications] = useState([]);
+  const [
+    applicationSummary,
+    setApplicationSummary,
+  ] = useState({
+    totalApplications: 0,
+    persistedApplications: 0,
+    historicalApplications: 0,
+  });
   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
   const [applicationsError, setApplicationsError] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
@@ -129,10 +137,26 @@ export default function Dashboard() {
           setApplications(
             applicationRows
           );
+
+          setApplicationSummary(
+            result.summary || {
+              totalApplications:
+                applicationRows.length,
+              persistedApplications:
+                applicationRows.length,
+              historicalApplications:
+                0,
+            }
+          );
         }
       } catch (error) {
         if (!cancelled) {
           setApplications([]);
+          setApplicationSummary({
+            totalApplications: 0,
+            persistedApplications: 0,
+            historicalApplications: 0,
+          });
           setApplicationsError(
             error?.message ||
               'Applications could not be loaded.'
@@ -201,7 +225,11 @@ export default function Dashboard() {
   }, [activeFilter]);
 
   // Calculate stats count dynamically
-  const totalCount = applications.length;
+  const totalCount =
+    Number(
+      applicationSummary
+        .totalApplications || 0
+    );
   const pendingCount = applications.filter(app => app.status === 'Pending').length;
   const rejectedCount = applications.filter(app => app.status === 'Rejected').length;
   const interviewCount = applications.filter(app => app.status === 'Interview').length;

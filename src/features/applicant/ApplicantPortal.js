@@ -495,6 +495,7 @@ function ApplicationTable({
 
 function Dashboard({
   applications,
+  applicationTotal,
   clients,
   onChangeRecord,
   onOpenApplication,
@@ -523,7 +524,7 @@ function Dashboard({
         />
         <StatCard
           label="Completed Applications"
-          value={applications.length}
+          value={applicationTotal}
         />
         <StatCard
           label="Client Feedback"
@@ -1740,6 +1741,14 @@ export default function ApplicantPortal() {
     setApplications,
   ] = useState([]);
   const [
+    applicationSummary,
+    setApplicationSummary,
+  ] = useState({
+    totalApplications: 0,
+    persistedApplications: 0,
+    historicalApplications: 0,
+  });
+  const [
     isLoadingApplications,
     setIsLoadingApplications,
   ] = useState(false);
@@ -1883,6 +1892,11 @@ export default function ApplicantPortal() {
       !isApplicantPreview
     ) {
       setApplications([]);
+      setApplicationSummary({
+        totalApplications: 0,
+        persistedApplications: 0,
+        historicalApplications: 0,
+      });
       setApplicationsError('');
       return undefined;
     }
@@ -1931,14 +1945,33 @@ export default function ApplicantPortal() {
           }
 
           if (!cancelled) {
-            setApplications(
+            const applicationRows =
               result.applications ||
-                []
+              [];
+
+            setApplications(
+              applicationRows
+            );
+
+            setApplicationSummary(
+              result.summary || {
+                totalApplications:
+                  applicationRows.length,
+                persistedApplications:
+                  applicationRows.length,
+                historicalApplications:
+                  0,
+              }
             );
           }
         } catch (error) {
           if (!cancelled) {
             setApplications([]);
+            setApplicationSummary({
+              totalApplications: 0,
+              persistedApplications: 0,
+              historicalApplications: 0,
+            });
             setApplicationsError(
               error?.message ||
                 'Applications could not be loaded.'
@@ -2255,6 +2288,29 @@ export default function ApplicantPortal() {
               ...current,
             ]
           );
+
+          setApplicationSummary(
+            (current) => ({
+              totalApplications:
+                Number(
+                  current
+                    .totalApplications ||
+                    0
+                ) + 1,
+              persistedApplications:
+                Number(
+                  current
+                    .persistedApplications ||
+                    0
+                ) + 1,
+              historicalApplications:
+                Number(
+                  current
+                    .historicalApplications ||
+                    0
+                ),
+            })
+          );
         }
 
         setToast(
@@ -2295,7 +2351,19 @@ export default function ApplicantPortal() {
   } else if (section === 'settings') {
     page = <SettingsPage />;
   } else {
-    page = <Dashboard clients={assignedClients} applications={visibleApplications} onChangeRecord={changeApplication} onOpenApplication={openApplication} readOnly={isApplicantPreview} />;
+    page = <Dashboard
+      clients={assignedClients}
+      applications={visibleApplications}
+      applicationTotal={
+        Number(
+          applicationSummary
+            .totalApplications || 0
+        )
+      }
+      onChangeRecord={changeApplication}
+      onOpenApplication={openApplication}
+      readOnly={isApplicantPreview}
+    />;
   }
 
   if (

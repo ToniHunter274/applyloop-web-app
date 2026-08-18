@@ -19,6 +19,22 @@ const LINK_SOURCES =
     'Applicant',
   ]);
 
+function sanitizeStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (item) =>
+        typeof item === 'string'
+    )
+    .map(
+      (item) => item.trim()
+    )
+    .filter(Boolean);
+}
+
 function getApplicationId(req) {
   const value =
     Array.isArray(req.query.id)
@@ -246,11 +262,9 @@ async function getApplication(
       appliedAt:
         application.applied_at,
       preferences:
-        Array.isArray(
+        sanitizeStringArray(
           application.preferences
-        )
-          ? application.preferences
-          : [],
+        ),
       jobLink:
         application.job_url ||
         '',
@@ -264,23 +278,17 @@ async function getApplication(
         application.feedback ||
         '',
       jobDetails:
-        Array.isArray(
+        sanitizeStringArray(
           application.job_details
-        )
-          ? application.job_details
-          : [],
+        ),
       qualities:
-        Array.isArray(
+        sanitizeStringArray(
           application.qualities
-        )
-          ? application.qualities
-          : [],
+        ),
       otherDetails:
-        Array.isArray(
+        sanitizeStringArray(
           application.other_details
-        )
-          ? application.other_details
-          : [],
+        ),
       createdAt:
         application.created_at,
       updatedAt:

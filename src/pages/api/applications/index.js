@@ -19,6 +19,47 @@ const LINK_SOURCES =
     'Applicant',
   ]);
 
+function sanitizeStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (item) =>
+        typeof item === 'string'
+    )
+    .map(
+      (item) => item.trim()
+    )
+    .filter(Boolean);
+}
+
+function getStringArrayInput(
+  value,
+  label
+) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  if (
+    value.some(
+      (item) =>
+        typeof item !== 'string'
+    )
+  ) {
+    throw new PortalApiError(
+      400,
+      `${label} must contain only text values.`
+    );
+  }
+
+  return sanitizeStringArray(
+    value
+  );
+}
+
 function getQueryValue(value) {
   if (Array.isArray(value)) {
     return String(value[0] || '')
@@ -130,11 +171,9 @@ function formatApplication(
         application.applied_at
       ),
     preferences:
-      Array.isArray(
+      sanitizeStringArray(
         application.preferences
-      )
-        ? application.preferences
-        : [],
+      ),
     jobLink:
       application.job_url ||
       '',
@@ -148,23 +187,17 @@ function formatApplication(
       application.feedback ||
       '',
     jobDetails:
-      Array.isArray(
+      sanitizeStringArray(
         application.job_details
-      )
-        ? application.job_details
-        : [],
+      ),
     qualities:
-      Array.isArray(
+      sanitizeStringArray(
         application.qualities
-      )
-        ? application.qualities
-        : [],
+      ),
     otherDetails:
-      Array.isArray(
+      sanitizeStringArray(
         application.other_details
-      )
-        ? application.other_details
-        : [],
+      ),
     createdAt:
       application.created_at,
     updatedAt:
@@ -481,6 +514,81 @@ async function getClientNames(
   );
 }
 
+async function getApplicationSummary(
+  supabase,
+  allowedClientIds,
+  persistedApplications
+) {
+  let query = supabase
+    .from('clients')
+    .select(`
+      id,
+      applications_completed
+    `);
+
+  if (
+    Array.isArray(
+      allowedClientIds
+    )
+  ) {
+    query = query.in(
+      'id',
+      allowedClientIds
+    );
+  }
+
+  const {
+    data: clientRows,
+    error: clientsError,
+  } = await query;
+
+  if (clientsError) {
+    console.error(
+      'Unable to load Application totals:',
+      clientsError
+    );
+
+    throw new PortalApiError(
+      500,
+      'Application totals could not be loaded.'
+    );
+  }
+
+  const persistedCount =
+    Number(
+      persistedApplications || 0
+    );
+
+  const recordedTotal =
+    (clientRows || []).reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.applications_completed ||
+            0
+        ),
+      0
+    );
+
+  const totalApplications =
+    Math.max(
+      persistedCount,
+      recordedTotal
+    );
+
+  return {
+    totalApplications,
+    persistedApplications:
+      persistedCount,
+    historicalApplications:
+      Math.max(
+        0,
+        totalApplications -
+          persistedCount
+      ),
+  };
+}
+
 async function listApplications(
   req,
   res
@@ -508,6 +616,11 @@ async function listApplications(
   ) {
     return res.status(200).json({
       applications: [],
+      summary: {
+        totalApplications: 0,
+        persistedApplications: 0,
+        historicalApplications: 0,
+      },
     });
   }
 
@@ -601,8 +714,16 @@ async function listApplications(
         )
     );
 
+  const summary =
+    await getApplicationSummary(
+      supabase,
+      allowedClientIds,
+      applications.length
+    );
+
   return res.status(200).json({
     applications,
+    summary,
   });
 }
 
@@ -704,11 +825,28 @@ async function createApplication(
       : 'Applicant';
 
   const preferences =
-    Array.isArray(
-      req.body?.preferences
-    )
-      ? req.body.preferences
-      : [];
+    getStringArrayInput(
+      req.body?.preferences,
+      'Preferences'
+    );
+
+  const jobDetails =
+    getStringArrayInput(
+      req.body?.jobDetails,
+      'Job details'
+    );
+
+  const qualities =
+    getStringArrayInput(
+      req.body?.qualities,
+      'Qualities'
+    );
+
+  const otherDetails =
+    getStringArrayInput(
+      req.body?.otherDetails,
+      'Other details'
+    );
 
   const {
     data: applicationRows,
@@ -761,23 +899,11 @@ async function createApplication(
         ).trim() ||
         null,
       p_job_details:
-        Array.isArray(
-          req.body?.jobDetails
-        )
-          ? req.body.jobDetails
-          : [],
+        jobDetails,
       p_qualities:
-        Array.isArray(
-          req.body?.qualities
-        )
-          ? req.body.qualities
-          : [],
+        qualities,
       p_other_details:
-        Array.isArray(
-          req.body?.otherDetails
-        )
-          ? req.body.otherDetails
-          : [],
+        otherDetails,
     }
   );
 
