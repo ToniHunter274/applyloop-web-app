@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import DashboardLayout from '../../shared/components/DashboardLayout';
 import {
   FiRefreshCw,
   FiBriefcase,
@@ -10,373 +9,659 @@ import {
   FiStar,
   FiLink,
   FiX,
-  FiSend,
+  FiMessageSquare,
+  FiFileText,
 } from 'react-icons/fi';
-import ApproveModal from '../../shared/components/ApproveModal';
 
-// ─── Mock data import (replace with API call when backend is ready) ──────────
-// Backend: GET /api/applications/:id
-import { MOCK_APPLICATION_DETAIL } from '../../data/mockData';
+import DashboardLayout from '../../shared/components/DashboardLayout';
+import { createClient } from '../../lib/supabase/client';
 
-// ════════════════════════════════════════════════════════════════════════════════
-// FEEDBACK HISTORY PANEL — Slide-in side panel
-// Backend: GET /api/applications/:id/feedback (list)
-// Backend: POST /api/applications/:id/feedback (send message)
-// ════════════════════════════════════════════════════════════════════════════════
+async function getAccessToken() {
+  const supabase = createClient();
 
-function FeedbackPanel({ onClose }) {
-  const [message, setMessage] = useState('');
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
+
+function formatDate(value) {
+  if (!value) return 'N/A';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A';
+  }
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatTime(value) {
+  if (!value) return 'N/A';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A';
+  }
+
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function getStatusStyle(status) {
+  switch (status) {
+    case 'Interview Scheduled':
+      return 'bg-blue-50 text-blue-600 border-blue-100';
+
+    case 'Offer Received':
+      return 'bg-green-50 text-green-600 border-green-100';
+
+    case 'Rejected':
+      return 'bg-red-50 text-red-600 border-red-100';
+
+    case 'Waiting':
+      return 'bg-amber-50 text-amber-600 border-amber-100';
+
+    case 'Submitted':
+    default:
+      return 'bg-gray-50 text-gray-600 border-gray-200';
+  }
+}
+
+function normalizePreference(preference) {
+  if (
+    preference &&
+    typeof preference === 'object'
+  ) {
+    return (
+      preference.label ||
+      preference.name ||
+      preference.value ||
+      ''
+    );
+  }
+
+  return String(preference || '');
+}
+
+function FeedbackPanel({
+  messages,
+  onClose,
+  onSend,
+}) {
+  const [message, setMessage] =
+    useState('');
+  const [isSending, setIsSending] =
+    useState(false);
+  const [error, setError] =
+    useState('');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const trimmed = message.trim();
+
+    if (!trimmed || isSending) {
+      return;
+    }
+
+    setIsSending(true);
+    setError('');
+
+    try {
+      await onSend(trimmed);
+      setMessage('');
+    } catch (sendError) {
+      setError(
+        sendError.message ||
+          'Unable to send feedback.'
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden border border-gray-100 animate-slideInRight"
-      style={{ width: '320px', minHeight: '480px' }}
+    <div
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl flex flex-col overflow-hidden border border-gray-100 dark:border-gray-700 animate-slideInRight"
+      style={{
+        width: '320px',
+        minHeight: '400px',
+      }}
     >
-      {/* Close button — top right */}
-      <div className="flex justify-end p-4">
+      <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+          Feedback History
+        </h3>
+
         <button
+          type="button"
           onClick={onClose}
-          className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+          className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          aria-label="Close feedback history"
         >
-          <FiX className="w-3.5 h-3.5" />
+          <FiX className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Title */}
-      <div className="px-5 pb-4">
-        <h3 className="text-xl font-bold text-gray-900">Feedback History</h3>
+      <div className="flex-1 p-5 overflow-y-auto">
+        {messages.length === 0 ? (
+          <div className="h-full min-h-[260px] flex flex-col items-center justify-center text-center">
+            <FiMessageSquare className="w-7 h-7 text-gray-300 mb-3" />
+
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              No feedback yet.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className="border-b border-gray-100 dark:border-gray-700 pb-4 last:border-0"
+              >
+                {message.subject && (
+                  <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+                    {message.subject}
+                  </p>
+                )}
+
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {message.message}
+                </p>
+
+                <div className="flex items-center justify-between mt-3 gap-3">
+                  <span className="text-xs text-gray-400">
+                    {message.sender?.name ||
+                      'ApplyLoop'}
+                  </span>
+
+                  <span className="text-xs text-gray-400">
+                    {formatDate(
+                      message.createdAt
+                    )}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Yellow card — fills remaining space */}
-      <div className="flex-1 mx-4 mb-4 bg-[#FFF9C4] rounded-2xl flex flex-col overflow-hidden">
-        {/* Messages area */}
-        {/* Backend: Each message has { id, title?, sender?, body, author, date } */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-          {MOCK_APPLICATION_DETAIL.feedbackHistory.map((fb) => (
-            <div key={fb.id} className="flex flex-col gap-1">
-              {fb.title && (
-                <p className="text-sm font-bold text-gray-900 text-center">{fb.title}</p>
-              )}
-              {fb.sender && (
-                <p className="text-xs text-gray-600 text-center">{fb.sender}</p>
-              )}
-              <p className="text-sm text-gray-700 leading-relaxed mt-1">{fb.body}</p>
-              <p className="text-xs text-gray-500 text-right mt-1">
-                — {fb.author} | {fb.date}
-              </p>
-              <hr className="border-yellow-300 mt-2" />
-            </div>
-          ))}
-        </div>
+      <form
+        onSubmit={handleSubmit}
+        className="p-4 border-t border-gray-100 dark:border-gray-700"
+      >
+        {error && (
+          <p className="text-xs text-red-600 dark:text-red-400 mb-2">
+            {error}
+          </p>
+        )}
 
-        {/* Message input — bottom of yellow card */}
-        <div className="px-4 py-3 flex items-center gap-2 border-t border-yellow-300">
+        <div className="flex items-center gap-2">
           <input
             type="text"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(event) =>
+              setMessage(event.target.value)
+            }
+            disabled={isSending}
+            maxLength={5000}
             placeholder="Type a message..."
-            // Security: Sanitize on backend before storing. No raw HTML rendering.
-            className="flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 focus:outline-none italic"
+            className="flex-1 min-w-0 px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#1E50C3] focus:border-transparent disabled:opacity-60"
           />
+
           <button
-            onClick={() => {
-              // TODO(Backend): POST /api/applications/${id}/feedback
-              // Payload: { message }
-              // Security: Sanitize input, validate auth token
-              if (message.trim()) {
-                console.log('Sending feedback message:', message);
-                setMessage('');
-              }
-            }}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            type="submit"
+            disabled={
+              !message.trim() ||
+              isSending
+            }
+            className="px-4 py-2.5 text-sm font-semibold text-white bg-[#1E50C3] hover:bg-[#1A45A7] rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FiSend className="w-4 h-4" />
+            {isSending
+              ? 'Sending...'
+              : 'Send'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════════
-// STICKY NOTE — Small floating card on right side
-// Backend: GET /api/applications/:id (stickyNote field in response)
-// ════════════════════════════════════════════════════════════════════════════════
-
-function StickyNote({ note, onClose }) {
+function DocumentCard({
+  name,
+  label,
+}) {
   return (
-    <div className="absolute -right-4 sm:-right-16 top-4 w-[180px] sm:w-[220px] bg-[#FFF7B3] rounded-xl shadow-xl p-4 z-30">
-      {/* Pin icon + close */}
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-blue-600 text-lg">📌</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <FiX className="w-3.5 h-3.5" />
-        </button>
+    <div className="flex flex-col items-center gap-2">
+      <div className="w-[110px] h-[135px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm flex flex-col items-center justify-center">
+        <div className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">
+          PDF
+        </div>
+
+        <FiFileText className="w-8 h-8 text-gray-300 mt-4" />
       </div>
-      <p className="text-sm font-bold text-gray-900">{note.company}</p>
-      <p className="text-xs text-gray-600 mb-3">{note.role}</p>
-      <p className="text-xs text-gray-500">
-        — {note.author} &nbsp; {note.date}
+
+      <p className="text-xs text-gray-600 dark:text-gray-400 text-center max-w-[130px] break-words">
+        {name || label}
       </p>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE — Job Application Detail
-// Backend: GET /api/applications/:id
-// ════════════════════════════════════════════════════════════════════════════════
-
 export default function ApplicationDetailPage() {
   const router = useRouter();
-  // TODO(Backend): Replace with useSWR or useEffect + fetch
-  // Endpoint: GET /api/applications/${router.query.id}
-  // Response shape should match MOCK_APPLICATION_DETAIL
-  const app = MOCK_APPLICATION_DETAIL;
 
-  const [showStickyNote, setShowStickyNote] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [application, setApplication] =
+    useState(null);
+  const [messages, setMessages] =
+    useState([]);
+  const [
+    isLoadingApplication,
+    setIsLoadingApplication,
+  ] = useState(true);
+  const [
+    applicationError,
+    setApplicationError,
+  ] = useState('');
+  const [showFeedback, setShowFeedback] =
+    useState(false);
+
+  useEffect(() => {
+    if (!router.isReady) return undefined;
+
+    let mounted = true;
+
+    const loadApplication = async () => {
+      setIsLoadingApplication(true);
+      setApplicationError('');
+
+      try {
+        const accessToken =
+          await getAccessToken();
+
+        const response = await fetch(
+          `/api/client/applications/${router.query.id}`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Unable to load this application.'
+          );
+        }
+
+        if (!mounted) return;
+
+        setApplication(
+          data.application || null
+        );
+
+        setMessages(
+          Array.isArray(data.messages)
+            ? data.messages
+            : []
+        );
+      } catch (error) {
+        if (mounted) {
+          setApplicationError(
+            error.message ||
+              'Unable to load this application.'
+          );
+        }
+      } finally {
+        if (mounted) {
+          setIsLoadingApplication(false);
+        }
+      }
+    };
+
+    loadApplication();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router.isReady, router.query.id]);
+
+  const handleSendFeedback =
+    async (message) => {
+      const accessToken =
+        await getAccessToken();
+
+      const response = await fetch(
+        `/api/client/applications/${application.id}/feedback`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            message,
+          }),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            'Unable to send feedback.'
+        );
+      }
+
+      if (data.message) {
+        setMessages((current) => [
+          ...current,
+          data.message,
+        ]);
+      }
+    };
+
+  if (isLoadingApplication) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[420px] flex flex-col items-center justify-center gap-3">
+          <div className="w-9 h-9 rounded-full border-2 border-blue-100 border-t-[#1E50C3] animate-spin" />
+
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Loading application...
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (
+    applicationError ||
+    !application
+  ) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[420px] flex items-center justify-center">
+          <div className="max-w-md text-center bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-8">
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+              Application unavailable
+            </h1>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              {applicationError ||
+                'Application not found.'}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push('/dashboard')
+              }
+              className="mt-6 px-5 py-2.5 bg-[#1E50C3] text-white text-sm font-semibold rounded-xl hover:bg-[#1A45A7] transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const preferences = Array.isArray(
+    application.preferences
+  )
+    ? application.preferences
+        .map(normalizePreference)
+        .filter(Boolean)
+    : [];
+
+  const hasDocuments =
+    Boolean(application.resumeName) ||
+    Boolean(application.coverLetterName);
 
   return (
     <>
       <Head>
-        <title>Job Application ({app.company}) | ApplyLoop</title>
-        <meta name="description" content={`Job application for ${app.role} at ${app.company}`} />
+        <title>
+          {application.position} at{' '}
+          {application.company} | ApplyLoop
+        </title>
+
+        <meta
+          name="description"
+          content={`Application for ${application.position} at ${application.company}`}
+        />
       </Head>
 
       <DashboardLayout>
-        <div className="max-w-3xl relative">
-          {/* ── Sticky note trigger — pin icon on right ── */}
-          {!showStickyNote && (
+        <div className="max-w-5xl">
+          <div className="mb-6">
             <button
-              onClick={() => setShowStickyNote(true)}
-              className="absolute -right-4 sm:-right-16 top-6 w-10 h-10 hidden sm:flex items-center justify-center text-blue-600 hover:scale-110 transition-transform"
+              type="button"
+              onClick={() =>
+                router.push('/dashboard')
+              }
+              className="text-sm font-semibold text-[#1E50C3] hover:text-[#1A45A7] transition-colors"
             >
-              <span className="text-2xl drop-shadow-md">📌</span>
+              Back to applications
             </button>
-          )}
+          </div>
 
-          {/* ── Sticky note overlay ── */}
-          {showStickyNote && (
-            <StickyNote note={app.stickyNote} onClose={() => setShowStickyNote(false)} />
-          )}
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="flex-1 w-full bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-6 sm:px-8 py-6 shadow-sm">
+              <div className="mb-6">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {application.number}
+                </p>
 
-          {/* ═══════════════════════════════════════════════════════════════════
-           *  SINGLE WHITE CARD — Contains info table, buttons, PDFs
-           *  Matches Figma: info rows left, buttons right, PDFs below divider
-           * ═══════════════════════════════════════════════════════════════════ */}
-          <div className="bg-white border border-gray-100 rounded-2xl px-6 sm:px-8 py-6 mb-6">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-950 dark:text-white mt-1">
+                  {application.company}
+                </h1>
 
-            {/* ── Top section: Info rows (left) + Buttons (right) ── */}
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-between">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {application.position}
+                </p>
+              </div>
 
-              {/* Left side: Info rows */}
-              {/* Backend: All fields from GET /api/applications/:id response */}
-              <div className="flex-1 divide-y divide-gray-100 min-w-0">
-
-                {/* Status */}
-                <div className="flex items-center py-2 sm:py-3 gap-2 sm:gap-6">
-                  <div className="flex items-center gap-1 sm:gap-2 w-24 sm:w-44 text-[10px] sm:text-sm text-gray-500 shrink-0">
-                    <FiRefreshCw className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                <div className="flex items-center py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiRefreshCw />
                     Status
                   </div>
-                  {/* Backend: status field — possible values: Pending, Interview, Offered, Rejected */}
-                  <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-[9px] sm:text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
-                    {app.status}
+
+                  <span
+                    className={`px-3 py-1 rounded-md text-xs font-semibold border ${getStatusStyle(
+                      application.status
+                    )}`}
+                  >
+                    {application.status}
                   </span>
                 </div>
 
-                {/* Role */}
-                <div className="flex items-center py-2 sm:py-3 gap-2 sm:gap-6">
-                  <div className="flex items-center gap-1 sm:gap-2 w-24 sm:w-44 text-[10px] sm:text-sm text-gray-500 shrink-0">
-                    <FiBriefcase className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <div className="flex items-center py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiBriefcase />
                     Role
                   </div>
-                  <span className="text-[10px] sm:text-sm text-gray-800 break-words">{app.role}</span>
+
+                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                    {application.role ||
+                      application.position}
+                  </span>
                 </div>
 
-                {/* Dates */}
-                <div className="flex items-center py-2 sm:py-3 gap-2 sm:gap-6">
-                  <div className="flex items-center gap-1 sm:gap-2 w-24 sm:w-44 text-[10px] sm:text-sm text-gray-500 shrink-0">
-                    <FiCalendar className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                    Dates
+                <div className="flex items-center py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiCalendar />
+                    Date
                   </div>
-                  <span className="text-[10px] sm:text-sm text-gray-800 break-words">{app.date}</span>
+
+                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                    {formatDate(
+                      application.appliedAt
+                    )}
+                  </span>
                 </div>
 
-                {/* Application Time */}
-                <div className="flex items-center py-2 sm:py-3 gap-2 sm:gap-6">
-                  <div className="flex items-center gap-1 sm:gap-2 w-24 sm:w-44 text-[10px] sm:text-sm text-gray-500 shrink-0">
-                    <FiClock className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <div className="flex items-center py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiClock />
                     Application Time
                   </div>
-                  <span className="text-[10px] sm:text-sm text-gray-800 break-words">{app.applicationTime}</span>
+
+                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                    {formatTime(
+                      application.appliedAt
+                    )}
+                  </span>
                 </div>
 
-                {/* Preferences */}
-                <div className="flex items-center py-2 sm:py-3 gap-2 sm:gap-6">
-                  <div className="flex items-center gap-1 sm:gap-2 w-24 sm:w-44 text-[10px] sm:text-sm text-gray-500 shrink-0">
-                    <FiStar className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <div className="flex items-start py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiStar />
                     Preferences
                   </div>
-                  {/* Backend: preferences array — each item: { label, color } */}
-                  <div className="flex flex-wrap gap-1 sm:gap-2">
-                    {app.preferences.map((p) => (
-                      <span
-                        key={p.label}
-                        className={`px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-md text-[8px] sm:text-xs font-semibold ${p.color} whitespace-nowrap`}
-                      >
-                        {p.label}
+
+                  <div className="flex flex-wrap gap-2">
+                    {preferences.length > 0 ? (
+                      preferences.map(
+                        (preference) => (
+                          <span
+                            key={preference}
+                            className="px-3 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100"
+                          >
+                            {preference}
+                          </span>
+                        )
+                      )
+                    ) : (
+                      <span className="text-sm text-gray-400">
+                        N/A
                       </span>
-                    ))}
+                    )}
                   </div>
                 </div>
 
-                {/* Job Link */}
-                <div className="flex items-center py-2 sm:py-3 gap-2 sm:gap-6">
-                  <div className="flex items-center gap-1 sm:gap-2 w-24 sm:w-44 text-[10px] sm:text-sm text-gray-500 shrink-0">
-                    <FiLink className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <div className="flex items-start py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiLink />
                     Job Link
                   </div>
-                  {/* Security: Validate URL format on backend, use rel="noopener noreferrer" */}
-                  <a
-                    href={`https://${app.jobLink}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] sm:text-sm text-[#1E50C3] hover:underline break-words whitespace-normal break-all block w-full"
-                  >
-                    {app.jobLink}
-                  </a>
+
+                  {application.jobUrl ? (
+                    <a
+                      href={
+                        application.jobUrl
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[#1E50C3] hover:underline break-all"
+                    >
+                      {application.jobUrl}
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-400">
+                      N/A
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Right side: Action buttons OR Feedback History panel */}
-              {/* Backend: PUT /api/applications/:id/approve */}
-              {/* Backend: Opens feedback panel for POST /api/applications/:id/feedback */}
-              {!showFeedback ? (
-                <div className="flex flex-row items-end justify-end gap-1 sm:gap-3 shrink-0 transition-opacity duration-300">
-                  <button
-                    onClick={() => setIsApproveModalOpen(true)}
-                    className="px-2 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-xl bg-[#1E50C3] text-white text-[9px] sm:text-sm font-semibold hover:bg-[#1A45A7] transition-colors whitespace-nowrap"
-                  >
-                    Approve Application
-                  </button>
-                  <button
-                    onClick={() => setShowFeedback(true)}
-                    className="px-2 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-xl border border-[#1E50C3] text-[#1E50C3] text-[9px] sm:text-sm font-semibold hover:bg-blue-50 transition-colors whitespace-nowrap"
-                  >
-                    Send Feedback
-                  </button>
-                </div>
-              ) : (
-                <div className="shrink-0 scale-75 sm:scale-100 origin-right">
-                  <FeedbackPanel onClose={() => setShowFeedback(false)} />
-                </div>
-              )}
-            </div>
+              <div className="flex justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowFeedback(true)
+                  }
+                  className="px-5 py-2.5 rounded-xl border border-[#1E50C3] text-[#1E50C3] text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  Send Feedback
+                </button>
+              </div>
 
-            {/* ── Divider between info and PDFs ── */}
-            <hr className="border-gray-100 my-6" />
+              <hr className="border-gray-100 dark:border-gray-700 my-6" />
 
-            {/* ── PDF Thumbnails ── */}
-            {/* Backend: GET /api/applications/:id/documents */}
-            {/* Returns: [{ name, type, url }] — render download links */}
-            <div className="flex gap-5">
-              {['Submitted Resume .pdf', 'Submitted Cover letter.pdf'].map((label) => (
-                <div key={label} className="flex flex-col items-center gap-2 cursor-pointer group">
-                  {/* PDF Icon thumbnail */}
-                  <div className="w-[100px] sm:w-[120px] h-[120px] sm:h-[140px] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col items-center justify-center relative overflow-hidden group-hover:shadow-md transition-shadow">
-                    {/* Red PDF badge */}
-                    <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm shadow">
-                      PDF
-                    </div>
-                    {/* Page lines decoration */}
-                    <div className="mt-10 w-16 flex flex-col gap-1.5">
-                      <div className="h-1 bg-gray-100 rounded" />
-                      <div className="h-1 bg-gray-100 rounded" />
-                      <div className="h-1 bg-gray-100 rounded w-3/4" />
-                    </div>
-                    {/* Folded corner */}
-                    <div
-                      className="absolute bottom-0 right-0 w-8 h-8 bg-gray-100"
-                      style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
-                    />
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
+                  Documents
+                </h2>
+
+                {hasDocuments ? (
+                  <div className="flex gap-5 flex-wrap">
+                    {application.resumeName && (
+                      <DocumentCard
+                        name={
+                          application.resumeName
+                        }
+                        label="Submitted Resume.pdf"
+                      />
+                    )}
+
+                    {application.coverLetterName && (
+                      <DocumentCard
+                        name={
+                          application.coverLetterName
+                        }
+                        label="Submitted Cover Letter.pdf"
+                      />
+                    )}
                   </div>
-                  <span className="text-xs text-gray-600 font-medium text-center">{label}</span>
-                </div>
-              ))}
+                ) : (
+                  <div className="border border-dashed border-gray-200 dark:border-gray-700 rounded-xl py-10 text-center">
+                    <p className="text-sm text-gray-400 dark:text-gray-500">
+                      No documents available.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* ═══════════════════════════════════════════════════════════════════
-           *  JOB DETAILS SECTION
-           *  Backend: jobDetails array from GET /api/applications/:id
-           * ═══════════════════════════════════════════════════════════════════ */}
-          <div className="mb-6">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
-              Job Details
-            </h3>
-            <ul className="space-y-2">
-              {app.jobDetails.map((item, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-600">
-                  <span className="text-gray-400 flex-shrink-0">•</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* ═══════════════════════════════════════════════════════════════════
-           *  QUALITIES AND CHARACTERISTICS
-           *  Backend: qualities array from GET /api/applications/:id
-           * ═══════════════════════════════════════════════════════════════════ */}
-          <div className="mb-6">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
-              Qualities and Characteristics
-            </h3>
-            <ul className="space-y-2">
-              {app.qualities.map((item, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-600">
-                  <span className="text-gray-400 flex-shrink-0">•</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* ═══════════════════════════════════════════════════════════════════
-           *  OTHER DETAILS
-           *  Backend: otherDetails array from GET /api/applications/:id
-           * ═══════════════════════════════════════════════════════════════════ */}
-          <div className="mb-6">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
-              Other Details
-            </h3>
-            <ul className="space-y-2">
-              {app.otherDetails.map((item, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-600">
-                  <span className="text-gray-400 flex-shrink-0">•</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
+            {showFeedback && (
+              <FeedbackPanel
+                messages={messages}
+                onClose={() =>
+                  setShowFeedback(false)
+                }
+                onSend={
+                  handleSendFeedback
+                }
+              />
+            )}
           </div>
         </div>
-
-
-
-        {/* ── Approve Modal ── */}
-        {/* Backend: PUT /api/applications/:id/approve */}
-        <ApproveModal
-          isOpen={isApproveModalOpen}
-          onClose={() => setIsApproveModalOpen(false)}
-          onConfirm={() => {
-            // TODO(Backend): Map to PUT /api/applications/${router.query.id}/approve
-            // Security: Validate auth token, check user permissions
-            console.log('Application approved!');
-          }}
-        />
       </DashboardLayout>
     </>
   );
