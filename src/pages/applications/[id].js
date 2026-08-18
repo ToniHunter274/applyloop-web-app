@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import DashboardLayout from '../../shared/components/DashboardLayout';
@@ -10,13 +10,9 @@ import {
   FiStar,
   FiLink,
   FiX,
-  FiSend,
 } from 'react-icons/fi';
 import ApproveModal from '../../shared/components/ApproveModal';
-
-// ─── Mock data import (replace with API call when backend is ready) ──────────
-// Backend: GET /api/applications/:id
-import { MOCK_APPLICATION_DETAIL } from '../../data/mockData';
+import { createClient } from '../../lib/supabase/client';
 
 // ════════════════════════════════════════════════════════════════════════════════
 // FEEDBACK HISTORY PANEL — Slide-in side panel
@@ -24,14 +20,18 @@ import { MOCK_APPLICATION_DETAIL } from '../../data/mockData';
 // Backend: POST /api/applications/:id/feedback (send message)
 // ════════════════════════════════════════════════════════════════════════════════
 
-function FeedbackPanel({ onClose }) {
-  const [message, setMessage] = useState('');
-
+function FeedbackPanel({
+  onClose,
+  feedback,
+}) {
   return (
-    <div className="bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden border border-gray-100 animate-slideInRight"
-      style={{ width: '320px', minHeight: '480px' }}
+    <div
+      className="bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden border border-gray-100 animate-slideInRight"
+      style={{
+        width: '320px',
+        minHeight: '480px',
+      }}
     >
-      {/* Close button — top right */}
       <div className="flex justify-end p-4">
         <button
           onClick={onClose}
@@ -41,85 +41,134 @@ function FeedbackPanel({ onClose }) {
         </button>
       </div>
 
-      {/* Title */}
       <div className="px-5 pb-4">
-        <h3 className="text-xl font-bold text-gray-900">Feedback History</h3>
+        <h3 className="text-xl font-bold text-gray-900">
+          Feedback History
+        </h3>
       </div>
 
-      {/* Yellow card — fills remaining space */}
-      <div className="flex-1 mx-4 mb-4 bg-[#FFF9C4] rounded-2xl flex flex-col overflow-hidden">
-        {/* Messages area */}
-        {/* Backend: Each message has { id, title?, sender?, body, author, date } */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-          {MOCK_APPLICATION_DETAIL.feedbackHistory.map((fb) => (
-            <div key={fb.id} className="flex flex-col gap-1">
-              {fb.title && (
-                <p className="text-sm font-bold text-gray-900 text-center">{fb.title}</p>
-              )}
-              {fb.sender && (
-                <p className="text-xs text-gray-600 text-center">{fb.sender}</p>
-              )}
-              <p className="text-sm text-gray-700 leading-relaxed mt-1">{fb.body}</p>
-              <p className="text-xs text-gray-500 text-right mt-1">
-                — {fb.author} | {fb.date}
-              </p>
-              <hr className="border-yellow-300 mt-2" />
-            </div>
-          ))}
-        </div>
-
-        {/* Message input — bottom of yellow card */}
-        <div className="px-4 py-3 flex items-center gap-2 border-t border-yellow-300">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
-            // Security: Sanitize on backend before storing. No raw HTML rendering.
-            className="flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 focus:outline-none italic"
-          />
-          <button
-            onClick={() => {
-              // TODO(Backend): POST /api/applications/${id}/feedback
-              // Payload: { message }
-              // Security: Sanitize input, validate auth token
-              if (message.trim()) {
-                console.log('Sending feedback message:', message);
-                setMessage('');
-              }
-            }}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <FiSend className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="flex-1 mx-4 mb-4 bg-[#FFF9C4] rounded-2xl p-5">
+        {feedback ? (
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {feedback}
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500">
+            No feedback has been recorded for this Application.
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════════
-// STICKY NOTE — Small floating card on right side
-// Backend: GET /api/applications/:id (stickyNote field in response)
-// ════════════════════════════════════════════════════════════════════════════════
+const preferenceColors = [
+  'text-purple-700 bg-purple-50 border border-purple-200',
+  'text-orange-600 bg-orange-50 border border-orange-200',
+  'text-orange-500 bg-orange-50 border border-orange-200',
+];
 
-function StickyNote({ note, onClose }) {
-  return (
-    <div className="absolute -right-4 sm:-right-16 top-4 w-[180px] sm:w-[220px] bg-[#FFF7B3] rounded-xl shadow-xl p-4 z-30">
-      {/* Pin icon + close */}
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-blue-600 text-lg">📌</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <FiX className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      <p className="text-sm font-bold text-gray-900">{note.company}</p>
-      <p className="text-xs text-gray-600 mb-3">{note.role}</p>
-      <p className="text-xs text-gray-500">
-        — {note.author} &nbsp; {note.date}
-      </p>
-    </div>
+function normalizePreference(
+  preference,
+  index
+) {
+  if (
+    preference &&
+    typeof preference === 'object'
+  ) {
+    return {
+      label:
+        preference.label || '',
+      color:
+        preference.color ||
+        preferenceColors[
+          index %
+            preferenceColors.length
+        ],
+    };
+  }
+
+  return {
+    label:
+      String(
+        preference || ''
+      ),
+    color:
+      preferenceColors[
+        index %
+          preferenceColors.length
+      ],
+  };
+}
+
+function formatApplicationDate(
+  value
+) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return '';
+  }
+
+  return date.toLocaleDateString(
+    'en-US',
+    {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }
   );
+}
+
+function formatApplicationTime(
+  value
+) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return '';
+  }
+
+  return date.toLocaleTimeString(
+    'en-US',
+    {
+      hour: 'numeric',
+      minute: '2-digit',
+    }
+  );
+}
+
+function getExternalHref(value) {
+  const link =
+    String(value || '').trim();
+
+  if (!link) {
+    return '#';
+  }
+
+  if (
+    /^https?:\/\//i.test(link)
+  ) {
+    return link;
+  }
+
+  return `https://${link}`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -129,14 +178,213 @@ function StickyNote({ note, onClose }) {
 
 export default function ApplicationDetailPage() {
   const router = useRouter();
-  // TODO(Backend): Replace with useSWR or useEffect + fetch
-  // Endpoint: GET /api/applications/${router.query.id}
-  // Response shape should match MOCK_APPLICATION_DETAIL
-  const app = MOCK_APPLICATION_DETAIL;
-
-  const [showStickyNote, setShowStickyNote] = useState(false);
+  const [app, setApp] = useState(null);
+  const [isLoadingApplication, setIsLoadingApplication] = useState(true);
+  const [applicationError, setApplicationError] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    const applicationId =
+      Array.isArray(router.query.id)
+        ? router.query.id[0]
+        : router.query.id;
+
+    if (!applicationId) {
+      return undefined;
+    }
+
+    const previewClientId =
+      Array.isArray(
+        router.query.previewClientId
+      )
+        ? router.query
+            .previewClientId[0]
+        : router.query
+            .previewClientId ||
+          '';
+
+    let cancelled = false;
+
+    const loadApplication =
+      async () => {
+        setIsLoadingApplication(
+          true
+        );
+        setApplicationError('');
+
+        try {
+          const supabase =
+            createClient();
+
+          if (!supabase) {
+            throw new Error(
+              'The Supabase connection is unavailable.'
+            );
+          }
+
+          const {
+            data: { session },
+            error: sessionError,
+          } =
+            await supabase.auth.getSession();
+
+          if (
+            sessionError ||
+            !session?.access_token
+          ) {
+            throw new Error(
+              'Your session has expired. Please sign in again.'
+            );
+          }
+
+          const query =
+            previewClientId
+              ? `?previewClientId=${encodeURIComponent(
+                  previewClientId
+                )}`
+              : '';
+
+          const response =
+            await fetch(
+              `/api/applications/${encodeURIComponent(
+                applicationId
+              )}${query}`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${session.access_token}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'The Application could not be loaded.'
+            );
+          }
+
+          const application =
+            result.application;
+
+          if (!application) {
+            throw new Error(
+              'The Application could not be found.'
+            );
+          }
+
+          const normalized = {
+            ...application,
+            date:
+              formatApplicationDate(
+                application.appliedAt
+              ),
+            applicationTime:
+              formatApplicationTime(
+                application.appliedAt
+              ),
+            preferences:
+              (
+                application.preferences ||
+                []
+              ).map(
+                normalizePreference
+              ),
+            jobDetails:
+              Array.isArray(
+                application.jobDetails
+              )
+                ? application.jobDetails
+                : [],
+            qualities:
+              Array.isArray(
+                application.qualities
+              )
+                ? application.qualities
+                : [],
+            otherDetails:
+              Array.isArray(
+                application.otherDetails
+              )
+                ? application.otherDetails
+                : [],
+          };
+
+          if (!cancelled) {
+            setApp(normalized);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setApp(null);
+            setApplicationError(
+              error?.message ||
+                'The Application could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingApplication(
+              false
+            );
+          }
+        }
+      };
+
+    loadApplication();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    router.isReady,
+    router.query.id,
+    router.query.previewClientId,
+  ]);
+
+  if (
+    isLoadingApplication
+  ) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[420px] items-center justify-center">
+          <p className="text-sm font-medium text-gray-500">
+            Loading Application...
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (
+    applicationError ||
+    !app
+  ) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[420px] items-center justify-center px-5">
+          <div className="max-w-lg rounded-2xl border border-red-200 bg-white p-6 text-center">
+            <h2 className="font-bold text-gray-900">
+              Application unavailable
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {applicationError ||
+                'The Application could not be loaded.'}
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <>
@@ -147,21 +395,6 @@ export default function ApplicationDetailPage() {
 
       <DashboardLayout>
         <div className="max-w-3xl relative">
-          {/* ── Sticky note trigger — pin icon on right ── */}
-          {!showStickyNote && (
-            <button
-              onClick={() => setShowStickyNote(true)}
-              className="absolute -right-4 sm:-right-16 top-6 w-10 h-10 hidden sm:flex items-center justify-center text-blue-600 hover:scale-110 transition-transform"
-            >
-              <span className="text-2xl drop-shadow-md">📌</span>
-            </button>
-          )}
-
-          {/* ── Sticky note overlay ── */}
-          {showStickyNote && (
-            <StickyNote note={app.stickyNote} onClose={() => setShowStickyNote(false)} />
-          )}
-
           {/* ═══════════════════════════════════════════════════════════════════
            *  SINGLE WHITE CARD — Contains info table, buttons, PDFs
            *  Matches Figma: info rows left, buttons right, PDFs below divider
@@ -241,12 +474,12 @@ export default function ApplicationDetailPage() {
                   </div>
                   {/* Security: Validate URL format on backend, use rel="noopener noreferrer" */}
                   <a
-                    href={`https://${app.jobLink}`}
+                    href={getExternalHref(app.jobLink)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[10px] sm:text-sm text-[#1E50C3] hover:underline break-words whitespace-normal break-all block w-full"
                   >
-                    {app.jobLink}
+                    {app.jobLink || 'Not supplied'}
                   </a>
                 </div>
               </div>
@@ -271,7 +504,10 @@ export default function ApplicationDetailPage() {
                 </div>
               ) : (
                 <div className="shrink-0 scale-75 sm:scale-100 origin-right">
-                  <FeedbackPanel onClose={() => setShowFeedback(false)} />
+                  <FeedbackPanel
+                    onClose={() => setShowFeedback(false)}
+                    feedback={app.feedback}
+                  />
                 </div>
               )}
             </div>
@@ -283,7 +519,10 @@ export default function ApplicationDetailPage() {
             {/* Backend: GET /api/applications/:id/documents */}
             {/* Returns: [{ name, type, url }] — render download links */}
             <div className="flex gap-5">
-              {['Submitted Resume .pdf', 'Submitted Cover letter.pdf'].map((label) => (
+              {[
+                app.resumeName || 'No resume attached',
+                app.coverLetterName || 'No cover letter attached',
+              ].map((label) => (
                 <div key={label} className="flex flex-col items-center gap-2 cursor-pointer group">
                   {/* PDF Icon thumbnail */}
                   <div className="w-[100px] sm:w-[120px] h-[120px] sm:h-[140px] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col items-center justify-center relative overflow-hidden group-hover:shadow-md transition-shadow">

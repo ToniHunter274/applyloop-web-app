@@ -21,10 +21,7 @@ import SEO from '../shared/components/SEO';
 import DashboardLayout from '../shared/components/DashboardLayout';
 import ApproveModal from '../shared/components/ApproveModal';
 import AddJobLinkModal from '../shared/components/AddJobLinkModal';
-
-// ─── Mock data import (replace with API call when backend is ready) ──────────
-// Backend: GET /api/applications
-import { MOCK_APPLICATIONS } from '../data/mockData';
+import { createClient } from '../lib/supabase/client';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -40,8 +37,9 @@ export default function Dashboard() {
             .previewClientId || ''
       : '';
 
-  // TODO(Backend): Replace with useEffect + applyLoopApi.applications.getAll()
-  const [applications, setApplications] = useState(MOCK_APPLICATIONS);
+  const [applications, setApplications] = useState([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+  const [applicationsError, setApplicationsError] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedApp, setSelectedApp] = useState(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
@@ -55,6 +53,109 @@ export default function Dashboard() {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplications = async () => {
+      setIsLoadingApplications(true);
+      setApplicationsError('');
+
+      try {
+        const supabase = createClient();
+
+        if (!supabase) {
+          throw new Error(
+            'The Supabase connection is unavailable.'
+          );
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (
+          sessionError ||
+          !session?.access_token
+        ) {
+          throw new Error(
+            'Your session has expired. Please sign in again.'
+          );
+        }
+
+        const query = previewClientId
+          ? `?clientId=${encodeURIComponent(
+              previewClientId
+            )}`
+          : '';
+
+        const response = await fetch(
+          `/api/applications${query}`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Applications could not be loaded.'
+          );
+        }
+
+        const applicationRows =
+          (result.applications || []).map(
+            (application) => ({
+              ...application,
+              status:
+                application.dashboardStatus ||
+                'Pending',
+            })
+          );
+
+        if (!cancelled) {
+          setApplications(
+            applicationRows
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setApplications([]);
+          setApplicationsError(
+            error?.message ||
+              'Applications could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingApplications(
+            false
+          );
+        }
+      }
+    };
+
+    loadApplications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewClientId,
+    router.isReady,
+  ]);
 
   // Status Badge styles helper
   const getStatusBadge = (status) => {
@@ -255,7 +356,7 @@ export default function Dashboard() {
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 font-semibold text-gray-900 dark:text-white">
                       <Link
                         href={{
-                          pathname: `/applications/${app.number.replace('#', '')}`,
+                          pathname: `/applications/${app.id}`,
                           query: previewClientId
                             ? {
                                 previewClientId,
@@ -296,7 +397,10 @@ export default function Dashboard() {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
-                    No applications found matching status &quot;{activeFilter}&quot;.
+                    {isLoadingApplications
+                      ? 'Loading Applications...'
+                      : applicationsError ||
+                        `No applications found matching status "${activeFilter}".`}
                   </td>
                 </tr>
               )}

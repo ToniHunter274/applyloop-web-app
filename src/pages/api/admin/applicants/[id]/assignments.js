@@ -245,6 +245,7 @@ async function listAssignments(req, res) {
         isAssigned,
         canAssign:
           applicantCanReceiveAssignments &&
+          client.status === 'active' &&
           !isAssigned &&
           assignmentCount < 2,
       };
@@ -305,7 +306,7 @@ async function createAssignment(req, res) {
     error: clientError,
   } = await supabase
     .from('clients')
-    .select('id')
+    .select('id, status')
     .eq('id', clientId)
     .single();
 
@@ -313,6 +314,13 @@ async function createAssignment(req, res) {
     throw new ApiError(
       404,
       'The client could not be found.'
+    );
+  }
+
+  if (client.status !== 'active') {
+    throw new ApiError(
+      409,
+      'Only active clients can receive new applicant assignments.'
     );
   }
 
@@ -405,6 +413,17 @@ async function createAssignment(req, res) {
       throw new ApiError(
         409,
         'Set this applicant to Available before assigning another client.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'only active clients'
+      )
+    ) {
+      throw new ApiError(
+        409,
+        'Only active clients can receive new applicant assignments.'
       );
     }
 

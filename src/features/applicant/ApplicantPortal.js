@@ -40,7 +40,6 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  APPLICANT_APPLICATIONS,
   CLIENT_FEEDBACK,
   LINK_SOURCE_OPTIONS,
   PERFORMANCE_PERIODS,
@@ -204,22 +203,6 @@ const normalizeAssignedClient = (
     client.notes ||
     'No admin notes available.',
 });
-
-const createApplicationRecords = () => {
-  const companies = ['Google', 'Meta', 'Amazon', 'Apple', 'Microsoft', 'Shopify', 'HubSpot', 'Atlassian'];
-  return Array.from({ length: 48 }, (_, index) => {
-    const seed = APPLICANT_APPLICATIONS[index % APPLICANT_APPLICATIONS.length];
-    const day = 18 - Math.floor(index / 8);
-    return {
-      ...seed,
-      id: index < APPLICANT_APPLICATIONS.length ? seed.id : `application-${String(index + 1).padStart(3, '0')}`,
-      company: index < APPLICANT_APPLICATIONS.length ? seed.company : companies[index % companies.length],
-      date: index < APPLICANT_APPLICATIONS.length ? seed.date : `Feb ${Math.max(day, 1)}, 2026`,
-      status: STATUS_OPTIONS[index % STATUS_OPTIONS.length],
-      linkSource: LINK_SOURCE_OPTIONS[index % LINK_SOURCE_OPTIONS.length],
-    };
-  });
-};
 
 function Avatar({ name, large = false }) {
   return <span className={large ? styles.avatarLarge : styles.avatar}>{initials(name)}</span>;
@@ -819,6 +802,7 @@ function WorkshopPage({
   clients,
   onRecordApplication,
   onPreview,
+  isPreview = false,
 }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [jobUrl, setJobUrl] = useState('');
@@ -848,7 +832,7 @@ function WorkshopPage({
       <PageHeader
         title="Prompt Center"
         subtitle="Analyze job fit, generate tailored resumes and cover letters"
-        action={selectedClient ? <button type="button" className={styles.primaryButton} onClick={() => onRecordApplication(selectedClient, jobUrl, jobDescription)}><FiSave /> Record Application</button> : null}
+        action={selectedClient && !isPreview ? <button type="button" className={styles.primaryButton} onClick={() => onRecordApplication(selectedClient, jobUrl, jobDescription)}><FiSave /> Record Application</button> : null}
       />
       <section className={styles.workshopPanel}>
         <div className={styles.clientSelector}>
@@ -1682,7 +1666,18 @@ export default function ApplicantPortal() {
   const section = parts[0] || 'dashboard';
   const clientId = parts[1];
   const applicationId = parts[2] === 'applications' ? parts[3] : null;
-  const [applications, setApplications] = useState(createApplicationRecords);
+  const [
+    applications,
+    setApplications,
+  ] = useState([]);
+  const [
+    isLoadingApplications,
+    setIsLoadingApplications,
+  ] = useState(false);
+  const [
+    applicationsError,
+    setApplicationsError,
+  ] = useState('');
   const [
     assignedClients,
     setAssignedClients,
@@ -1794,6 +1789,102 @@ export default function ApplicantPortal() {
       };
 
     loadAssignedClients();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isApplicantPreview,
+    previewApplicantId,
+    router.isReady,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !user?.role
+    ) {
+      return undefined;
+    }
+
+    if (
+      user.role !==
+        USER_ROLES.APPLICANT &&
+      !isApplicantPreview
+    ) {
+      setApplications([]);
+      setApplicationsError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplications =
+      async () => {
+        setIsLoadingApplications(
+          true
+        );
+        setApplicationsError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const query =
+            isApplicantPreview
+              ? `?applicantId=${encodeURIComponent(
+                  previewApplicantId
+                )}`
+              : '';
+
+          const response =
+            await fetch(
+              `/api/applications${query}`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Applications could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setApplications(
+              result.applications ||
+                []
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setApplications([]);
+            setApplicationsError(
+              error?.message ||
+                'Applications could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingApplications(
+              false
+            );
+          }
+        }
+      };
+
+    loadApplications();
 
     return () => {
       cancelled = true;
@@ -1931,24 +2022,7 @@ export default function ApplicantPortal() {
   }, [toast]);
 
   const visibleApplications =
-    useMemo(() => {
-      const assignedClientIds =
-        new Set(
-          assignedClients.map(
-            (client) => client.id
-          )
-        );
-
-      return applications.filter(
-        (application) =>
-          assignedClientIds.has(
-            application.clientId
-          )
-      );
-    }, [
-      applications,
-      assignedClients,
-    ]);
+    applications;
 
   const getApplicantRoute = (
     pathname
@@ -1962,31 +2036,161 @@ export default function ApplicantPortal() {
         }
       : pathname;
 
-  const changeApplication = (id, patch) => setApplications((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const changeApplication =
+    async (id, patch) => {
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            `/api/applications/${id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body:
+                JSON.stringify(
+                  patch
+                ),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The Application could not be updated.'
+          );
+        }
+
+        setApplications(
+          (current) =>
+            current.map(
+              (item) =>
+                item.id === id
+                  ? {
+                      ...item,
+                      ...patch,
+                    }
+                  : item
+            )
+        );
+      } catch (error) {
+        setToast(
+          error?.message ||
+            'The Application could not be updated.'
+        );
+      }
+    };
   const openApplication = (application) => router.push(getApplicantRoute(`/applicant/clients/${application.clientId}/applications/${application.id}`));
   const openClient = (client) => router.push(getApplicantRoute(`/applicant/clients/${client.id}`));
   const selectedClient = assignedClients.find((client) => client.id === clientId);
   const selectedApplication = visibleApplications.find((application) => application.id === applicationId);
 
-  const recordApplication = (client, jobUrl, jobDescription) => {
-    const next = {
-      id: `application-${Date.now()}`,
-      clientId: client.id,
-      client: client.name,
-      company: 'New Application',
-      position: jobDescription.split('\n')[0].replace(/^Job Title:\s*/i, '') || client.role,
-      location: 'Remote',
-      date: 'Jul 27, 2026',
-      status: 'Submitted',
-      linkSource: 'Applicant',
-      role: client.role,
-      applicationTime: 'Now',
-      preferences: ['remote', 'full-time'],
-      jobLink: jobUrl || 'Not supplied',
+  const recordApplication =
+    async (
+      client,
+      jobUrl,
+      jobDescription
+    ) => {
+      const position =
+        jobDescription
+          .split('\n')[0]
+          .replace(
+            /^Job Title:\s*/i,
+            ''
+          )
+          .trim() ||
+        client.role ||
+        'Job Application';
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            '/api/applications',
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                clientId:
+                  client.id,
+                company:
+                  'New Application',
+                position,
+                location:
+                  'Remote',
+                status:
+                  'Submitted',
+                linkSource:
+                  'Applicant',
+                role:
+                  client.role ||
+                  position,
+                preferences: [
+                  'remote',
+                  'full-time',
+                ],
+                jobUrl:
+                  jobUrl ||
+                  '',
+                jobDetails:
+                  jobDescription.trim()
+                    ? [
+                        jobDescription.trim(),
+                      ]
+                    : [],
+              }),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The Application could not be recorded.'
+          );
+        }
+
+        if (result.application) {
+          setApplications(
+            (current) => [
+              result.application,
+              ...current,
+            ]
+          );
+        }
+
+        setToast(
+          'Application recorded in the client database.'
+        );
+      } catch (error) {
+        setToast(
+          error?.message ||
+            'The Application could not be recorded.'
+        );
+      }
     };
-    setApplications((current) => [next, ...current]);
-    setToast('Application recorded in the client database.');
-  };
 
   let page;
   if (section === 'clients' && applicationId && selectedApplication) {
@@ -1996,7 +2200,7 @@ export default function ApplicantPortal() {
   } else if (section === 'clients') {
     page = <ClientsPage clients={assignedClients} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
-    page = <WorkshopPage clients={assignedClients} onRecordApplication={recordApplication} onPreview={setPreviewType} />;
+    page = <WorkshopPage clients={assignedClients} onRecordApplication={recordApplication} onPreview={setPreviewType} isPreview={isApplicantPreview} />;
   } else if (section === 'feedback') {
     page = (
       <FeedbackPage
@@ -2046,6 +2250,37 @@ export default function ApplicantPortal() {
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             {assignedClientsError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isLoadingApplications &&
+    applications.length === 0
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading Applications...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (applicationsError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">
+            Applications unavailable
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {applicationsError}
           </p>
         </div>
       </div>
