@@ -17,7 +17,48 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { getRoleHome, USER_ROLES } from '../config/roles';
+import { createClient } from '../../lib/supabase/client';
 import { Avatar } from './PortalUI';
+
+async function getClientAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error(
+      'Your session has expired.'
+    );
+  }
+
+  return session.access_token;
+}
+
+function formatNotificationDate(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 const pageMeta = {
   '/dashboard': ['Dashboard', 'Track applications, monitor progress, and stay in control of your job search.'],
@@ -40,6 +81,16 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [
+    isLoadingNotifications,
+    setIsLoadingNotifications,
+  ] = useState(false);
+  const [
+    notificationsError,
+    setNotificationsError,
+  ] = useState('');
   const [title, subtitle] = pageMeta[router.pathname] || ['ApplyLoop', ''];
 
   const navItems = [
@@ -55,6 +106,202 @@ export default function DashboardLayout({
   useEffect(() => {
     if (user?.role && user.role !== USER_ROLES.USER_CLIENT) router.replace(getRoleHome(user.role));
   }, [router, user?.role]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      user?.role !== USER_ROLES.USER_CLIENT
+    ) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadNotifications = async () => {
+      setIsLoadingNotifications(true);
+      setNotificationsError('');
+
+      try {
+        const accessToken =
+          await getClientAccessToken();
+
+        const response = await fetch(
+          '/api/client/notifications',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const data = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Notifications could not be loaded.'
+          );
+        }
+
+        if (!cancelled) {
+          setNotifications(
+            Array.isArray(data.notifications)
+              ? data.notifications
+              : []
+          );
+
+          setUnreadCount(
+            Number(data.unreadCount) || 0
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setNotificationsError(
+            error.message ||
+              'Notifications could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingNotifications(false);
+        }
+      }
+    };
+
+    loadNotifications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    router.isReady,
+    user?.role,
+  ]);
+
+  const markNotificationRead =
+    async (notification) => {
+      try {
+        if (!notification.read) {
+          const accessToken =
+            await getClientAccessToken();
+
+          const response = await fetch(
+            '/api/client/notifications',
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                notificationId:
+                  notification.id,
+              }),
+            }
+          );
+
+          const data = await response
+            .json()
+            .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              data.error ||
+                'Notification could not be updated.'
+            );
+          }
+
+          setNotifications((current) =>
+            current.map((item) =>
+              item.id === notification.id
+                ? {
+                    ...item,
+                    read: true,
+                    readAt:
+                      new Date().toISOString(),
+                  }
+                : item
+            )
+          );
+
+          setUnreadCount(
+            Number(data.unreadCount) || 0
+          );
+        }
+      } catch (error) {
+        setNotificationsError(
+          error.message ||
+            'Notification could not be updated.'
+        );
+      }
+
+      setNotificationsOpen(false);
+
+      if (notification.href) {
+        router.push(notification.href);
+      }
+    };
+
+  const markAllNotificationsRead =
+    async () => {
+      try {
+        const accessToken =
+          await getClientAccessToken();
+
+        const response = await fetch(
+          '/api/client/notifications',
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              markAllRead: true,
+            }),
+          }
+        );
+
+        const data = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Notifications could not be updated.'
+          );
+        }
+
+        const readAt =
+          new Date().toISOString();
+
+        setNotifications((current) =>
+          current.map((notification) => ({
+            ...notification,
+            read: true,
+            readAt,
+          }))
+        );
+
+        setUnreadCount(0);
+        setNotificationsError('');
+      } catch (error) {
+        setNotificationsError(
+          error.message ||
+            'Notifications could not be updated.'
+        );
+      }
+    };
 
   return (
     <div className="user-client-compact min-h-screen bg-[#eaf0ff] text-slate-900">
@@ -99,7 +346,123 @@ export default function DashboardLayout({
                   className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400"
                 />
               </label>
-              <div className="relative"><button onClick={() => setNotificationsOpen((value) => !value)} className="relative rounded-full border border-blue-600 p-2 text-blue-700 hover:bg-slate-50"><FiBell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" /></button>{notificationsOpen && <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"><p className="px-2 py-2 text-[11px] font-medium">Notifications</p>{['Your Notion application moved to Interview.', 'A new Loop Lab session is available.', 'Your monthly application usage is at 64%.'].map((message) => <div key={message} className="border-t border-slate-100 px-2 py-3 text-xs leading-5 text-slate-600">{message}</div>)}</div>}</div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNotificationsOpen(
+                      (value) => !value
+                    )
+                  }
+                  className="relative rounded-full border border-blue-600 p-2 text-blue-700 hover:bg-slate-50"
+                  aria-label="Notifications"
+                >
+                  <FiBell className="h-[18px] w-[18px]" />
+
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[9px] font-bold text-white flex items-center justify-center ring-2 ring-white">
+                      {unreadCount > 9
+                        ? '9+'
+                        : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {notificationsOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                      <p className="text-[12px] font-semibold text-slate-900">
+                        Notifications
+                      </p>
+
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={
+                            markAllNotificationsRead
+                          }
+                          className="text-[10px] font-semibold text-blue-600 hover:text-blue-800"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-[360px] overflow-y-auto">
+                      {isLoadingNotifications ? (
+                        <div className="px-4 py-8 text-center">
+                          <p className="text-xs text-slate-400">
+                            Loading notifications...
+                          </p>
+                        </div>
+                      ) : notificationsError ? (
+                        <div className="px-4 py-6 text-center">
+                          <p className="text-xs text-rose-500">
+                            {notificationsError}
+                          </p>
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <p className="text-xs text-slate-400">
+                            No notifications.
+                          </p>
+                        </div>
+                      ) : (
+                        notifications
+                          .slice(0, 5)
+                          .map((notification) => (
+                            <button
+                              type="button"
+                              key={notification.id}
+                              onClick={() =>
+                                markNotificationRead(
+                                  notification
+                                )
+                              }
+                              className={`w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50 ${
+                                notification.read
+                                  ? 'bg-white'
+                                  : 'bg-blue-50/60'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2">
+                                {!notification.read && (
+                                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-600" />
+                                )}
+
+                                <div className="min-w-0">
+                                  <p className="text-[11px] font-semibold text-slate-900">
+                                    {notification.title}
+                                  </p>
+
+                                  <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                                    {notification.message}
+                                  </p>
+
+                                  <p className="mt-1.5 text-[9px] text-slate-400">
+                                    {formatNotificationDate(
+                                      notification.createdAt
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          ))
+                      )}
+                    </div>
+
+                    <Link
+                      href="/notifications"
+                      onClick={() =>
+                        setNotificationsOpen(false)
+                      }
+                      className="block border-t border-slate-100 px-4 py-3 text-center text-[11px] font-semibold text-blue-600 hover:bg-slate-50"
+                    >
+                      View all notifications
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
