@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { 
   FiFileText, 
   FiMail, 
@@ -20,14 +21,33 @@ import SEO from '../shared/components/SEO';
 import DashboardLayout from '../shared/components/DashboardLayout';
 import ApproveModal from '../shared/components/ApproveModal';
 import AddJobLinkModal from '../shared/components/AddJobLinkModal';
-
-// ─── Mock data import (replace with API call when backend is ready) ──────────
-// Backend: GET /api/applications
-import { MOCK_APPLICATIONS } from '../data/mockData';
+import { createClient } from '../lib/supabase/client';
 
 export default function Dashboard() {
-  // TODO(Backend): Replace with useEffect + applyLoopApi.applications.getAll()
-  const [applications, setApplications] = useState(MOCK_APPLICATIONS);
+  const router = useRouter();
+
+  const previewClientId =
+    router.isReady
+      ? Array.isArray(
+          router.query.previewClientId
+        )
+        ? router.query
+            .previewClientId[0]
+        : router.query
+            .previewClientId || ''
+      : '';
+
+  const [applications, setApplications] = useState([]);
+  const [
+    applicationSummary,
+    setApplicationSummary,
+  ] = useState({
+    totalApplications: 0,
+    persistedApplications: 0,
+    historicalApplications: 0,
+  });
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+  const [applicationsError, setApplicationsError] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedApp, setSelectedApp] = useState(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
@@ -41,6 +61,125 @@ export default function Dashboard() {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplications = async () => {
+      setIsLoadingApplications(true);
+      setApplicationsError('');
+
+      try {
+        const supabase = createClient();
+
+        if (!supabase) {
+          throw new Error(
+            'The Supabase connection is unavailable.'
+          );
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (
+          sessionError ||
+          !session?.access_token
+        ) {
+          throw new Error(
+            'Your session has expired. Please sign in again.'
+          );
+        }
+
+        const query = previewClientId
+          ? `?clientId=${encodeURIComponent(
+              previewClientId
+            )}`
+          : '';
+
+        const response = await fetch(
+          `/api/applications${query}`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Applications could not be loaded.'
+          );
+        }
+
+        const applicationRows =
+          (result.applications || []).map(
+            (application) => ({
+              ...application,
+              status:
+                application.dashboardStatus ||
+                'Pending',
+            })
+          );
+
+        if (!cancelled) {
+          setApplications(
+            applicationRows
+          );
+
+          setApplicationSummary(
+            result.summary || {
+              totalApplications:
+                applicationRows.length,
+              persistedApplications:
+                applicationRows.length,
+              historicalApplications:
+                0,
+            }
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setApplications([]);
+          setApplicationSummary({
+            totalApplications: 0,
+            persistedApplications: 0,
+            historicalApplications: 0,
+          });
+          setApplicationsError(
+            error?.message ||
+              'Applications could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingApplications(
+            false
+          );
+        }
+      }
+    };
+
+    loadApplications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewClientId,
+    router.isReady,
+  ]);
 
   // Status Badge styles helper
   const getStatusBadge = (status) => {
@@ -86,7 +225,11 @@ export default function Dashboard() {
   }, [activeFilter]);
 
   // Calculate stats count dynamically
-  const totalCount = applications.length;
+  const totalCount =
+    Number(
+      applicationSummary
+        .totalApplications || 0
+    );
   const pendingCount = applications.filter(app => app.status === 'Pending').length;
   const rejectedCount = applications.filter(app => app.status === 'Rejected').length;
   const interviewCount = applications.filter(app => app.status === 'Interview').length;
@@ -239,9 +382,28 @@ export default function Dashboard() {
                       <span className="whitespace-nowrap">{app.date}</span>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 font-semibold text-gray-900 dark:text-white">
-                      <Link href={`/applications/${app.number.replace('#', '')}`} className="hover:text-[#1E50C3] hover:underline transition-colors block">
-                        {app.company}
-                      </Link>
+                      {app.isLocal ? (
+                        <span
+                          title="This Job Link has not been persisted as an Application."
+                          className="block text-gray-700 dark:text-gray-300"
+                        >
+                          {app.company}
+                        </span>
+                      ) : (
+                        <Link
+                          href={{
+                            pathname: `/applications/${app.id}`,
+                            query: previewClientId
+                              ? {
+                                  previewClientId,
+                                }
+                              : {},
+                          }}
+                          className="hover:text-[#1E50C3] hover:underline transition-colors block"
+                        >
+                          {app.company}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 hidden sm:table-cell">
                       {app.position}
@@ -272,7 +434,10 @@ export default function Dashboard() {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
-                    No applications found matching status &quot;{activeFilter}&quot;.
+                    {isLoadingApplications
+                      ? 'Loading Applications...'
+                      : applicationsError ||
+                        `No applications found matching status "${activeFilter}".`}
                   </td>
                 </tr>
               )}
@@ -335,6 +500,7 @@ export default function Dashboard() {
           const newId = `AND${Date.now()}`;
           const newApp = {
             id: newId,
+            isLocal: true,
             number: `#${newId}`,
             date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             company: 'New Company',
@@ -342,6 +508,8 @@ export default function Dashboard() {
             resume: 'Anderson Pdf.',
             coverLetter: 'Anderson..',
             status: 'Pending',
+            jobLink: data.jobLink,
+            feedback: data.comment || '',
           };
           setApplications([newApp, ...applications]);
           setCurrentPage(1); // Jump to first page to show new entry
