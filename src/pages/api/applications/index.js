@@ -689,74 +689,6 @@ async function createApplication(
     );
   }
 
-  const {
-    data: assignment,
-    error: assignmentError,
-  } = await supabase
-    .from(
-      'client_applicant_assignments'
-    )
-    .select('id')
-    .eq(
-      'applicant_id',
-      applicant.id
-    )
-    .eq(
-      'client_id',
-      clientId
-    )
-    .maybeSingle();
-
-  if (assignmentError) {
-    throw new PortalApiError(
-      500,
-      'The Client assignment could not be verified.'
-    );
-  }
-
-  if (!assignment) {
-    throw new PortalApiError(
-      403,
-      'This Client is not assigned to you.'
-    );
-  }
-
-  const {
-    data: client,
-    error: clientError,
-  } = await supabase
-    .from('clients')
-    .select(`
-      id,
-      user_id,
-      status
-    `)
-    .eq(
-      'id',
-      clientId
-    )
-    .single();
-
-  if (
-    clientError ||
-    !client
-  ) {
-    throw new PortalApiError(
-      404,
-      'The Client could not be found.'
-    );
-  }
-
-  if (
-    client.status !==
-    'active'
-  ) {
-    throw new PortalApiError(
-      409,
-      'Applications cannot be recorded for a paused or completed Client.'
-    );
-  }
-
   const status =
     APPLICATION_STATUSES.has(
       req.body?.status
@@ -779,95 +711,162 @@ async function createApplication(
       : [];
 
   const {
-    data: application,
+    data: applicationRows,
     error: insertError,
-  } = await supabase
-    .from('applications')
-    .insert({
-      client_id:
-        client.id,
-      created_by:
+  } = await supabase.rpc(
+    'create_applicant_application',
+    {
+      p_applicant_id:
+        applicant.id,
+      p_client_id:
+        clientId,
+      p_created_by:
         profile.id,
-      company,
-      position,
-      location:
+      p_company:
+        company,
+      p_position:
+        position,
+      p_location:
         String(
           req.body?.location ||
           ''
         ).trim(),
-      status,
-      link_source:
+      p_status:
+        status,
+      p_link_source:
         linkSource,
-      role:
+      p_role:
         String(
           req.body?.role ||
           position
         ).trim(),
-      preferences,
-      job_url:
+      p_preferences:
+        preferences,
+      p_job_url:
         String(
           req.body?.jobUrl ||
           ''
         ).trim() ||
         null,
-      resume_name:
+      p_resume_name:
         String(
           req.body?.resumeName ||
           ''
         ).trim() ||
         null,
-      cover_letter_name:
+      p_cover_letter_name:
         String(
           req.body?.coverLetterName ||
           ''
         ).trim() ||
         null,
-      job_details:
+      p_job_details:
         Array.isArray(
           req.body?.jobDetails
         )
           ? req.body.jobDetails
           : [],
-      qualities:
+      p_qualities:
         Array.isArray(
           req.body?.qualities
         )
           ? req.body.qualities
           : [],
-      other_details:
+      p_other_details:
         Array.isArray(
           req.body?.otherDetails
         )
           ? req.body.otherDetails
           : [],
-    })
-    .select(`
-      id,
-      client_id,
-      company,
-      position,
-      location,
-      status,
-      link_source,
-      role,
-      applied_at,
-      preferences,
-      job_url,
-      resume_name,
-      cover_letter_name,
-      feedback,
-      job_details,
-      qualities,
-      other_details,
-      created_at,
-      updated_at
-    `)
-    .single();
+    }
+  );
+
+  const application =
+    Array.isArray(
+      applicationRows
+    )
+      ? applicationRows[0]
+      : applicationRows;
 
   if (
     insertError ||
     !application
   ) {
+    const normalizedMessage =
+      String(
+        insertError?.message ||
+        ''
+      ).toLowerCase();
+
+    if (
+      normalizedMessage.includes(
+        'not assigned to you'
+      )
+    ) {
+      throw new PortalApiError(
+        403,
+        'This Client is not assigned to you.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'paused or completed'
+      )
+    ) {
+      throw new PortalApiError(
+        409,
+        'Applications cannot be recorded for a paused or completed Client.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'application limit'
+      )
+    ) {
+      throw new PortalApiError(
+        409,
+        'This Client has reached the application limit.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'applicant account is not active'
+      ) ||
+      normalizedMessage.includes(
+        'applicant identity mismatch'
+      )
+    ) {
+      throw new PortalApiError(
+        403,
+        'Your Applicant account cannot record Applications.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'applicant not found'
+      )
+    ) {
+      throw new PortalApiError(
+        404,
+        'Your Applicant record could not be found.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'client not found'
+      )
+    ) {
+      throw new PortalApiError(
+        404,
+        'The Client could not be found.'
+      );
+    }
+
     console.error(
       'Unable to create Application:',
       insertError
@@ -886,7 +885,7 @@ async function createApplication(
     .select('full_name')
     .eq(
       'id',
-      client.user_id
+      application.client_user_id
     )
     .single();
 

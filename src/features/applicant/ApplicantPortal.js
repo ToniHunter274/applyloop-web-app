@@ -371,7 +371,14 @@ function StatCard({ label, value, foot, positive = false, warning = false }) {
   );
 }
 
-function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilter }) {
+function ApplicationTable({
+  records,
+  onChangeRecord,
+  onOpen,
+  search,
+  clientFilter,
+  readOnly = false,
+}) {
   const [page, setPage] = useState(1);
   const pageSize = 8;
   const filtered = useMemo(() => {
@@ -438,6 +445,7 @@ function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilte
                   <select
                     aria-label={`Status for ${record.company}`}
                     value={record.status}
+                    disabled={readOnly}
                     className={classNames(styles.statusSelect, getStatusClass(record.status))}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => onChangeRecord(record.id, { status: event.target.value })}
@@ -450,6 +458,7 @@ function ApplicationTable({ records, onChangeRecord, onOpen, search, clientFilte
                     <select
                       aria-label={`Link source for ${record.company}`}
                       value={record.linkSource}
+                      disabled={readOnly}
                       className={styles.sourceSelect}
                       onClick={(event) => event.stopPropagation()}
                       onChange={(event) => onChangeRecord(record.id, { linkSource: event.target.value })}
@@ -485,6 +494,7 @@ function Dashboard({
   clients,
   onChangeRecord,
   onOpenApplication,
+  readOnly = false,
 }) {
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState('');
@@ -529,6 +539,7 @@ function Dashboard({
         clientFilter={clientFilter}
         onChangeRecord={onChangeRecord}
         onOpen={onOpenApplication}
+        readOnly={readOnly}
       />
     </>
   );
@@ -2038,6 +2049,13 @@ export default function ApplicantPortal() {
 
   const changeApplication =
     async (id, patch) => {
+      if (isApplicantPreview) {
+        setToast(
+          'Applicant preview is read-only.'
+        );
+        return;
+      }
+
       try {
         const accessToken =
           await getApplicantAccessToken();
@@ -2219,7 +2237,7 @@ export default function ApplicantPortal() {
   } else if (section === 'settings') {
     page = <SettingsPage />;
   } else {
-    page = <Dashboard clients={assignedClients} applications={visibleApplications} onChangeRecord={changeApplication} onOpenApplication={openApplication} />;
+    page = <Dashboard clients={assignedClients} applications={visibleApplications} onChangeRecord={changeApplication} onOpenApplication={openApplication} readOnly={isApplicantPreview} />;
   }
 
   if (
