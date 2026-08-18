@@ -67,6 +67,7 @@ const pageMeta = {
   '/billing': ['Billing & Subscription', 'Manage your plan, billing history, and application volume.'],
   '/settings': ['Settings', 'Update your profile, work preferences, and account details.'],
   '/notifications': ['Notifications', 'Review important application and interview updates.'],
+  '/support': ['Help & Support', 'Get help with your account, applications, or technical issues.'],
   '/applications/[id]': ['Job Application', 'Review the full application, documents, status, and feedback.'],
 };
 
@@ -360,7 +361,17 @@ export default function DashboardLayout({
           })}
         </nav>
         <div className="border-t border-slate-100 p-3">
-          <button className="mb-1 flex w-full items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal text-slate-500 hover:bg-slate-50"><FiHelpCircle /> Help & Support</button>
+          <Link
+            href="/support"
+            className={`mb-1 flex w-full items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal transition ${
+              router.pathname === '/support'
+                ? 'bg-[#eaf0ff] font-semibold text-[#1f56c6]'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <FiHelpCircle />
+            Help & Support
+          </Link>
           <div className="relative">
             <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-[4px] px-2 py-2 text-left hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{user?.name || 'User/Client'}</span><span className="block truncate text-[10px] text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
             {profileOpen && <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"><button onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"><FiLogOut /> Sign out</button></div>}
