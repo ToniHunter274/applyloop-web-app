@@ -29,7 +29,12 @@ const pageMeta = {
   '/applications/[id]': ['Job Application', 'Review the full application, documents, status, and feedback.'],
 };
 
-export default function DashboardLayout({ children, logout: logoutProp }) {
+export default function DashboardLayout({
+  children,
+  logout: logoutProp,
+  searchValue = '',
+  onSearchChange,
+}) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -80,7 +85,20 @@ export default function DashboardLayout({ children, logout: logoutProp }) {
           <div className="flex min-h-[74px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-[20px] font-medium tracking-[-0.03em] lg:text-[23px]">{title}</h1><p className="mt-1 hidden truncate text-[11px] text-slate-400 sm:block">{subtitle}</p></div></div>
             <div className="flex items-center gap-2">
-              <label className="relative hidden xl:block"><FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input placeholder="Search applications" className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400" /></label>
+              <label className="relative hidden xl:block">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={searchValue}
+                  onChange={(event) =>
+                    onSearchChange?.(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Search applications"
+                  className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400"
+                />
+              </label>
               <div className="relative"><button onClick={() => setNotificationsOpen((value) => !value)} className="relative rounded-full border border-blue-600 p-2 text-blue-700 hover:bg-slate-50"><FiBell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" /></button>{notificationsOpen && <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"><p className="px-2 py-2 text-[11px] font-medium">Notifications</p>{['Your Notion application moved to Interview.', 'A new Loop Lab session is available.', 'Your monthly application usage is at 64%.'].map((message) => <div key={message} className="border-t border-slate-100 px-2 py-3 text-xs leading-5 text-slate-600">{message}</div>)}</div>}</div>
             </div>
           </div>

@@ -66,6 +66,7 @@ export default function Dashboard() {
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [applicationsError, setApplicationsError] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [updateSlideIndex, setUpdateSlideIndex] = useState(0);
@@ -236,17 +237,45 @@ export default function Dashboard() {
     }
   };
 
-  // Filter application list
-  const filteredApps = applications.filter(app => {
-    if (activeFilter === 'All') return true;
-    return app.status === activeFilter;
-  });
+  const normalizedSearch =
+    searchQuery.trim().toLowerCase();
 
-  // Reset pagination whenever the user changes dashboard sections.
-  // This prevents a page-2 selection from carrying into a section with only one page.
+  const filteredApps = applications.filter(
+    (app) => {
+      const matchesStatus =
+        activeFilter === 'All' ||
+        app.status === activeFilter;
+
+      if (!matchesStatus) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const searchableValues = [
+        app.number,
+        app.company,
+        app.position,
+        app.role,
+        app.status,
+        app.location,
+        app.linkSource,
+      ];
+
+      return searchableValues.some(
+        (value) =>
+          String(value || '')
+            .toLowerCase()
+            .includes(normalizedSearch)
+      );
+    }
+  );
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter]);
+  }, [activeFilter, searchQuery]);
 
   const totalCount = applications.length;
   const waitingCount = applications.filter(
@@ -284,7 +313,10 @@ export default function Dashboard() {
 
 
   return (
-    <DashboardLayout>
+    <DashboardLayout
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+    >
       <SEO title="Home" />
 
       {/* Stat Cards Container */}
