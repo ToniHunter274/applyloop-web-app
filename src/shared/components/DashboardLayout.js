@@ -346,7 +346,7 @@ export default function DashboardLayout({
     };
 
   return (
-    <div className="user-client-compact min-h-screen bg-[#eaf0ff] text-slate-900">
+    <div className="user-client-compact min-h-screen bg-slate-50 text-slate-900">
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-slate-200/80 bg-white shadow-[0_0_30px_rgba(15,23,42,0.04)] transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-[88px] items-center justify-between border-b border-slate-100 px-6">
@@ -384,9 +384,9 @@ export default function DashboardLayout({
       </aside>
 
       <div className="md:pl-[264px]">
-        <header className="user-client-compact-header sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur">
-          <div className="flex min-h-[74px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-[20px] font-medium tracking-[-0.03em] lg:text-[23px]">{title}</h1><p className="mt-1 hidden truncate text-[11px] text-slate-400 sm:block">{subtitle}</p></div></div>
+        <header className="user-client-compact-header sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-xl">
+          <div className="flex min-h-[88px] items-center justify-between gap-4 px-5 sm:px-7 lg:px-9">
+            <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-xl font-bold tracking-[-0.025em] text-slate-950 lg:text-2xl">{title}</h1><p className="mt-1 hidden truncate text-sm text-slate-500 sm:block">{subtitle}</p></div></div>
             <div className="flex items-center gap-2">
               <form
                 onSubmit={handleHeaderSearchSubmit}
@@ -405,7 +405,7 @@ export default function DashboardLayout({
                     }
                     placeholder="Search applications"
                     aria-label="Search applications"
-                    className="h-[38px] w-[250px] rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-[11px] outline-none focus:border-blue-400"
+                    className="h-11 w-[300px] rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
               </form>
@@ -417,7 +417,7 @@ export default function DashboardLayout({
                       (value) => !value
                     )
                   }
-                  className="relative rounded-full border border-blue-600 p-2 text-blue-700 hover:bg-slate-50"
+                  className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
                   aria-label="Notifications"
                 >
                   <FiBell className="h-[18px] w-[18px]" />
@@ -529,7 +529,7 @@ export default function DashboardLayout({
             </div>
           </div>
         </header>
-        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-[13px] sm:p-[14px] lg:p-[14px]"><div className="user-client-page-surface">{children}</div></main>
+        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8"><div className="user-client-page-surface">{children}</div></main>
       </div>
     </div>
   );
