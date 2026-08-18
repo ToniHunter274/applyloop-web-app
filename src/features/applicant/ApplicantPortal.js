@@ -579,7 +579,18 @@ function ClientsPage({
   const visible = useMemo(() => clients.filter((client) => {
     const query = search.trim().toLowerCase();
     const match = !query || `${client.name} ${client.role}`.toLowerCase().includes(query);
-    const tabMatch = tab === 'all' || client.status === tab;
+    const tabMatch =
+      tab === 'all' ||
+      (
+        tab === 'inactive'
+          ? [
+              'paused',
+              'completed',
+            ].includes(
+              client.status
+            )
+          : client.status === tab
+      );
     return match && tabMatch;
   }), [clients, search, tab]);
 
@@ -641,7 +652,29 @@ function ClientsPage({
       <div className={styles.tabs}>
         <button type="button" className={classNames(styles.tab, tab === 'all' && styles.tabActive)} onClick={() => setTab('all')}>All Clients ({clients.length})</button>
         <button type="button" className={classNames(styles.tab, tab === 'active' && styles.tabActive)} onClick={() => setTab('active')}>Active Clients ({clients.filter((client) => client.status === 'active').length})</button>
-        <button type="button" className={classNames(styles.tab, tab === 'inactive' && styles.tabActive)} onClick={() => setTab('inactive')}>Inactive Clients</button>
+        <button
+          type="button"
+          className={classNames(
+            styles.tab,
+            tab === 'inactive' &&
+              styles.tabActive
+          )}
+          onClick={() =>
+            setTab('inactive')
+          }
+        >
+          Inactive Clients ({
+            clients.filter(
+              (client) =>
+                [
+                  'paused',
+                  'completed',
+                ].includes(
+                  client.status
+                )
+            ).length
+          })
+        </button>
       </div>
       <div className={styles.clientGrid}>
         {visible.map((client) => <ClientCard key={client.id} client={client} onOpen={onOpenClient} />)}
@@ -880,7 +913,18 @@ function WorkshopPage({
   const [jobDescription, setJobDescription] = useState('');
   const [analysisState, setAnalysisState] = useState('neutral');
   const [processing, setProcessing] = useState(false);
-  const selectedClient = clients.find((client) => client.id === selectedClientId);
+  const activeClients =
+    clients.filter(
+      (client) =>
+        client.status === 'active'
+    );
+
+  const selectedClient =
+    activeClients.find(
+      (client) =>
+        client.id ===
+        selectedClientId
+    );
   const score = analysisState === 'green' ? { resume: 80, fit: 100 } : { resume: 0, fit: 0 };
 
   const runAnalysis = () => {
@@ -931,7 +975,16 @@ function WorkshopPage({
           <label className={styles.fieldLabel}>Select Client</label>
           <select value={selectedClientId} onChange={(event) => { setSelectedClientId(event.target.value); setAnalysisState('neutral'); }}>
             <option value="">Select a client</option>
-            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            {activeClients.map(
+              (client) => (
+                <option
+                  key={client.id}
+                  value={client.id}
+                >
+                  {client.name}
+                </option>
+              )
+            )}
           </select>
         </div>
         {selectedClient && (
