@@ -173,7 +173,6 @@ async function getClients(req, res) {
       applications_completed,
       interviews,
       gender,
-      notes,
       status
     `)
     .in('id', clientIds);
@@ -334,9 +333,6 @@ async function getClients(req, res) {
           status:
             client.status ||
             'active',
-          notes:
-            client.notes ||
-            'No admin notes available.',
         };
       })
       .filter(Boolean);

@@ -695,7 +695,11 @@ function ReadonlyField({ label, value, copy = false }) {
   );
 }
 
-function ClientDetail({ client, onBack }) {
+function ClientDetail({
+  client,
+  onBack,
+  showInternalNotes = false,
+}) {
   return (
     <>
       <div className={styles.detailHeader}>
@@ -757,10 +761,21 @@ function ClientDetail({ client, onBack }) {
           </div>
         </div>
       </section>
-      <section className={styles.noteBlock}>
-        <div className={styles.noteTitle}><FiFileText /> Notes from Admin</div>
-        <p>{client.notes}</p>
-      </section>
+      {showInternalNotes && (
+        <section
+          className={styles.noteBlock}
+        >
+          <div
+            className={
+              styles.noteTitle
+            }
+          >
+            <FiFileText />
+            Internal Notes
+          </div>
+          <p>{client.notes}</p>
+        </section>
+      )}
     </>
   );
 }
@@ -909,6 +924,7 @@ function WorkshopPage({
   isRecordingApplication = false,
 }) {
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [jobUrl, setJobUrl] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [analysisState, setAnalysisState] = useState('neutral');
@@ -925,6 +941,20 @@ function WorkshopPage({
         client.id ===
         selectedClientId
     );
+
+  const isQuotaReached =
+    Boolean(
+      selectedClient &&
+        Number(
+          selectedClient.applications ||
+            0
+        ) >=
+          Number(
+            selectedClient.applicationLimit ||
+              0
+          )
+    );
+
   const score = analysisState === 'green' ? { resume: 80, fit: 100 } : { resume: 0, fit: 0 };
 
   const runAnalysis = () => {
@@ -953,19 +983,25 @@ function WorkshopPage({
             <button
               type="button"
               className={styles.primaryButton}
-              disabled={isRecordingApplication}
+              disabled={
+                isRecordingApplication ||
+                isQuotaReached
+              }
               onClick={() =>
                 onRecordApplication(
                   selectedClient,
+                  companyName,
                   jobUrl,
                   jobDescription
                 )
               }
             >
               <FiSave />
-              {isRecordingApplication
-                ? 'Recording...'
-                : 'Record Application'}
+              {isQuotaReached
+                ? 'Application Limit Reached'
+                : isRecordingApplication
+                  ? 'Recording...'
+                  : 'Record Application'}
             </button>
           ) : null
         }
@@ -1026,6 +1062,26 @@ function WorkshopPage({
             <ScoreCard label="Resume Match Score" value={score.resume} note="Based on skills & experience alignment" state={analysisState} icon={FiTarget} />
             <ScoreCard label="Applicability Score" value={score.fit} note="Based on client preferences vs job" state={analysisState} icon={FiBriefcase} />
           </div>
+          <div
+            className={styles.field}
+            style={{ marginBottom: 14 }}
+          >
+            <label>
+              Company Name
+            </label>
+            <input
+              value={companyName}
+              onChange={(event) =>
+                setCompanyName(
+                  event.target.value
+                )
+              }
+              placeholder="e.g. Microsoft"
+              required
+              aria-required="true"
+            />
+          </div>
+
           <div className={styles.field} style={{ marginBottom: 14 }}>
             <label>Job Posting URL</label>
             <input value={jobUrl} onChange={(event) => setJobUrl(event.target.value)} placeholder="https://..." />
@@ -2289,9 +2345,45 @@ export default function ApplicantPortal() {
   const recordApplication =
     async (
       client,
+      companyName,
       jobUrl,
       jobDescription
     ) => {
+      const company =
+        String(
+          companyName || ''
+        ).trim();
+
+      if (!company) {
+        setToast(
+          'Enter the company name.'
+        );
+        return;
+      }
+
+      if (
+        client.status !== 'active'
+      ) {
+        setToast(
+          'Applications can only be recorded for active Clients.'
+        );
+        return;
+      }
+
+      if (
+        Number(
+          client.applications || 0
+        ) >=
+        Number(
+          client.applicationLimit || 0
+        )
+      ) {
+        setToast(
+          'This Client has reached the application limit.'
+        );
+        return;
+      }
+
       if (
         recordApplicationInFlight
           .current
@@ -2335,8 +2427,7 @@ export default function ApplicantPortal() {
               body: JSON.stringify({
                 clientId:
                   client.id,
-                company:
-                  'New Application',
+                company,
                 position,
                 location:
                   'Remote',
@@ -2475,7 +2566,21 @@ export default function ApplicantPortal() {
   if (section === 'clients' && applicationId && selectedApplication) {
     page = <ApplicationDetail application={selectedApplication} onBack={() => router.push(getApplicantRoute(`/applicant/clients/${selectedApplication.clientId}`))} />;
   } else if (section === 'clients' && selectedClient) {
-    page = <ClientDetail client={selectedClient} onBack={() => router.push(getApplicantRoute('/applicant/clients'))} />;
+    page = (
+      <ClientDetail
+        client={selectedClient}
+        onBack={() =>
+          router.push(
+            getApplicantRoute(
+              '/applicant/clients'
+            )
+          )
+        }
+        showInternalNotes={
+          isApplicantPreview
+        }
+      />
+    );
   } else if (section === 'clients') {
     page = <ClientsPage clients={assignedClients} onOpenClient={openClient} />;
   } else if (section === 'workshop') {
