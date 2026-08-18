@@ -411,6 +411,8 @@ export default function Settings() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // ── Tab list ──
   const tabs = [
@@ -1475,37 +1477,81 @@ export default function Settings() {
 
               {/* Update Password Form */}
               <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   setPasswordError('');
+                  setPasswordMessage('');
 
-                  // Client-side validation
                   if (!currentPassword) {
-                    setPasswordError('Please enter your current password.');
-                    return;
-                  }
-                  if (newPassword.length < 8) {
-                    setPasswordError('New password must be at least 8 characters.');
-                    return;
-                  }
-                  if (newPassword !== confirmPassword) {
-                    setPasswordError('New passwords do not match.');
-                    return;
-                  }
-                  if (currentPassword === newPassword) {
-                    setPasswordError('New password must differ from current password.');
+                    setPasswordError(
+                      'Please enter your current password.'
+                    );
                     return;
                   }
 
-                  // TODO(Backend): PUT /api/auth/update-password
-                  // Payload: { currentPassword, newPassword }
-                  // Security: Hash passwords on the server. Never log raw passwords.
-                  // Security: Invalidate existing sessions after password change.
-                  // Security: Rate-limit this endpoint to prevent brute-force attacks.
-                  console.log('Password update requested');
-                  setCurrentPassword('');
-                  setNewPassword('');
-                  setConfirmPassword('');
+                  if (newPassword.length < 8) {
+                    setPasswordError(
+                      'New password must be at least 8 characters.'
+                    );
+                    return;
+                  }
+
+                  if (newPassword !== confirmPassword) {
+                    setPasswordError(
+                      'New passwords do not match.'
+                    );
+                    return;
+                  }
+
+                  if (currentPassword === newPassword) {
+                    setPasswordError(
+                      'New password must differ from current password.'
+                    );
+                    return;
+                  }
+
+                  setIsUpdatingPassword(true);
+
+                  try {
+                    const supabase = createClient();
+
+                    const { error } =
+                      await supabase.auth.updateUser({
+                        password: newPassword,
+                        current_password: currentPassword,
+                      });
+
+                    if (error) {
+                      throw error;
+                    }
+
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setShowCurrentPassword(false);
+                    setShowNewPassword(false);
+                    setPasswordMessage(
+                      'Password updated successfully.'
+                    );
+                  } catch (error) {
+                    const message =
+                      error?.message ||
+                      'Unable to update your password.';
+
+                    if (
+                      /current.*password|password.*incorrect|invalid.*password/i.test(
+                        message
+                      )
+                    ) {
+                      setPasswordError(
+                        'Your current password is incorrect.'
+                      );
+                    } else {
+                      setPasswordError(message);
+                    }
+                  } finally {
+                    setIsUpdatingPassword(false);
+                  }
                 }}
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
@@ -1577,19 +1623,36 @@ export default function Settings() {
                   />
                 </div>
 
-                {/* Error message */}
                 {passwordError && (
-                  <div className="col-span-1 md:col-span-2">
-                    <p className="text-sm text-red-600 font-medium">{passwordError}</p>
+                  <div className="col-span-1 md:col-span-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                    <p className="text-sm text-red-600 font-medium">
+                      {passwordError}
+                    </p>
+                  </div>
+                )}
+
+                {passwordMessage && (
+                  <div className="col-span-1 md:col-span-2 rounded-xl border border-green-100 bg-green-50 px-4 py-3">
+                    <p className="text-sm text-green-700 font-medium">
+                      {passwordMessage}
+                    </p>
                   </div>
                 )}
 
                 <div className="col-span-1 md:col-span-2 flex justify-end">
                   <button
                     type="submit"
-                    className="px-6 py-2.5 text-sm font-semibold text-white bg-[#1E50C3] hover:bg-[#1A45A7] rounded-xl hover:shadow-lg hover:shadow-blue-500/10 transition-all active:scale-[0.98]"
+                    disabled={isUpdatingPassword}
+                    className="inline-flex min-w-[165px] items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-[#1E50C3] hover:bg-[#1A45A7] rounded-xl hover:shadow-lg hover:shadow-blue-500/10 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Update Password
+                    {isUpdatingPassword ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
                   </button>
                 </div>
               </form>
