@@ -348,38 +348,42 @@ export default function DashboardLayout({
   return (
     <div className="user-client-compact min-h-screen bg-[#eaf0ff] text-slate-900">
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-slate-200 bg-white transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-        <div className="flex h-[112px] items-center justify-between border-b border-slate-100 px-6">
-          <Link href="/dashboard" className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-[26px] w-[26px]" /><span className="text-[15px] font-semibold tracking-tight">ApplyLoop</span></Link>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-slate-200/80 bg-white shadow-[0_0_30px_rgba(15,23,42,0.04)] transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        <div className="flex h-[88px] items-center justify-between border-b border-slate-100 px-6">
+          <Link href="/dashboard" className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-8 w-8" /><span className="text-base font-bold tracking-tight text-slate-950">ApplyLoop</span></Link>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-500 md:hidden"><FiX /></button>
         </div>
-        <div className="px-[14px] pt-0"><div className="rounded border border-blue-100 bg-blue-50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-[0.09em] text-blue-500">Workspace</p><p className="mt-1 text-[11px] font-semibold text-blue-950">User/Client portal</p></div></div>
-        <nav className="mt-4 flex-1 space-y-[3px] overflow-y-auto px-[14px]">
+        
+        <nav className="mt-3 flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
           {navItems.map(({ icon: Icon, label, href }) => {
             const active = router.pathname === href || (href === '/dashboard' && router.pathname === '/applications/[id]');
-            return <Link key={href} href={href} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal transition ${active ? 'bg-[#eaf0ff] text-[#1f56c6] font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}><Icon className="h-4 w-4" />{label}</Link>;
+            return <Link key={href} href={href} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
+                  active
+                    ? 'bg-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/70'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                }`}><Icon className="h-4 w-4" />{label}</Link>;
           })}
         </nav>
-        <div className="border-t border-slate-100 p-3">
+        <div className="border-t border-slate-100 p-4">
           <Link
             href="/support"
-            className={`mb-1 flex w-full items-center gap-3 rounded-[3px] px-3 py-[11px] text-[12px] font-normal transition ${
+            className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
               router.pathname === '/support'
-                ? 'bg-[#eaf0ff] font-semibold text-[#1f56c6]'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/70'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
             }`}
           >
             <FiHelpCircle />
             Help & Support
           </Link>
           <div className="relative">
-            <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-[4px] px-2 py-2 text-left hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{user?.name || 'User/Client'}</span><span className="block truncate text-[10px] text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
+            <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-800">{user?.name || 'Client'}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
             {profileOpen && <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"><button onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"><FiLogOut /> Sign out</button></div>}
           </div>
         </div>
       </aside>
 
-      <div className="md:pl-[236px]">
+      <div className="md:pl-[264px]">
         <header className="user-client-compact-header sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur">
           <div className="flex min-h-[74px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-[20px] font-medium tracking-[-0.03em] lg:text-[23px]">{title}</h1><p className="mt-1 hidden truncate text-[11px] text-slate-400 sm:block">{subtitle}</p></div></div>
