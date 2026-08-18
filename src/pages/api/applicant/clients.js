@@ -330,6 +330,7 @@ async function getClients(req, res) {
           offers: 0,
           applications:
             applicationsCompleted,
+          applicationLimit,
           status:
             client.status ||
             'active',

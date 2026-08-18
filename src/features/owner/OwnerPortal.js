@@ -1377,6 +1377,11 @@ function ApplicantsManagementPage({
                   assignmentApplicant
                     .accountStatus ===
                     'active' &&
+                  assignmentApplicant
+                    .availability ===
+                    'available' &&
+                  item.status ===
+                    'active' &&
                   assignmentCount < 2,
               };
             })

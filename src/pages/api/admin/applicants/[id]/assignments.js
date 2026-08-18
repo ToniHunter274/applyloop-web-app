@@ -84,6 +84,11 @@ async function listAssignments(req, res) {
       id,
       user_id,
       plan,
+      application_limit,
+      applications_completed,
+      interviews,
+      gender,
+      notes,
       assigned_team,
       status,
       created_at
@@ -128,7 +133,8 @@ async function listAssignments(req, res) {
         id,
         email,
         full_name,
-        phone
+        phone,
+        country
       `)
       .in('id', userIds);
 
@@ -225,6 +231,31 @@ async function listAssignments(req, res) {
       const isAssigned =
         assignedClientIds.has(client.id);
 
+      const applicationLimit =
+        Number(
+          client.application_limit ||
+            0
+        );
+
+      const applicationsCompleted =
+        Number(
+          client.applications_completed ||
+            0
+        );
+
+      const progress =
+        applicationLimit > 0
+          ? Math.min(
+              100,
+              Math.round(
+                (
+                  applicationsCompleted /
+                  applicationLimit
+                ) * 100
+              )
+            )
+          : 0;
+
       return {
         id: client.id,
         fullName:
@@ -233,6 +264,30 @@ async function listAssignments(req, res) {
         email: profile?.email || '',
         phone: profile?.phone || '',
         plan: client.plan,
+        applicationLimit,
+        applications:
+          applicationsCompleted,
+        progress,
+        interviews:
+          Number(
+            client.interviews || 0
+          ),
+        gender:
+          client.gender ||
+          'Not provided',
+        nationality:
+          profile?.country ||
+          'Not provided',
+        targetCountries:
+          profile?.country ||
+          'Not provided',
+        rejectedRoles: 0,
+        selectedRoles: 0,
+        feedbacks: 0,
+        offers: 0,
+        notes:
+          client.notes ||
+          'No admin notes available.',
         assignedTeam:
           client.assigned_team || '',
         status: client.status,

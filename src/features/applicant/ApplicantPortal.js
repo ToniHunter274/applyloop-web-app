@@ -197,6 +197,10 @@ const normalizeAssignedClient = (
     Number(
       client.applications || 0
     ),
+  applicationLimit:
+    Number(
+      client.applicationLimit || 0
+    ),
   status:
     client.status || 'active',
   notes:
@@ -671,7 +675,10 @@ function ClientDetail({ client, onBack }) {
         <NotificationButton />
       </div>
       <div className={classNames(styles.statsGrid, styles.statsGridFive)}>
-        <StatCard label="Total Applications" value={`${client.applications}/100`} />
+        <StatCard
+          label="Total Applications"
+          value={`${client.applications}/${client.applicationLimit}`}
+        />
         <StatCard label="Upcoming Interviews" value={client.interviews} />
         <StatCard label="Total Rejected Roles" value={client.rejectedRoles} />
         <StatCard label="Total Selected Roles" value={client.selectedRoles ?? 3} />
@@ -756,40 +763,91 @@ function ApplicationDetail({ application, onBack }) {
         <dt><FiLink /> Job Link</dt><dd><u>{application.jobLink}</u></dd>
       </dl>
       <div className={styles.documentRow}>
-        <PdfDocument name="Submitted Resume.pdf" />
-        <PdfDocument name="Submitted Cover letter.pdf" />
+        <PdfDocument
+          name={
+            application.resume ||
+            'N/A'
+          }
+        />
+        <PdfDocument
+          name={
+            application.coverLetter ||
+            'N/A'
+          }
+        />
       </div>
+
       <section className={styles.copySection}>
         <h3>Job Details</h3>
         <ul>
-          <li>Work with team members to develop streamlined user experience processes.</li>
-          <li>Proactively pursue opportunities to improve the strategy to better address client and user objectives.</li>
-          <li>Capable of defining consumers, processes, and ideas from an objective point of view based on research and insight.</li>
-          <li>Communicate this point of view with senior management on both the agency and client sides.</li>
-          <li>Take personal responsibility for on-time deliverables.</li>
-          <li>Actively educate internal groups about user experience and provide a significant contribution to client relationships.</li>
-          <li>Be an advocate on behalf of user experience within the agency at large.</li>
-          <li>Adept at utilizing AI tools to inform and streamline their design process, from research to prototyping.</li>
-          <li>Experience working within or contributing to white-label design systems.</li>
+          {(
+            application.jobDetails ||
+            []
+          ).length > 0 ? (
+            application.jobDetails.map(
+              (item, index) => (
+                <li
+                  key={`${index}-${item}`}
+                >
+                  {item}
+                </li>
+              )
+            )
+          ) : (
+            <li>
+              No job details recorded.
+            </li>
+          )}
         </ul>
       </section>
+
       <section className={styles.copySection}>
-        <h3>Qualities and Characteristics</h3>
+        <h3>
+          Qualities and Characteristics
+        </h3>
         <ul>
-          <li>A portfolio of work demonstrating experience designing complex systems across multiple platforms, including mobile and touch-based interfaces.</li>
-          <li>A minimum of 3 years’ experience in experience and interaction design, and a thorough understanding of existing interaction design patterns across web, mobile, and other digital platforms.</li>
-          <li>Proficiency using user-centric design processes and designing for user needs based on research.</li>
-          <li>Excellent knowledge of Figma, including setting up and utilizing Figma libraries.</li>
-          <li>Strong proficiency with leading industry-standard UX design and prototyping tools.</li>
+          {(
+            application.qualities ||
+            []
+          ).length > 0 ? (
+            application.qualities.map(
+              (item, index) => (
+                <li
+                  key={`${index}-${item}`}
+                >
+                  {item}
+                </li>
+              )
+            )
+          ) : (
+            <li>
+              No qualities recorded.
+            </li>
+          )}
         </ul>
       </section>
+
       <section className={styles.copySection}>
         <h3>Other Details</h3>
         <ul>
-          <li>Remote (United States only) position.</li>
-          <li>Available during normal business hours, US Eastern Time Zone.</li>
-          <li>Full-time work schedule (40hrs/wk).</li>
-          <li>Anticipated weekly pay range between $2,600–$2,800.</li>
+          {(
+            application.otherDetails ||
+            []
+          ).length > 0 ? (
+            application.otherDetails.map(
+              (item, index) => (
+                <li
+                  key={`${index}-${item}`}
+                >
+                  {item}
+                </li>
+              )
+            )
+          ) : (
+            <li>
+              No other details recorded.
+            </li>
+          )}
         </ul>
       </section>
     </div>
