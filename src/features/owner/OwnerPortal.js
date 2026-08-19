@@ -2030,7 +2030,17 @@ function ApplicantsManagementPage({
                             <td className="px-5 py-5">
                               <button
                                 type="button"
-                                onClick={() =>
+                                disabled={
+                                  mode === 'operations'
+                                }
+                                onClick={() => {
+                                  if (
+                                    mode ===
+                                    'operations'
+                                  ) {
+                                    return;
+                                  }
+
                                   router.push({
                                     pathname:
                                       '/applicant',
@@ -2038,11 +2048,24 @@ function ApplicantsManagementPage({
                                       previewApplicantId:
                                         applicant.id,
                                     },
-                                  })
-                                }
-                                className="group block text-left"
+                                  });
+                                }}
+                                className={cn(
+                                  'group block text-left',
+                                  mode ===
+                                    'operations' &&
+                                    'cursor-default'
+                                )}
                               >
-                                <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
+                                <span
+                                  className={cn(
+                                    'text-base font-semibold leading-5 underline-offset-4 transition-colors',
+                                    mode ===
+                                      'operations'
+                                      ? 'text-slate-900'
+                                      : 'text-blue-700 group-hover:text-blue-600 group-hover:underline'
+                                  )}
+                                >
                                   {applicant.fullName}
                                 </span>
 
@@ -2055,10 +2078,13 @@ function ApplicantsManagementPage({
                                     'No phone number'}
                                 </span>
 
-                                <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
-                                  View as Applicant
-                                  <FiExternalLink className="h-3 w-3" />
-                                </span>
+                                {mode !==
+                                  'operations' && (
+                                  <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                    View as Applicant
+                                    <FiExternalLink className="h-3 w-3" />
+                                  </span>
+                                )}
 
                                 <span className="mt-2 block text-xs text-slate-400">
                                   {applicant.completedTasks}{' '}
