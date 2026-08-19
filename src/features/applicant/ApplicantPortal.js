@@ -1747,6 +1747,18 @@ function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(user?.emailNotifications ?? true);
   const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? false);
   const [savingNotificationKey, setSavingNotificationKey] = useState('');
+
+  useEffect(() => {
+    setEmailNotifications(
+      user?.emailNotifications ?? true
+    );
+    setPushNotifications(
+      user?.pushNotifications ?? false
+    );
+  }, [
+    user?.emailNotifications,
+    user?.pushNotifications,
+  ]);
   const [saved, setSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
