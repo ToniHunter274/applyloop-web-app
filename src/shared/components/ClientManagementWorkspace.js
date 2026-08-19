@@ -1655,32 +1655,44 @@ export default function ClientManagementWorkspace({
                           className="border-b border-slate-100 transition-colors hover:bg-slate-50/80"
                         >
                           <td className="px-5 py-4">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                router.push({
-                                  pathname: '/dashboard',
-                                  query: {
-                                    previewClientId:
-                                      client.id,
-                                  },
-                                })
-                              }
-                              className="group text-left"
-                            >
-                              <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
-                                {client.fullName}
-                              </span>
+                            {mode === 'operations' ? (
+                              <div className="text-left">
+                                <span className="text-base font-semibold leading-5 text-slate-900">
+                                  {client.fullName}
+                                </span>
 
-                              <span className="mt-1 block text-xs text-slate-500">
-                                {client.email}
-                              </span>
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {client.email}
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  router.push({
+                                    pathname: '/dashboard',
+                                    query: {
+                                      previewClientId:
+                                        client.id,
+                                    },
+                                  })
+                                }
+                                className="group text-left"
+                              >
+                                <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
+                                  {client.fullName}
+                                </span>
 
-                              <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
-                                View as Client
-                                <FiExternalLink className="h-3 w-3" />
-                              </span>
-                            </button>
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {client.email}
+                                </span>
+
+                                <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                  View as Client
+                                  <FiExternalLink className="h-3 w-3" />
+                                </span>
+                              </button>
+                            )}
                           </td>
 
                           <td className="px-5 py-4">

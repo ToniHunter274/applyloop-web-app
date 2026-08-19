@@ -37,7 +37,8 @@ $$;
 
 insert into public.applicants (
   user_id,
-  availability
+  availability,
+  active_tasks
 )
 select distinct
   client.assigned_applicant_id,
@@ -45,7 +46,8 @@ select distinct
     when profile.account_status = 'active'
       then 'available'
     else 'inactive'
-  end
+  end,
+  15
 from public.clients as client
 join public.profiles as profile
   on profile.id = client.assigned_applicant_id

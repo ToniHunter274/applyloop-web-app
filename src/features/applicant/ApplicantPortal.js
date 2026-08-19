@@ -1707,8 +1707,26 @@ function PerformancePage() {
   );
 }
 
-function Toggle({ value, onChange, label }) {
-  return <button type="button" aria-label={label} className={classNames(styles.toggle, value && styles.toggleOn)} onClick={() => onChange(!value)} />;
+function Toggle({
+  value,
+  onChange,
+  label,
+  disabled = false,
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      className={classNames(
+        styles.toggle,
+        value && styles.toggleOn
+      )}
+      onClick={() =>
+        onChange(!value)
+      }
+    />
+  );
 }
 
 function SettingsPage() {
@@ -1728,6 +1746,7 @@ function SettingsPage() {
   });
   const [emailNotifications, setEmailNotifications] = useState(user?.emailNotifications ?? true);
   const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? false);
+  const [savingNotificationKey, setSavingNotificationKey] = useState('');
   const [saved, setSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -1736,16 +1755,36 @@ function SettingsPage() {
   const update = (key, value) => setProfile((current) => ({ ...current, [key]: value }));
 
   const handleNotificationChange = async (key, value) => {
-    if (key === 'emailNotifications') setEmailNotifications(value);
-    if (key === 'pushNotifications') setPushNotifications(value);
+    if (savingNotificationKey) {
+      return;
+    }
 
-    const result = await updateProfile({
-      [key]: value,
-    });
+    setSavingNotificationKey(key);
 
-    if (!result.success) {
-      if (key === 'emailNotifications') setEmailNotifications(!value);
-      if (key === 'pushNotifications') setPushNotifications(!value);
+    if (key === 'emailNotifications') {
+      setEmailNotifications(value);
+    }
+
+    if (key === 'pushNotifications') {
+      setPushNotifications(value);
+    }
+
+    try {
+      const result = await updateProfile({
+        [key]: value,
+      });
+
+      if (!result.success) {
+        if (key === 'emailNotifications') {
+          setEmailNotifications(!value);
+        }
+
+        if (key === 'pushNotifications') {
+          setPushNotifications(!value);
+        }
+      }
+    } finally {
+      setSavingNotificationKey('');
     }
   };
 
@@ -1819,8 +1858,32 @@ function SettingsPage() {
       </section>
       <section className={styles.settingsSection}>
         <h3>Notification Preferences</h3>
-        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle value={emailNotifications} onChange={(value) => handleNotificationChange('emailNotifications', value)} label="Email notifications" /></div>
-        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle value={pushNotifications} onChange={(value) => handleNotificationChange('pushNotifications', value)} label="Push notifications" /></div>
+        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle
+          value={emailNotifications}
+          onChange={(value) =>
+            handleNotificationChange(
+              'emailNotifications',
+              value
+            )
+          }
+          label="Email notifications"
+          disabled={Boolean(
+            savingNotificationKey
+          )}
+        /></div>
+        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle
+          value={pushNotifications}
+          onChange={(value) =>
+            handleNotificationChange(
+              'pushNotifications',
+              value
+            )
+          }
+          label="Push notifications"
+          disabled={Boolean(
+            savingNotificationKey
+          )}
+        /></div>
       </section>
       <section className={styles.settingsSection}>
         <h3>Company · ApplyLoop</h3>
