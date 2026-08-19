@@ -65,7 +65,19 @@ function formatApplicationDate(value) {
 export default function Dashboard() {
   const router = useRouter();
 
+  const previewClientId =
+    router.isReady
+      ? Array.isArray(router.query.previewClientId)
+        ? router.query.previewClientId[0]
+        : router.query.previewClientId || ''
+      : '';
+
   const [applications, setApplications] = useState([]);
+  const [applicationSummary, setApplicationSummary] = useState({
+    totalApplications: 0,
+    persistedApplications: 0,
+    historicalApplications: 0,
+  });
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [applicationsError, setApplicationsError] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
@@ -111,7 +123,11 @@ export default function Dashboard() {
   }, [announcements.length]);
 
   useEffect(() => {
-    let mounted = true;
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    let cancelled = false;
 
     const loadApplications = async () => {
       setIsLoadingApplications(true);
@@ -120,8 +136,12 @@ export default function Dashboard() {
       try {
         const accessToken = await getAccessToken();
 
+        const query = previewClientId
+          ? `?clientId=${encodeURIComponent(previewClientId)}`
+          : '';
+
         const response = await fetch(
-          '/api/client/applications',
+          `/api/applications${query}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -129,7 +149,9 @@ export default function Dashboard() {
           }
         );
 
-        const data = await response.json();
+        const data = await response
+          .json()
+          .catch(() => ({}));
 
         if (!response.ok) {
           throw new Error(
@@ -138,22 +160,63 @@ export default function Dashboard() {
           );
         }
 
-        if (!mounted) return;
-
-        setApplications(
-          Array.isArray(data.applications)
+        const applicationRows =
+          (Array.isArray(data.applications)
             ? data.applications
             : []
-        );
+          ).map((application) => ({
+            ...application,
+            resumeName:
+              application.resumeName ||
+              (
+                application.resume &&
+                application.resume !== 'N/A'
+                  ? application.resume
+                  : null
+              ),
+            coverLetterName:
+              application.coverLetterName ||
+              (
+                application.coverLetter &&
+                application.coverLetter !== 'N/A'
+                  ? application.coverLetter
+                  : null
+              ),
+            jobUrl:
+              application.jobUrl ||
+              application.jobLink ||
+              '',
+          }));
+
+        if (!cancelled) {
+          setApplications(applicationRows);
+
+          setApplicationSummary(
+            data.summary || {
+              totalApplications:
+                applicationRows.length,
+              persistedApplications:
+                applicationRows.length,
+              historicalApplications: 0,
+            }
+          );
+        }
       } catch (error) {
-        if (mounted) {
+        if (!cancelled) {
+          setApplications([]);
+          setApplicationSummary({
+            totalApplications: 0,
+            persistedApplications: 0,
+            historicalApplications: 0,
+          });
+
           setApplicationsError(
             error.message ||
               'Unable to load your applications.'
           );
         }
       } finally {
-        if (mounted) {
+        if (!cancelled) {
           setIsLoadingApplications(false);
         }
       }
@@ -162,11 +225,22 @@ export default function Dashboard() {
     loadApplications();
 
     return () => {
-      mounted = false;
+      cancelled = true;
     };
-  }, []);
+  }, [
+    previewClientId,
+    router.isReady,
+  ]);
 
   useEffect(() => {
+    if (previewClientId) {
+      setAnnouncements([]);
+      setAnnouncementsError('');
+      setIsLoadingAnnouncements(false);
+
+      return undefined;
+    }
+
     let mounted = true;
 
     const loadAnnouncements = async () => {
@@ -220,7 +294,7 @@ export default function Dashboard() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [previewClientId]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -298,7 +372,12 @@ export default function Dashboard() {
     setCurrentPage(1);
   }, [activeFilter, searchQuery]);
 
-  const totalCount = applications.length;
+  const totalCount = Math.max(
+    applications.length,
+    Number(
+      applicationSummary.totalApplications || 0
+    )
+  );
   const waitingCount = applications.filter(
     app => app.status === 'Waiting'
   ).length;
@@ -540,7 +619,15 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4.5 font-semibold text-gray-900 dark:text-white">
-                      <Link href={`/applications/${app.id}`} className="hover:text-[#1E50C3] hover:underline transition-colors block">
+                      <Link
+                        href={{
+                          pathname: `/applications/${app.id}`,
+                          query: previewClientId
+                            ? { previewClientId }
+                            : {},
+                        }}
+                        className="hover:text-[#1E50C3] hover:underline transition-colors block"
+                      >
                         {app.company}
                       </Link>
                     </td>
@@ -630,6 +717,12 @@ export default function Dashboard() {
         isOpen={isAddJobModalOpen}
         onClose={() => setIsAddJobModalOpen(false)}
         onConfirm={async ({ jobLink, comment }) => {
+          if (previewClientId) {
+            throw new Error(
+              'Job links cannot be submitted while previewing a client.'
+            );
+          }
+
           const accessToken =
             await getAccessToken();
 

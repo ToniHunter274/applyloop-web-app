@@ -83,6 +83,8 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [previewClient, setPreviewClient] = useState(null);
+  const [previewError, setPreviewError] = useState('');
   const [headerSearchValue, setHeaderSearchValue] = useState('');
   const [tourOpen, setTourOpen] = useState(false);
   const [tourChecked, setTourChecked] = useState(false);
@@ -96,7 +98,43 @@ export default function DashboardLayout({
     notificationsError,
     setNotificationsError,
   ] = useState('');
-  const [title, subtitle] = pageMeta[router.pathname] || ['ApplyLoop', ''];
+  const previewClientId =
+    router.isReady
+      ? Array.isArray(
+          router.query.previewClientId
+        )
+        ? router.query.previewClientId[0]
+        : router.query.previewClientId || ''
+      : '';
+
+  const isClientPreview =
+    [
+      USER_ROLES.OWNER,
+      USER_ROLES.ADMIN,
+    ].includes(user?.role) &&
+    Boolean(previewClientId);
+
+  const previewRoleLabel =
+    user?.role === USER_ROLES.ADMIN
+      ? 'Admin'
+      : 'Owner';
+
+  const previewExitHref =
+    user?.role === USER_ROLES.ADMIN
+      ? '/admin'
+      : '/owner/client-management';
+
+  const displayUser =
+    isClientPreview && previewClient
+      ? {
+          name: previewClient.fullName,
+          email: previewClient.email,
+        }
+      : user;
+
+  const [title, subtitle] =
+    pageMeta[router.pathname] ||
+    ['ApplyLoop', ''];
 
   const navItems = [
     {
@@ -153,7 +191,16 @@ export default function DashboardLayout({
 
     if (!query) {
       if (router.pathname !== '/dashboard') {
-        router.push('/dashboard');
+        router.push(
+          isClientPreview
+            ? {
+                pathname: '/dashboard',
+                query: {
+                  previewClientId,
+                },
+              }
+            : '/dashboard'
+        );
       }
 
       return;
@@ -166,14 +213,111 @@ export default function DashboardLayout({
     router.push({
       pathname: '/dashboard',
       query: {
+        ...(isClientPreview
+          ? {
+              previewClientId,
+            }
+          : {}),
         search: query,
       },
     });
   };
 
   useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.USER_CLIENT) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+    if (
+      !router.isReady ||
+      !isClientPreview
+    ) {
+      setPreviewClient(null);
+      setPreviewError('');
+
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadPreviewClient = async () => {
+      setPreviewError('');
+
+      try {
+        const accessToken =
+          await getClientAccessToken();
+
+        const response = await fetch(
+          '/api/admin/clients',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The client could not be loaded.'
+          );
+        }
+
+        const selectedClient =
+          (result.clients || []).find(
+            (client) =>
+              String(client.id) ===
+              String(previewClientId)
+          );
+
+        if (!selectedClient) {
+          throw new Error(
+            'The selected client could not be found.'
+          );
+        }
+
+        if (!cancelled) {
+          setPreviewClient(
+            selectedClient
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPreviewError(
+            error.message ||
+              'The client preview could not be loaded.'
+          );
+        }
+      }
+    };
+
+    loadPreviewClient();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isClientPreview,
+    previewClientId,
+    router.isReady,
+  ]);
+
+  useEffect(() => {
+    if (
+      user?.role &&
+      user.role !== USER_ROLES.USER_CLIENT &&
+      !isClientPreview
+    ) {
+      router.replace(
+        getRoleHome(user.role)
+      );
+    }
+  }, [
+    isClientPreview,
+    router,
+    user?.role,
+  ]);
 
   useEffect(() => {
     if (
@@ -515,16 +659,54 @@ export default function DashboardLayout({
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-slate-200/80 bg-white shadow-[0_0_30px_rgba(15,23,42,0.04)] transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-[88px] items-center justify-between border-b border-slate-100 px-6">
-          <Link href="/dashboard" className="flex items-center gap-3"><img src="/logo.svg" alt="ApplyLoop" className="h-8 w-8" /><span className="text-base font-bold tracking-tight text-slate-950">ApplyLoop</span></Link>
+          <Link
+            href={
+              isClientPreview
+                ? {
+                    pathname: '/dashboard',
+                    query: {
+                      previewClientId,
+                    },
+                  }
+                : '/dashboard'
+            }
+            className="flex items-center gap-3"
+          >
+            <img
+              src="/logo.svg"
+              alt="ApplyLoop"
+              className="h-8 w-8"
+            />
+            <span className="text-base font-bold tracking-tight text-slate-950">
+              ApplyLoop
+            </span>
+          </Link>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-500 md:hidden"><FiX /></button>
         </div>
         
         <nav className="mt-3 flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
           {navItems.map(({ icon: Icon, label, href, tour }) => {
-            const active = router.pathname === href || (href === '/dashboard' && router.pathname === '/applications/[id]');
+            const active =
+              router.pathname === href ||
+              (
+                href === '/dashboard' &&
+                router.pathname ===
+                  '/applications/[id]'
+              );
+
+            const targetHref =
+              isClientPreview
+                ? {
+                    pathname: href,
+                    query: {
+                      previewClientId,
+                    },
+                  }
+                : href;
+
             return <Link
                 key={href}
-                href={href}
+                href={targetHref}
                 data-tour={tour}
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
@@ -536,7 +718,16 @@ export default function DashboardLayout({
         </nav>
         <div className="border-t border-slate-100 p-4">
           <Link
-            href="/support"
+            href={
+              isClientPreview
+                ? {
+                    pathname: '/support',
+                    query: {
+                      previewClientId,
+                    },
+                  }
+                : '/support'
+            }
             data-tour="support-nav"
             className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
               router.pathname === '/support'
@@ -550,8 +741,53 @@ export default function DashboardLayout({
           <div className="relative">
             <button
               data-tour="profile-menu"
-              onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-800">{user?.name || 'Client'}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
-            {profileOpen && <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"><button onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"><FiLogOut /> Sign out</button></div>}
+              onClick={() =>
+                setProfileOpen(
+                  (value) => !value
+                )
+              }
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
+            >
+              <Avatar
+                name={displayUser?.name}
+                size="sm"
+              />
+
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-slate-800">
+                  {displayUser?.name ||
+                    'Client'}
+                </span>
+
+                <span className="mt-0.5 block truncate text-xs text-slate-500">
+                  {displayUser?.email ||
+                    'client@applyloop.com'}
+                </span>
+              </span>
+
+              <FiChevronDown className="text-slate-400" />
+            </button>
+
+            {profileOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                {isClientPreview ? (
+                  <Link
+                    href={previewExitHref}
+                    className="flex w-full items-center px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                  >
+                    Back to Client Management
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                  >
+                    <FiLogOut />
+                    Sign out
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -692,7 +928,17 @@ export default function DashboardLayout({
                     </div>
 
                     <Link
-                      href="/notifications"
+                      href={
+                        isClientPreview
+                          ? {
+                              pathname:
+                                '/notifications',
+                              query: {
+                                previewClientId,
+                              },
+                            }
+                          : '/notifications'
+                      }
                       onClick={() =>
                         setNotificationsOpen(false)
                       }
@@ -706,7 +952,48 @@ export default function DashboardLayout({
             </div>
           </div>
         </header>
-        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8"><div className="user-client-page-surface">{children}</div></main>
+        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+          {isClientPreview && (
+            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-blue-600">
+                  {previewRoleLabel} Preview
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-blue-950">
+                  {previewClient
+                    ? `Viewing as ${previewClient.fullName}`
+                    : 'Loading client preview...'}
+                </p>
+
+                <p className="mt-1 text-xs text-blue-700">
+                  You are still signed in as{' '}
+                  {previewRoleLabel}.
+                </p>
+              </div>
+
+              <Link
+                href={previewExitHref}
+                className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                Back to Client Management
+              </Link>
+            </div>
+          )}
+
+          {previewError && (
+            <div
+              role="alert"
+              className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700"
+            >
+              {previewError}
+            </div>
+          )}
+
+          <div className="user-client-page-surface">
+            {children}
+          </div>
+        </main>
       </div>
       <ClientProductTour
         open={tourOpen}

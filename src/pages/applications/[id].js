@@ -112,6 +112,7 @@ function FeedbackPanel({
   messages,
   onClose,
   onSend,
+  readOnly = false,
 }) {
   const [message, setMessage] =
     useState('');
@@ -212,6 +213,7 @@ function FeedbackPanel({
         )}
       </div>
 
+      {!readOnly && (
       <form
         onSubmit={handleSubmit}
         className="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -249,6 +251,7 @@ function FeedbackPanel({
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }
@@ -277,6 +280,35 @@ function DocumentCard({
 export default function ApplicationDetailPage() {
   const router = useRouter();
 
+  const applicationId =
+    router.isReady
+      ? Array.isArray(router.query.id)
+        ? router.query.id[0]
+        : router.query.id || ''
+      : '';
+
+  const previewClientId =
+    router.isReady
+      ? Array.isArray(
+          router.query.previewClientId
+        )
+        ? router.query.previewClientId[0]
+        : router.query.previewClientId || ''
+      : '';
+
+  const isClientPreview =
+    Boolean(previewClientId);
+
+  const dashboardHref =
+    isClientPreview
+      ? {
+          pathname: '/dashboard',
+          query: {
+            previewClientId,
+          },
+        }
+      : '/dashboard';
+
   const [application, setApplication] =
     useState(null);
   const [messages, setMessages] =
@@ -301,7 +333,12 @@ export default function ApplicationDetailPage() {
     useState('');
 
   useEffect(() => {
-    if (!router.isReady) return undefined;
+    if (
+      !router.isReady ||
+      !applicationId
+    ) {
+      return undefined;
+    }
 
     let mounted = true;
 
@@ -313,8 +350,19 @@ export default function ApplicationDetailPage() {
         const accessToken =
           await getAccessToken();
 
+        const endpoint =
+          isClientPreview
+            ? `/api/applications/${encodeURIComponent(
+                applicationId
+              )}?previewClientId=${encodeURIComponent(
+                previewClientId
+              )}`
+            : `/api/client/applications/${encodeURIComponent(
+                applicationId
+              )}`;
+
         const response = await fetch(
-          `/api/client/applications/${router.query.id}`,
+          endpoint,
           {
             headers: {
               Authorization:
@@ -323,7 +371,9 @@ export default function ApplicationDetailPage() {
           }
         );
 
-        const data = await response.json();
+        const data = await response
+          .json()
+          .catch(() => ({}));
 
         if (!response.ok) {
           throw new Error(
@@ -332,19 +382,67 @@ export default function ApplicationDetailPage() {
           );
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
+
+        const loadedApplication =
+          data.application || null;
+
+        const normalizedApplication =
+          loadedApplication
+            ? {
+                ...loadedApplication,
+                number:
+                  loadedApplication.number ||
+                  `#${String(
+                    loadedApplication.id ||
+                      applicationId
+                  )
+                    .slice(0, 8)
+                    .toUpperCase()}`,
+                jobUrl:
+                  loadedApplication.jobUrl ||
+                  loadedApplication.jobLink ||
+                  '',
+              }
+            : null;
 
         setApplication(
-          data.application || null
+          normalizedApplication
         );
 
-        setMessages(
+        if (
           Array.isArray(data.messages)
-            ? data.messages
-            : []
-        );
+        ) {
+          setMessages(data.messages);
+        } else if (
+          loadedApplication?.feedback
+        ) {
+          setMessages([
+            {
+              id:
+                `preview-feedback-${applicationId}`,
+              message:
+                loadedApplication.feedback,
+              sender: {
+                name: 'ApplyLoop',
+              },
+              createdAt:
+                loadedApplication.updatedAt ||
+                loadedApplication.createdAt ||
+                loadedApplication.appliedAt ||
+                null,
+            },
+          ]);
+        } else {
+          setMessages([]);
+        }
       } catch (error) {
         if (mounted) {
+          setApplication(null);
+          setMessages([]);
+
           setApplicationError(
             error.message ||
               'Unable to load this application.'
@@ -362,10 +460,21 @@ export default function ApplicationDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [router.isReady, router.query.id]);
+  }, [
+    applicationId,
+    isClientPreview,
+    previewClientId,
+    router.isReady,
+  ]);
 
   const handleSendFeedback =
     async (message) => {
+      if (isClientPreview) {
+        throw new Error(
+          'Feedback cannot be sent while previewing a client.'
+        );
+      }
+
       const accessToken =
         await getAccessToken();
 
@@ -405,7 +514,11 @@ export default function ApplicationDetailPage() {
 
   const handleApproveApplication =
     async () => {
-      if (!application || isApproving) {
+      if (
+        !application ||
+        isApproving ||
+        isClientPreview
+      ) {
         return;
       }
 
@@ -492,7 +605,7 @@ export default function ApplicationDetailPage() {
             <button
               type="button"
               onClick={() =>
-                router.push('/dashboard')
+                router.push(dashboardHref)
               }
               className="mt-6 px-5 py-2.5 bg-[#1E50C3] text-white text-sm font-semibold rounded-xl hover:bg-[#1A45A7] transition-colors"
             >
@@ -536,7 +649,7 @@ export default function ApplicationDetailPage() {
             <button
               type="button"
               onClick={() =>
-                router.push('/dashboard')
+                router.push(dashboardHref)
               }
               className="text-sm font-semibold text-[#1E50C3] hover:text-[#1A45A7] transition-colors"
             >
@@ -666,43 +779,59 @@ export default function ApplicationDetailPage() {
               </div>
 
               <div className="flex flex-wrap justify-end gap-3 mt-6">
-                {application.clientApprovalStatus ===
-                'approved' ? (
+                {isClientPreview ? (
                   <button
                     type="button"
-                    disabled
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 text-sm font-semibold cursor-default"
+                    onClick={() =>
+                      setShowFeedback(true)
+                    }
+                    className="px-5 py-2.5 rounded-xl border border-[#1E50C3] text-[#1E50C3] text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                   >
-                    <FiCheck className="w-4 h-4" />
-                    Approved
+                    View Feedback
                   </button>
-                ) : [
-                    'pending',
-                    'changes_requested',
-                  ].includes(
-                    application.clientApprovalStatus
-                  ) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setApprovalError('');
-                      setIsApproveModalOpen(true);
-                    }}
-                    className="px-5 py-2.5 rounded-xl bg-[#1E50C3] text-white text-sm font-semibold hover:bg-[#1A45A7] transition-all active:scale-[0.98]"
-                  >
-                    Approve Application
-                  </button>
-                ) : null}
+                ) : (
+                  <>
+                    {application.clientApprovalStatus ===
+                    'approved' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 text-sm font-semibold cursor-default"
+                      >
+                        <FiCheck className="w-4 h-4" />
+                        Approved
+                      </button>
+                    ) : [
+                        'pending',
+                        'changes_requested',
+                      ].includes(
+                        application.clientApprovalStatus
+                      ) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApprovalError('');
+                          setIsApproveModalOpen(
+                            true
+                          );
+                        }}
+                        className="px-5 py-2.5 rounded-xl bg-[#1E50C3] text-white text-sm font-semibold hover:bg-[#1A45A7] transition-all active:scale-[0.98]"
+                      >
+                        Approve Application
+                      </button>
+                    ) : null}
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowFeedback(true)
-                  }
-                  className="px-5 py-2.5 rounded-xl border border-[#1E50C3] text-[#1E50C3] text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                >
-                  Send Feedback
-                </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowFeedback(true)
+                      }
+                      className="px-5 py-2.5 rounded-xl border border-[#1E50C3] text-[#1E50C3] text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                      Send Feedback
+                    </button>
+                  </>
+                )}
               </div>
 
               <hr className="border-gray-100 dark:border-gray-700 my-6" />
@@ -750,6 +879,9 @@ export default function ApplicationDetailPage() {
                 }
                 onSend={
                   handleSendFeedback
+                }
+                readOnly={
+                  isClientPreview
                 }
               />
             )}
