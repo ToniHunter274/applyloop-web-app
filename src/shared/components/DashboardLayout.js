@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { getRoleHome, USER_ROLES } from '../config/roles';
 import { createClient } from '../../lib/supabase/client';
 import { Avatar } from './PortalUI';
+import ClientProductTour from './ClientProductTour';
 
 async function getClientAccessToken() {
   const supabase = createClient();
@@ -83,6 +84,8 @@ export default function DashboardLayout({
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [headerSearchValue, setHeaderSearchValue] = useState('');
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourChecked, setTourChecked] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [
@@ -96,11 +99,34 @@ export default function DashboardLayout({
   const [title, subtitle] = pageMeta[router.pathname] || ['ApplyLoop', ''];
 
   const navItems = [
-    { icon: FiHome, label: 'Home', href: '/dashboard' },
-    { icon: FiCpu, label: 'Loop Lab', href: '/loop-lab' },
-    { icon: FiCreditCard, label: 'Billing & Subscription', href: '/billing' },
-    { icon: FiTrendingUp, label: 'Growth', href: '/growth' },
-    { icon: FiSettings, label: 'Settings', href: '/settings' },
+    {
+      icon: FiHome,
+      label: 'Home',
+      href: '/dashboard',
+      tour: 'home-nav',
+    },
+    {
+      icon: FiCpu,
+      label: 'Loop Lab',
+      href: '/loop-lab',
+    },
+    {
+      icon: FiCreditCard,
+      label: 'Billing & Subscription',
+      href: '/billing',
+    },
+    {
+      icon: FiTrendingUp,
+      label: 'Growth',
+      href: '/growth',
+      tour: 'growth-nav',
+    },
+    {
+      icon: FiSettings,
+      label: 'Settings',
+      href: '/settings',
+      tour: 'settings-nav',
+    },
   ];
 
   const handleLogout = () => typeof logoutProp === 'function' ? logoutProp() : logout();
@@ -148,6 +174,145 @@ export default function DashboardLayout({
   useEffect(() => {
     if (user?.role && user.role !== USER_ROLES.USER_CLIENT) router.replace(getRoleHome(user.role));
   }, [router, user?.role]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      router.pathname !== '/dashboard' ||
+      user?.role !== USER_ROLES.USER_CLIENT ||
+      process.env.NODE_ENV === 'production'
+    ) {
+      return;
+    }
+
+    const tourQuery =
+      Array.isArray(router.query.tour)
+        ? router.query.tour[0]
+        : router.query.tour;
+
+    if (tourQuery === '1') {
+      setTourChecked(true);
+
+      window.setTimeout(() => {
+        setTourOpen(true);
+      }, 300);
+    }
+  }, [
+    router.isReady,
+    router.pathname,
+    router.query.tour,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      router.pathname !== '/dashboard' ||
+      user?.role !== USER_ROLES.USER_CLIENT ||
+      tourChecked
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadTutorialProgress = async () => {
+      try {
+        const accessToken =
+          await getClientAccessToken();
+
+        const response = await fetch(
+          '/api/client/tutorial',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const data = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Tutorial progress could not be loaded.'
+          );
+        }
+
+        if (!cancelled) {
+          setTourChecked(true);
+
+          if (data.shouldAutoStart) {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                setTourOpen(true);
+              }
+            }, 700);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTourChecked(true);
+
+          console.error(
+            'Client tutorial load error:',
+            error
+          );
+        }
+      }
+    };
+
+    loadTutorialProgress();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    router.isReady,
+    router.pathname,
+    tourChecked,
+    user?.role,
+  ]);
+
+  const saveTutorialProgress =
+    async (action) => {
+      const accessToken =
+        await getClientAccessToken();
+
+      const response = await fetch(
+        '/api/client/tutorial',
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            action,
+          }),
+        }
+      );
+
+      const data = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            'Tutorial progress could not be saved.'
+        );
+      }
+
+      setTourOpen(false);
+
+      return data;
+    };
 
   useEffect(() => {
     if (
@@ -355,9 +520,14 @@ export default function DashboardLayout({
         </div>
         
         <nav className="mt-3 flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
-          {navItems.map(({ icon: Icon, label, href }) => {
+          {navItems.map(({ icon: Icon, label, href, tour }) => {
             const active = router.pathname === href || (href === '/dashboard' && router.pathname === '/applications/[id]');
-            return <Link key={href} href={href} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
+            return <Link
+                key={href}
+                href={href}
+                data-tour={tour}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
                   active
                     ? 'bg-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/70'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
@@ -367,6 +537,7 @@ export default function DashboardLayout({
         <div className="border-t border-slate-100 p-4">
           <Link
             href="/support"
+            data-tour="support-nav"
             className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
               router.pathname === '/support'
                 ? 'bg-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/70'
@@ -377,7 +548,9 @@ export default function DashboardLayout({
             Help & Support
           </Link>
           <div className="relative">
-            <button onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-800">{user?.name || 'Client'}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
+            <button
+              data-tour="profile-menu"
+              onClick={() => setProfileOpen((value) => !value)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"><Avatar name={user?.name} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-800">{user?.name || 'Client'}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{user?.email || 'client@applyloop.com'}</span></span><FiChevronDown className="text-slate-400" /></button>
             {profileOpen && <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"><button onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"><FiLogOut /> Sign out</button></div>}
           </div>
         </div>
@@ -392,7 +565,10 @@ export default function DashboardLayout({
                 onSubmit={handleHeaderSearchSubmit}
                 className="hidden xl:block"
               >
-                <label className="relative block">
+                <label
+                  data-tour="application-search"
+                  className="relative block"
+                >
                   <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
 
                   <input
@@ -419,6 +595,7 @@ export default function DashboardLayout({
                   }
                   className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
                   aria-label="Notifications"
+                  data-tour="notifications"
                 >
                   <FiBell className="h-[18px] w-[18px]" />
 
@@ -531,6 +708,19 @@ export default function DashboardLayout({
         </header>
         <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8"><div className="user-client-page-surface">{children}</div></main>
       </div>
+      <ClientProductTour
+        open={tourOpen}
+        onComplete={() =>
+          saveTutorialProgress(
+            'complete'
+          )
+        }
+        onDismiss={() =>
+          saveTutorialProgress(
+            'dismiss'
+          )
+        }
+      />
     </div>
   );
 }
