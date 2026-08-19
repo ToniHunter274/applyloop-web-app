@@ -90,11 +90,11 @@ function validateActiveTasks(value) {
 
   if (
     !Number.isInteger(activeTasks) ||
-    activeTasks < 0
+    activeTasks < 1
   ) {
     throw new ApiError(
       400,
-      'Active Tasks must be a whole number of 0 or more.'
+      'Active Tasks must be a whole number of 1 or more.'
     );
   }
 

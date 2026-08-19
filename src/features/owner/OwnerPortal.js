@@ -91,8 +91,6 @@ const OWNER_NAV_ITEMS = [
 const OPERATIONS_NAV_ITEMS = [
   { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
   { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
-  { section: 'chief-applicants', href: '/operations/chief-applicants', label: 'Chief Applicants', icon: FiGrid },
-  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },
 ];
 
 const OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));
@@ -3650,10 +3648,10 @@ function AddNewApplicantModal({
                   type="number"
                   name="activeTasks"
                   required
-                  min="0"
+                  min="1"
                   step="1"
                   inputMode="numeric"
-                  defaultValue="0"
+                  defaultValue=""
                   className={fieldClassName}
                 />
               </label>
