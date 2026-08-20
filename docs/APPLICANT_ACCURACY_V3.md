@@ -26,7 +26,6 @@ This revision preserves the separate seven-role architecture and updates only th
 - Applicant demo identity matches the supplied screens.
 - Duplicate readiness and settings elements were removed.
 - The desktop sidebar remains visible on compact laptop widths to preserve the supplied design proportions.
-- Exact Applicant screenshots are stored in `design-reference/applicant-exact`.
 
 ## Applicant routes
 

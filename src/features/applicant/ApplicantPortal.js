@@ -1707,12 +1707,30 @@ function PerformancePage() {
   );
 }
 
-function Toggle({ value, onChange, label }) {
-  return <button type="button" aria-label={label} className={classNames(styles.toggle, value && styles.toggleOn)} onClick={() => onChange(!value)} />;
+function Toggle({
+  value,
+  onChange,
+  label,
+  disabled = false,
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      className={classNames(
+        styles.toggle,
+        value && styles.toggleOn
+      )}
+      onClick={() =>
+        onChange(!value)
+      }
+    />
+  );
 }
 
 function SettingsPage() {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, changePassword, logout } = useAuth();
   const nameParts = (user?.name || '')
     .trim()
     .split(/\s+/)
@@ -1726,10 +1744,82 @@ function SettingsPage() {
     country: user?.country || '',
     timezone: user?.timezone || '',
   });
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(user?.emailNotifications ?? true);
+  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? false);
+  const [savingNotificationKey, setSavingNotificationKey] = useState('');
+
+  useEffect(() => {
+    setEmailNotifications(
+      user?.emailNotifications ?? true
+    );
+    setPushNotifications(
+      user?.pushNotifications ?? false
+    );
+  }, [
+    user?.emailNotifications,
+    user?.pushNotifications,
+  ]);
   const [saved, setSaved] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState('');
   const update = (key, value) => setProfile((current) => ({ ...current, [key]: value }));
+
+  const handleNotificationChange = async (key, value) => {
+    if (savingNotificationKey) {
+      return;
+    }
+
+    setSavingNotificationKey(key);
+
+    if (key === 'emailNotifications') {
+      setEmailNotifications(value);
+    }
+
+    if (key === 'pushNotifications') {
+      setPushNotifications(value);
+    }
+
+    try {
+      const result = await updateProfile({
+        [key]: value,
+      });
+
+      if (!result.success) {
+        if (key === 'emailNotifications') {
+          setEmailNotifications(!value);
+        }
+
+        if (key === 'pushNotifications') {
+          setPushNotifications(!value);
+        }
+      }
+    } finally {
+      setSavingNotificationKey('');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordStatus('');
+
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus('New passwords do not match.');
+      return;
+    }
+
+    const result = await changePassword({ currentPassword, newPassword });
+
+    if (result.success) {
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordStatus('Password updated successfully.');
+      return;
+    }
+
+    setPasswordStatus(result.error);
+  };
 
   return (
     <div className={styles.settingsPage}>
@@ -1771,16 +1861,41 @@ function SettingsPage() {
       <section className={styles.settingsSection}>
         <h3>Security</h3>
         <div className={styles.settingsSingle}>
-          <div className={styles.field}><label>Current Password</label><input type="password" placeholder="••••••••" /></div>
-          <div className={styles.field} style={{ marginTop: 11 }}><label>New Password</label><input type="password" placeholder="••••••••" /></div>
-          <div className={styles.field} style={{ marginTop: 11 }}><label>Confirm New Password</label><input type="password" placeholder="••••••••" /></div>
-          <button type="button" className={styles.primaryButton} style={{ marginTop: 13 }}><FiLock /> Change Password</button>
+          <div className={styles.field}><label>Current Password</label><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Enter current password" /></div>
+          <div className={styles.field} style={{ marginTop: 11 }}><label>New Password</label><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Enter new password" /></div>
+          <div className={styles.field} style={{ marginTop: 11 }}><label>Confirm New Password</label><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm new password" /></div>
+          <button type="button" className={styles.primaryButton} style={{ marginTop: 13 }} onClick={handlePasswordChange}><FiLock /> Change Password</button>
+          {passwordStatus && <p style={{ marginTop: 10, fontSize: 9, color: passwordStatus === "Password updated successfully." ? "#159a66" : "#d14343" }}>{passwordStatus}</p>}
         </div>
       </section>
       <section className={styles.settingsSection}>
         <h3>Notification Preferences</h3>
-        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle value={emailNotifications} onChange={setEmailNotifications} label="Email notifications" /></div>
-        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle value={pushNotifications} onChange={setPushNotifications} label="Push notifications" /></div>
+        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle
+          value={emailNotifications}
+          onChange={(value) =>
+            handleNotificationChange(
+              'emailNotifications',
+              value
+            )
+          }
+          label="Email notifications"
+          disabled={Boolean(
+            savingNotificationKey
+          )}
+        /></div>
+        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle
+          value={pushNotifications}
+          onChange={(value) =>
+            handleNotificationChange(
+              'pushNotifications',
+              value
+            )
+          }
+          label="Push notifications"
+          disabled={Boolean(
+            savingNotificationKey
+          )}
+        /></div>
       </section>
       <section className={styles.settingsSection}>
         <h3>Company · ApplyLoop</h3>

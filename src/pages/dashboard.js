@@ -13,7 +13,8 @@ import {
   FiPlus,
   FiCheck,
   FiFile,
-  FiTrash2
+  FiTrash2,
+  FiStar
 } from 'react-icons/fi';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
 
@@ -54,6 +55,26 @@ export default function Dashboard() {
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [updateSlideIndex, setUpdateSlideIndex] = useState(0);
+  const [
+    applicantRatings,
+    setApplicantRatings,
+  ] = useState([]);
+  const [
+    isLoadingApplicantRatings,
+    setIsLoadingApplicantRatings,
+  ] = useState(false);
+  const [
+    applicantRatingsError,
+    setApplicantRatingsError,
+  ] = useState('');
+  const [
+    applicantRatingMessage,
+    setApplicantRatingMessage,
+  ] = useState('');
+  const [
+    savingApplicantRatingId,
+    setSavingApplicantRatingId,
+  ] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -181,6 +202,214 @@ export default function Dashboard() {
     router.isReady,
   ]);
 
+  useEffect(() => {
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    if (previewClientId) {
+      setApplicantRatings([]);
+      setApplicantRatingsError('');
+      setApplicantRatingMessage('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadApplicantRatings =
+      async () => {
+        setIsLoadingApplicantRatings(
+          true
+        );
+        setApplicantRatingsError('');
+
+        try {
+          const supabase =
+            createClient();
+
+          if (!supabase) {
+            throw new Error(
+              'The Supabase connection is unavailable.'
+            );
+          }
+
+          const {
+            data: { session },
+            error: sessionError,
+          } =
+            await supabase.auth.getSession();
+
+          if (
+            sessionError ||
+            !session?.access_token
+          ) {
+            throw new Error(
+              'Your session has expired. Please sign in again.'
+            );
+          }
+
+          const response = await fetch(
+            '/api/client/applicant-ratings',
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${session.access_token}`,
+              },
+            }
+          );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Applicant ratings could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setApplicantRatings(
+              result.applicants || []
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setApplicantRatings([]);
+            setApplicantRatingsError(
+              error?.message ||
+                'Applicant ratings could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingApplicantRatings(
+              false
+            );
+          }
+        }
+      };
+
+    loadApplicantRatings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewClientId,
+    router.isReady,
+  ]);
+
+  const saveApplicantRating =
+    async (
+      applicantId,
+      rating
+    ) => {
+      if (
+        savingApplicantRatingId
+      ) {
+        return;
+      }
+
+      setSavingApplicantRatingId(
+        applicantId
+      );
+      setApplicantRatingsError('');
+      setApplicantRatingMessage('');
+
+      try {
+        const supabase =
+          createClient();
+
+        if (!supabase) {
+          throw new Error(
+            'The Supabase connection is unavailable.'
+          );
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } =
+          await supabase.auth.getSession();
+
+        if (
+          sessionError ||
+          !session?.access_token
+        ) {
+          throw new Error(
+            'Your session has expired. Please sign in again.'
+          );
+        }
+
+        const response = await fetch(
+          '/api/client/applicant-ratings',
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type':
+                'application/json',
+              Authorization:
+                `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              applicantId,
+              rating,
+            }),
+          }
+        );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Your rating could not be saved.'
+          );
+        }
+
+        setApplicantRatings(
+          (current) =>
+            current.map(
+              (applicant) =>
+                applicant.id ===
+                applicantId
+                  ? {
+                      ...applicant,
+                      rating:
+                        result.rating
+                          ?.rating ||
+                        rating,
+                      ratingUpdatedAt:
+                        result.rating
+                          ?.updatedAt ||
+                        new Date()
+                          .toISOString(),
+                    }
+                  : applicant
+            )
+        );
+
+        setApplicantRatingMessage(
+          'Thank you. Your Applicant rating has been saved.'
+        );
+      } catch (error) {
+        setApplicantRatingsError(
+          error?.message ||
+            'Your rating could not be saved.'
+        );
+      } finally {
+        setSavingApplicantRatingId(
+          ''
+        );
+      }
+    };
+
   // Status Badge styles helper
   const getStatusBadge = (status) => {
     switch (status) {
@@ -303,6 +532,137 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {!previewClientId && (
+        <section className="mb-8 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:p-8">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+            <div>
+              <h2 className="text-lg font-bold text-gray-950 dark:text-white">
+                Rate Your Applicant
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Share your experience with the Applicant working on your account.
+              </p>
+            </div>
+
+            <span className="text-xs font-semibold text-gray-400">
+              1–5 stars
+            </span>
+          </div>
+
+          {applicantRatingsError && (
+            <div
+              role="alert"
+              className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            >
+              {applicantRatingsError}
+            </div>
+          )}
+
+          {applicantRatingMessage && (
+            <div
+              role="status"
+              className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+            >
+              {applicantRatingMessage}
+            </div>
+          )}
+
+          {isLoadingApplicantRatings ? (
+            <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50 px-5 py-6 text-sm font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
+              Loading your assigned Applicant...
+            </div>
+          ) : applicantRatings.length ===
+            0 ? (
+            <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50 px-5 py-6 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
+              No Applicant is currently assigned to your account.
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {applicantRatings.map(
+                (applicant) => (
+                  <div
+                    key={applicant.id}
+                    className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 dark:border-gray-700 dark:bg-gray-900/20"
+                  >
+                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                      <div>
+                        <p className="text-sm font-bold text-gray-950 dark:text-white">
+                          {applicant.fullName}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {applicant.rating
+                            ? `Your rating: ${applicant.rating}.0 / 5`
+                            : 'Not rated yet'}
+                        </p>
+                      </div>
+
+                      <div
+                        className="flex items-center gap-1"
+                        aria-label={`Rate ${applicant.fullName}`}
+                      >
+                        {[1, 2, 3, 4, 5].map(
+                          (star) => {
+                            const selected =
+                              star <=
+                              Number(
+                                applicant.rating ||
+                                  0
+                              );
+
+                            const saving =
+                              savingApplicantRatingId ===
+                              applicant.id;
+
+                            return (
+                              <button
+                                key={star}
+                                type="button"
+                                disabled={
+                                  Boolean(
+                                    savingApplicantRatingId
+                                  )
+                                }
+                                aria-label={`${star} star${star === 1 ? '' : 's'} for ${applicant.fullName}`}
+                                title={`Rate ${star} star${star === 1 ? '' : 's'}`}
+                                onClick={() =>
+                                  saveApplicantRating(
+                                    applicant.id,
+                                    star
+                                  )
+                                }
+                                className="rounded-lg p-1 text-amber-400 transition hover:scale-110 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <FiStar
+                                  className="h-7 w-7"
+                                  fill={
+                                    selected
+                                      ? 'currentColor'
+                                      : 'none'
+                                  }
+                                />
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+
+                    {savingApplicantRatingId ===
+                      applicant.id && (
+                      <p className="mt-3 text-xs font-medium text-blue-600">
+                        Saving your rating...
+                      </p>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Important Updates */}
       <div className="bg-white dark:bg-gray-800 border border-[#1E50C3] rounded-2xl p-6 md:p-8 mb-8 shadow-sm">

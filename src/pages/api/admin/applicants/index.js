@@ -90,11 +90,11 @@ function validateActiveTasks(value) {
 
   if (
     !Number.isInteger(activeTasks) ||
-    activeTasks < 0
+    activeTasks < 1
   ) {
     throw new ApiError(
       400,
-      'Active Tasks must be a whole number of 0 or more.'
+      'Active Tasks must be a whole number of 1 or more.'
     );
   }
 
@@ -159,6 +159,35 @@ async function listApplicants(req, res) {
       'The applicant list could not be loaded.'
     );
   }
+
+  const {
+    data: performanceRows,
+    error: performanceError,
+  } = await supabase.rpc(
+    'get_applicant_performance'
+  );
+
+  if (performanceError) {
+    console.error(
+      'Unable to load Applicant performance:',
+      performanceError
+    );
+
+    throw new ApiError(
+      500,
+      'Applicant performance could not be loaded.'
+    );
+  }
+
+  const performanceByApplicantId =
+    new Map(
+      (performanceRows || []).map(
+        (performance) => [
+          performance.applicant_id,
+          performance,
+        ]
+      )
+    );
 
   const userIds = [
     ...new Set(
@@ -398,6 +427,11 @@ async function listApplicants(req, res) {
         applicant.user_id
       );
 
+      const performance =
+        performanceByApplicantId.get(
+          applicant.id
+        ) || {};
+
       return {
         id: applicant.id,
         userId: applicant.user_id,
@@ -412,13 +446,26 @@ async function listApplicants(req, res) {
           applicant.availability,
         activeTasks:
           applicant.active_tasks,
-        completedTasks:
-          applicant.completed_tasks,
+        completedTasks: Number(
+          performance.completed_tasks || 0
+        ),
         qualityRating: Number(
-          applicant.quality_rating || 0
+          performance.quality_rating || 0
+        ),
+        ratingCount: Number(
+          performance.rating_count || 0
         ),
         completionRate: Number(
-          applicant.completion_rate || 0
+          performance.completion_rate || 0
+        ),
+        monitoredWorkdays: Number(
+          performance.monitored_workdays || 0
+        ),
+        todayCompleted: Number(
+          performance.today_completed || 0
+        ),
+        todayCompletionRate: Number(
+          performance.today_completion_rate || 0
         ),
         accountStatus:
           profile?.account_status || 'active',

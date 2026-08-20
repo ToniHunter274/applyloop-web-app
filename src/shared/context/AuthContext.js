@@ -32,6 +32,8 @@ const formatUser = (authUser, profile) => ({
   phone: profile.phone || '',
   country: profile.country || '',
   timezone: profile.timezone || '',
+  emailNotifications: profile.email_notifications ?? true,
+  pushNotifications: profile.push_notifications ?? false,
   role: profile.role,
   accountStatus: profile.account_status,
   createdAt: profile.created_at,
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }) => {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select(
-        'id, email, full_name, phone, country, timezone, role, account_status, created_at, updated_at'
+        'id, email, full_name, phone, country, timezone, email_notifications, push_notifications, role, account_status, created_at, updated_at'
       )
       .eq('id', authUser.id)
       .single();
@@ -295,20 +297,42 @@ export const AuthProvider = ({ children }) => {
 
       const changes = profileData || {};
 
-      const fullName =
-        changes.name?.trim() ||
-        [changes.firstName, changes.lastName]
-          .filter(Boolean)
-          .join(' ')
-          .trim();
+      const hasNameChange =
+        Object.prototype.hasOwnProperty.call(
+          changes,
+          'name'
+        ) ||
+        Object.prototype.hasOwnProperty.call(
+          changes,
+          'firstName'
+        ) ||
+        Object.prototype.hasOwnProperty.call(
+          changes,
+          'lastName'
+        );
 
-      if (!fullName) {
-        throw new Error('Enter your full name.');
+      const profileUpdates = {};
+
+      if (hasNameChange) {
+        const fullName =
+          changes.name?.trim() ||
+          [
+            changes.firstName,
+            changes.lastName,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+        if (!fullName) {
+          throw new Error(
+            'Enter your full name.'
+          );
+        }
+
+        profileUpdates.full_name =
+          fullName;
       }
-
-      const profileUpdates = {
-        full_name: fullName,
-      };
 
       if (Object.prototype.hasOwnProperty.call(changes, 'phone')) {
         profileUpdates.phone = changes.phone?.trim() || null;
@@ -322,6 +346,23 @@ export const AuthProvider = ({ children }) => {
         profileUpdates.timezone = changes.timezone?.trim() || null;
       }
 
+      if (Object.prototype.hasOwnProperty.call(changes, 'emailNotifications')) {
+        profileUpdates.email_notifications = Boolean(changes.emailNotifications);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(changes, 'pushNotifications')) {
+        profileUpdates.push_notifications = Boolean(changes.pushNotifications);
+      }
+
+      if (
+        Object.keys(profileUpdates)
+          .length === 0
+      ) {
+        throw new Error(
+          'No profile changes were provided.'
+        );
+      }
+
       const supabase = createClient();
 
       const { data: profile, error: updateError } = await supabase
@@ -329,7 +370,7 @@ export const AuthProvider = ({ children }) => {
         .update(profileUpdates)
         .eq('id', user.id)
         .select(
-          'id, email, full_name, phone, country, timezone, role, account_status, created_at, updated_at'
+          'id, email, full_name, phone, country, timezone, email_notifications, push_notifications, role, account_status, created_at, updated_at'
         )
         .single();
 
@@ -343,6 +384,8 @@ export const AuthProvider = ({ children }) => {
         phone: profile.phone || '',
         country: profile.country || '',
         timezone: profile.timezone || '',
+        emailNotifications: profile.email_notifications ?? true,
+        pushNotifications: profile.push_notifications ?? false,
         updatedAt: profile.updated_at,
       };
 
@@ -365,11 +408,50 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const changePassword = async (passwordData) => {
-    const newPassword =
-      passwordData?.newPassword || passwordData?.password;
+  const changePassword = async ({ currentPassword, newPassword }) => {
+    setError(null);
 
-    return resetPassword({ newPassword });
+    try {
+      if (!user?.email) {
+        throw new Error('You must be signed in to change your password.');
+      }
+
+      if (!currentPassword) {
+        throw new Error('Enter your current password.');
+      }
+
+      if (!newPassword || newPassword.length < 8) {
+        throw new Error('Your new password must contain at least 8 characters.');
+      }
+
+      const supabase = createClient();
+
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError || signInData.user?.id !== user.id) {
+        throw new Error('Your current password is incorrect.');
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return {
+        success: true,
+        message: 'Your password has been updated.',
+      };
+    } catch (passwordError) {
+      const message = passwordError?.message || 'Unable to update your password.';
+      setError(message);
+      return { success: false, error: message };
+    }
   };
 
   const requestPasswordReset = async (email) => {
