@@ -387,14 +387,15 @@ export default function DashboardLayout({
         }
 
         if (!cancelled) {
-          setTourChecked(true);
-
           if (data.shouldAutoStart) {
             window.setTimeout(() => {
               if (!cancelled) {
                 setTourOpen(true);
+                setTourChecked(true);
               }
             }, 700);
+          } else {
+            setTourChecked(true);
           }
         }
       } catch (error) {
