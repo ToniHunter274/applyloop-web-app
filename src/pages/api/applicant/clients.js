@@ -191,6 +191,7 @@ async function getClients(req, res) {
   if (clientIds.length === 0) {
     return res.status(200).json({
       clients: [],
+      feedback: [],
     });
   }
 
@@ -300,6 +301,85 @@ async function getClients(req, res) {
       onboardingRows || [];
   }
 
+  let applicationRows = [];
+
+  const {
+    data: assignedApplicationRows,
+    error: applicationsError,
+  } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      client_id,
+      company,
+      position
+    `)
+    .in('client_id', clientIds);
+
+  if (applicationsError) {
+    console.error(
+      'Unable to load assigned Client Applications:',
+      applicationsError
+    );
+
+    throw new ApiError(
+      500,
+      'Your assigned client Applications could not be loaded.'
+    );
+  }
+
+  applicationRows =
+    assignedApplicationRows || [];
+
+  const applicationIds =
+    applicationRows.map(
+      (application) =>
+        application.id
+    );
+
+  let feedbackRows = [];
+
+  if (applicationIds.length > 0) {
+    const {
+      data: applicationMessageRows,
+      error: feedbackError,
+    } = await supabase
+      .from('application_messages')
+      .select(`
+        id,
+        application_id,
+        sender_user_id,
+        message,
+        created_at
+      `)
+      .in(
+        'application_id',
+        applicationIds
+      )
+      .eq(
+        'visibility',
+        'client'
+      )
+      .order('created_at', {
+        ascending: false,
+      });
+
+    if (feedbackError) {
+      console.error(
+        'Unable to load Client feedback:',
+        feedbackError
+      );
+
+      throw new ApiError(
+        500,
+        'Client feedback could not be loaded.'
+      );
+    }
+
+    feedbackRows =
+      applicationMessageRows || [];
+  }
+
   const profilesById = new Map(
     profiles.map((profile) => [
       profile.id,
@@ -322,6 +402,80 @@ async function getClients(req, res) {
       ]
     )
   );
+
+  const applicationsById =
+    new Map(
+      applicationRows.map(
+        (application) => [
+          application.id,
+          application,
+        ]
+      )
+    );
+
+  const feedbackCountByClientId =
+    new Map();
+
+  const feedback =
+    feedbackRows
+      .map((feedbackItem) => {
+        const application =
+          applicationsById.get(
+            feedbackItem.application_id
+          );
+
+        if (!application) {
+          return null;
+        }
+
+        const client =
+          clientsById.get(
+            application.client_id
+          );
+
+        if (
+          !client ||
+          feedbackItem.sender_user_id !==
+            client.user_id
+        ) {
+          return null;
+        }
+
+        feedbackCountByClientId.set(
+          client.id,
+          (
+            feedbackCountByClientId.get(
+              client.id
+            ) || 0
+          ) + 1
+        );
+
+        const profile =
+          profilesById.get(
+            client.user_id
+          );
+
+        return {
+          id: feedbackItem.id,
+          applicationId:
+            application.id,
+          client:
+            profile?.full_name ||
+            'Client',
+          role:
+            application.position ||
+            'Application',
+          company:
+            application.company ||
+            '',
+          status: 'Received',
+          message:
+            feedbackItem.message,
+          createdAt:
+            feedbackItem.created_at,
+        };
+      })
+      .filter(Boolean);
 
   const clients =
     clientIds
@@ -475,7 +629,10 @@ async function getClients(req, res) {
             Number(
               client.interviews || 0
             ),
-          feedbacks: 0,
+          feedbacks:
+            feedbackCountByClientId.get(
+              client.id
+            ) || 0,
           offers: 0,
           applications:
             applicationsCompleted,
@@ -489,6 +646,7 @@ async function getClients(req, res) {
 
   return res.status(200).json({
     clients,
+    feedback,
   });
 }
 

@@ -40,7 +40,6 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  CLIENT_FEEDBACK,
   LINK_SOURCE_OPTIONS,
   PERFORMANCE_PERIODS,
   STATUS_OPTIONS,
@@ -1526,6 +1525,7 @@ function WorkshopPage({
 }
 
 function FeedbackPage({
+  clientFeedback = [],
   previewApplicantId = '',
   isPreview = false,
 }) {
@@ -1733,7 +1733,7 @@ function FeedbackPage({
           }
         >
           Client Feedback (
-          {CLIENT_FEEDBACK.length})
+          {clientFeedback.length})
         </button>
 
         <button
@@ -1760,7 +1760,7 @@ function FeedbackPage({
             maxWidth: 540,
           }}
         >
-          {CLIENT_FEEDBACK.map(
+          {clientFeedback.map(
             (item) => (
               <article
                 key={item.id}
@@ -1813,7 +1813,9 @@ function FeedbackPage({
                     styles.feedbackDate
                   }
                 >
-                  {item.date}
+                  {formatConversationTime(
+                    item.createdAt
+                  )}
                 </p>
               </article>
             )
@@ -2406,6 +2408,10 @@ export default function ApplicantPortal() {
     setAssignedClients,
   ] = useState([]);
   const [
+    clientFeedback,
+    setClientFeedback,
+  ] = useState([]);
+  const [
     isLoadingAssignedClients,
     setIsLoadingAssignedClients,
   ] = useState(false);
@@ -2436,6 +2442,7 @@ export default function ApplicantPortal() {
       !isApplicantPreview
     ) {
       setAssignedClients([]);
+      setClientFeedback([]);
       setAssignedClientsError('');
       return undefined;
     }
@@ -2493,7 +2500,16 @@ export default function ApplicantPortal() {
               : result.clients ||
                 [];
 
+          const feedbackRows =
+            isApplicantPreview
+              ? []
+              : result.feedback || [];
+
           if (!cancelled) {
+            setClientFeedback(
+              feedbackRows
+            );
+
             setAssignedClients(
               clientRows.map(
                 normalizeAssignedClient
@@ -2503,6 +2519,7 @@ export default function ApplicantPortal() {
         } catch (error) {
           if (!cancelled) {
             setAssignedClients([]);
+            setClientFeedback([]);
             setAssignedClientsError(
               error?.message ||
                 'Assigned Clients could not be loaded.'
@@ -3162,6 +3179,9 @@ export default function ApplicantPortal() {
   } else if (section === 'feedback') {
     page = (
       <FeedbackPage
+        clientFeedback={
+          clientFeedback
+        }
         previewApplicantId={
           isApplicantPreview
             ? previewApplicantId
