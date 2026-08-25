@@ -769,7 +769,7 @@ function ClientManagementPage({
   );
 }
 
-function ApplicantsManagementPage({
+export function ApplicantsManagementPage({
   openAddApplicant,
   onPasswordReset,
   refreshKey,
@@ -3185,7 +3185,7 @@ function PauseAccountModal({ open, onClose }) {
   );
 }
 
-function AddNewApplicantModal({
+export function AddNewApplicantModal({
   open,
   onClose,
   onCreated,

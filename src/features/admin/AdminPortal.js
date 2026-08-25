@@ -1,10 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { FiLogOut } from 'react-icons/fi';
+import { FiBriefcase, FiLogOut } from 'react-icons/fi';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
+import {
+  AddNewApplicantModal,
+  ApplicantsManagementPage,
+} from '../owner/OwnerPortal';
 import { useAuth } from '../../shared/context/AuthContext';
 import {
   getRoleHome,
@@ -19,6 +23,17 @@ export default function AdminPortal() {
     isLoading,
     logout,
   } = useAuth();
+
+  const [section, setSection] = useState('clients');
+  const [
+    applicantRefreshKey,
+    setApplicantRefreshKey,
+  ] = useState(0);
+  const [applicantModal, setApplicantModal] = useState({
+    open: false,
+    credentials: null,
+    context: 'created',
+  });
 
   useEffect(() => {
     if (isLoading) {
@@ -102,12 +117,32 @@ export default function AdminPortal() {
             </div>
           </div>
 
-          <nav className="p-4">
-            <div className="flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3.5 text-sm font-semibold text-blue-700">
+          <nav className="space-y-2 p-4">
+            <button
+              type="button"
+              onClick={() => setSection('clients')}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
+                section === 'clients'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
               <HiOutlineUserGroup className="h-5 w-5" />
-
               <span>Client Management</span>
-            </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSection('applicants')}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
+                section === 'applicants'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <FiBriefcase className="h-5 w-5" />
+              <span>Applicants Management</span>
+            </button>
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4">
@@ -171,8 +206,47 @@ export default function AdminPortal() {
           </header>
 
           <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
-            <ClientManagementWorkspace mode="admin" />
+            {section === 'clients' ? (
+              <ClientManagementWorkspace mode="admin" />
+            ) : (
+              <ApplicantsManagementPage
+                mode="admin"
+                refreshKey={applicantRefreshKey}
+                openAddApplicant={() =>
+                  setApplicantModal({
+                    open: true,
+                    credentials: null,
+                    context: 'created',
+                  })
+                }
+                onPasswordReset={(credentials) =>
+                  setApplicantModal({
+                    open: true,
+                    credentials,
+                    context: 'reset',
+                  })
+                }
+              />
+            )}
           </main>
+
+          <AddNewApplicantModal
+            open={applicantModal.open}
+            initialCredentials={applicantModal.credentials}
+            credentialContext={applicantModal.context}
+            onClose={() =>
+              setApplicantModal({
+                open: false,
+                credentials: null,
+                context: 'created',
+              })
+            }
+            onCreated={() =>
+              setApplicantRefreshKey(
+                (current) => current + 1
+              )
+            }
+          />
         </div>
       </div>
     </>
