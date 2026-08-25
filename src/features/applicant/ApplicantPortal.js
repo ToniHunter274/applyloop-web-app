@@ -169,6 +169,46 @@ const normalizeAssignedClient = (
     client.targetCountries ||
     client.country ||
     'Not provided',
+  currentLocation:
+    client.currentLocation ||
+    'Not provided',
+  targetRoles:
+    Array.isArray(client.targetRoles)
+      ? client.targetRoles
+      : [],
+  targetIndustries:
+    client.targetIndustries ||
+    'Not provided',
+  employmentType:
+    client.employmentType ||
+    'Not provided',
+  duration:
+    client.duration ||
+    'Not provided',
+  salaryExpectation:
+    client.salaryExpectation ||
+    'Not provided',
+  workAuthorization:
+    client.workAuthorization ||
+    'Not provided',
+  sponsorship:
+    client.sponsorship ||
+    'Not provided',
+  yearsExperience:
+    client.yearsExperience ||
+    'Not provided',
+  linkedinUrl:
+    client.linkedinUrl || '',
+  portfolioUrl:
+    client.portfolioUrl || '',
+  additionalPreferences:
+    client.additionalPreferences ||
+    'Not provided',
+  hasResume:
+    Boolean(client.hasResume),
+  onboardingStatus:
+    client.onboardingStatus ||
+    'not_started',
   progress:
     Number(
       client.progress || 0
@@ -720,27 +760,73 @@ function ClientDetail({
         <StatCard label="Upcoming Interviews" value={client.interviews} />
         <StatCard label="Total Rejected Roles" value={client.rejectedRoles} />
         <StatCard label="Total Selected Roles" value={client.selectedRoles ?? 3} />
-        <StatCard label="Feedbacks" value="2" />
+        <StatCard label="Feedbacks" value={client.feedbacks} />
       </div>
       <section className={styles.readiness}>
-        <div className={styles.readinessHead}><h3>Client Dashboard Readiness</h3><span className={styles.setupTag}>Setup Required</span></div>
+        <div className={styles.readinessHead}>
+          <h3>Client Dashboard Readiness</h3>
+
+          <span className={styles.setupTag}>
+            {client.hasResume &&
+            client.onboardingStatus === 'submitted'
+              ? 'Ready'
+              : 'Setup Required'}
+          </span>
+        </div>
+
         <div className={styles.readinessGrid}>
-          <div className={styles.readinessItem}>
-            <div className={styles.readinessTitle}><FiCheckCircle color="#1f56c6" /> Resume</div>
-            <p>Current resume version available</p>
+          <div
+            className={classNames(
+              styles.readinessItem,
+              !client.hasResume &&
+                styles.readinessDanger
+            )}
+          >
+            <div className={styles.readinessTitle}>
+              {client.hasResume ? (
+                <FiCheckCircle color="#1f56c6" />
+              ) : (
+                <FiAlertCircle color="#e12b49" />
+              )}
+              Resume
+            </div>
+
+            <p>
+              {client.hasResume
+                ? 'Current resume version available'
+                : 'No resume is currently available'}
+            </p>
           </div>
-          <div className={styles.readinessItem}>
-            <div className={styles.readinessTitle}><FiTarget color="#1f56c6" /> Tracker</div>
-            <p>Application tracking system active</p>
-          </div>
-          <div className={classNames(styles.readinessItem, styles.readinessDanger)}>
-            <div className={styles.readinessTitle}><FiAlertCircle color="#e12b49" /> Prompt Available</div>
-            <p>AI prompt template needs setup</p>
+
+          <div
+            className={classNames(
+              styles.readinessItem,
+              client.onboardingStatus !==
+                'submitted' &&
+                styles.readinessDanger
+            )}
+          >
+            <div className={styles.readinessTitle}>
+              {client.onboardingStatus ===
+              'submitted' ? (
+                <FiCheckCircle color="#1f56c6" />
+              ) : (
+                <FiAlertCircle color="#e12b49" />
+              )}
+              Job Search Preferences
+            </div>
+
+            <p>
+              {client.onboardingStatus ===
+              'submitted'
+                ? 'Client onboarding preferences submitted'
+                : 'Client onboarding preferences are incomplete'}
+            </p>
           </div>
         </div>
       </section>
       <div className={styles.formGrid}>
-        <ReadonlyField label="Full Name" value={`${client.name} T.`} copy />
+        <ReadonlyField label="Full Name" value={client.name} copy />
         <ReadonlyField label="Gender" value={client.gender} />
         <ReadonlyField label="Email Address" value={client.email} copy />
         <ReadonlyField label="Phone Number" value={client.phone} copy />
@@ -750,15 +836,109 @@ function ClientDetail({
         <ReadonlyField label="Veteran" value={client.veteran} />
       </div>
       <section className={styles.formSection}>
-        <h3>Work Availability</h3>
+        <h3>Job Search Preferences</h3>
         <div className={styles.formGrid}>
-          <ReadonlyField label="Work Type" value={client.workType} />
-          <ReadonlyField label="Work Schedule Preference" value={client.schedule} />
-          <ReadonlyField label="Duration of Contract" value={client.contract} />
+          <ReadonlyField
+            label="Current Location"
+            value={client.currentLocation}
+          />
+          <ReadonlyField
+            label="Target Roles"
+            value={
+              client.targetRoles.length > 0
+                ? client.targetRoles.join(', ')
+                : 'Not provided'
+            }
+          />
+          <ReadonlyField
+            label="Target Industries"
+            value={client.targetIndustries}
+          />
+          <ReadonlyField
+            label="Salary Expectation"
+            value={client.salaryExpectation}
+          />
+          <ReadonlyField
+            label="Work Arrangement"
+            value={client.workType}
+          />
+          <ReadonlyField
+            label="Employment Type"
+            value={client.employmentType}
+          />
+          <ReadonlyField
+            label="Work Schedule Preference"
+            value={client.schedule}
+          />
+          <ReadonlyField
+            label="Preferred Duration"
+            value={client.duration}
+          />
+
           <div className={styles.field}>
             <label>Location Preferences</label>
-            <div className={styles.locationPills}>{client.locations.map((location) => <span key={location}>{location}</span>)}</div>
+
+            <div className={styles.locationPills}>
+              {client.locations.length > 0 ? (
+                client.locations.map(
+                  (location) => (
+                    <span key={location}>
+                      {location}
+                    </span>
+                  )
+                )
+              ) : (
+                <span>Not provided</span>
+              )}
+            </div>
           </div>
+        </div>
+      </section>
+
+      <section className={styles.formSection}>
+        <h3>Authorization and Experience</h3>
+
+        <div className={styles.formGrid}>
+          <ReadonlyField
+            label="Work Authorization"
+            value={client.workAuthorization}
+          />
+          <ReadonlyField
+            label="Sponsorship Required"
+            value={client.sponsorship}
+          />
+          <ReadonlyField
+            label="Relevant Experience"
+            value={client.yearsExperience}
+          />
+          <ReadonlyField
+            label="Resume on File"
+            value={
+              client.hasResume
+                ? 'Yes'
+                : 'No'
+            }
+          />
+          <ReadonlyField
+            label="LinkedIn"
+            value={
+              client.linkedinUrl ||
+              'Not provided'
+            }
+            copy
+          />
+          <ReadonlyField
+            label="Portfolio"
+            value={
+              client.portfolioUrl ||
+              'Not provided'
+            }
+            copy
+          />
+          <ReadonlyField
+            label="Additional Preferences"
+            value={client.additionalPreferences}
+          />
         </div>
       </section>
       {showInternalNotes && (
