@@ -567,7 +567,16 @@ function Dashboard({
         />
         <StatCard
           label="Client Feedback"
-          value="0"
+          value={
+            clients.reduce(
+              (total, client) =>
+                total +
+                Number(
+                  client.feedbacks || 0
+                ),
+              0
+            )
+          }
         />
       </div>
       <div className={styles.sectionTitleRow}>
