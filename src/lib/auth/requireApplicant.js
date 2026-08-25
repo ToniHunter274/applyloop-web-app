@@ -1,12 +1,5 @@
 import { createAdminClient } from '../supabase/server';
-
-export class ApiError extends Error {
-  constructor(statusCode, message) {
-    super(message);
-    this.name = 'ApiError';
-    this.statusCode = statusCode;
-  }
-}
+import { ApiError } from './requireAdmin';
 
 function getAccessToken(req) {
   const authorization = req.headers.authorization || '';
@@ -19,7 +12,7 @@ function getAccessToken(req) {
   return token;
 }
 
-export async function requireAdmin(req) {
+export async function requireApplicant(req) {
   const accessToken = getAccessToken(req);
   const supabase = createAdminClient();
 
@@ -43,12 +36,12 @@ export async function requireAdmin(req) {
   }
 
   if (
-    !['admin', 'owner', 'operations'].includes(profile.role) ||
+    profile.role !== 'applicant' ||
     profile.account_status !== 'active'
   ) {
     throw new ApiError(
       403,
-      'You do not have permission to manage clients.'
+      'You do not have permission to access the Applicant workspace.'
     );
   }
 

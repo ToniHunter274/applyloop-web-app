@@ -41,9 +41,37 @@ export default async function handler(req, res) {
       .trim()
       .toLowerCase();
 
-    const notes = String(
-      req.body?.notes || ''
-    ).trim();
+    const {
+      profile: adminProfile,
+      supabase,
+    } = await requireAdmin(req);
+
+    const canAccessInternalNotes = [
+      'admin',
+      'owner',
+    ].includes(adminProfile.role);
+
+    const hasNotesChange =
+      Object.prototype.hasOwnProperty.call(
+        req.body || {},
+        'notes'
+      );
+
+    if (
+      !canAccessInternalNotes &&
+      hasNotesChange
+    ) {
+      throw new ApiError(
+        403,
+        'Operations accounts cannot update internal onboarding notes.'
+      );
+    }
+
+    const notes = canAccessInternalNotes
+      ? String(
+          req.body?.notes || ''
+        ).trim()
+      : '';
 
     if (!stepKey) {
       throw new ApiError(
@@ -65,11 +93,6 @@ export default async function handler(req, res) {
         'Onboarding notes must not exceed 1000 characters.'
       );
     }
-
-    const {
-      profile: adminProfile,
-      supabase,
-    } = await requireAdmin(req);
 
     const {
       data: client,
@@ -114,18 +137,23 @@ export default async function handler(req, res) {
           : new Date().toISOString()
         : null;
 
+    const updates = {
+      status,
+      completed_at: completedAt,
+      updated_by: adminProfile.id,
+      update_source: 'manual',
+    };
+
+    if (canAccessInternalNotes) {
+      updates.notes = notes || null;
+    }
+
     const {
       data: updatedStep,
       error: updateError,
     } = await supabase
       .from('client_onboarding_steps')
-      .update({
-        status,
-        completed_at: completedAt,
-        updated_by: adminProfile.id,
-        update_source: 'manual',
-        notes: notes || null,
-      })
+      .update(updates)
       .eq('id', currentStep.id)
       .select(`
         id,
@@ -136,7 +164,7 @@ export default async function handler(req, res) {
         status,
         completed_at,
         update_source,
-        notes,
+        ${canAccessInternalNotes ? 'notes,' : ''}
         updated_at
       `)
       .single();
@@ -164,7 +192,12 @@ export default async function handler(req, res) {
         status: updatedStep.status,
         completedAt: updatedStep.completed_at,
         updateSource: updatedStep.update_source,
-        notes: updatedStep.notes || '',
+        ...(canAccessInternalNotes
+          ? {
+              notes:
+                updatedStep.notes || '',
+            }
+          : {}),
         updatedAt: updatedStep.updated_at,
       },
     });

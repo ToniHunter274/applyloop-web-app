@@ -192,7 +192,15 @@ async function cleanUpFailedCreation({
 }
 
 async function listClients(req, res) {
-  const { supabase } = await requireAdmin(req);
+  const {
+    profile: adminProfile,
+    supabase,
+  } = await requireAdmin(req);
+
+  const canAccessInternalNotes = [
+    'admin',
+    'owner',
+  ].includes(adminProfile.role);
 
   const { data: clientRows, error: clientsError } =
     await supabase
@@ -209,7 +217,7 @@ async function listClients(req, res) {
         portfolio_url,
         linkedin_url,
         resume_path,
-        notes,
+        ${canAccessInternalNotes ? 'notes,' : ''}
         status,
         priority,
         created_at,
@@ -283,7 +291,7 @@ async function listClients(req, res) {
         status,
         completed_at,
         update_source,
-        notes,
+        ${canAccessInternalNotes ? 'notes,' : ''}
         updated_at
       `)
       .in('client_id', clientIds)
@@ -505,7 +513,11 @@ async function listClients(req, res) {
       status: step.status,
       completedAt: step.completed_at,
       updateSource: step.update_source,
-      notes: step.notes || '',
+      ...(canAccessInternalNotes
+        ? {
+            notes: step.notes || '',
+          }
+        : {}),
       updatedAt: step.updated_at,
     });
 
@@ -585,7 +597,11 @@ async function listClients(req, res) {
       linkedinUrl: client.linkedin_url || '',
       resumeFilename,
       hasResume: Boolean(client.resume_path),
-      notes: client.notes || '',
+      ...(canAccessInternalNotes
+        ? {
+            notes: client.notes || '',
+          }
+        : {}),
       status: client.status,
       priority: client.priority || 'high',
       onboarding: {
@@ -650,6 +666,21 @@ async function createClient(req, res) {
       'Notes',
       2000
     );
+
+    const canAccessInternalNotes = [
+      'admin',
+      'owner',
+    ].includes(adminProfile.role);
+
+    if (
+      !canAccessInternalNotes &&
+      notes
+    ) {
+      throw new ApiError(
+        403,
+        'Operations accounts cannot create internal client notes.'
+      );
+    }
 
     const portfolioUrl = validateOptionalUrl(
       getField(fields, 'portfolioUrl'),
@@ -766,7 +797,11 @@ async function createClient(req, res) {
         portfolio_url: portfolioUrl,
         linkedin_url: linkedinUrl,
         resume_path: resumePath,
-        notes,
+        ...(canAccessInternalNotes
+          ? {
+              notes,
+            }
+          : {}),
         status: 'active',
         priority: 'high',
         created_by: adminProfile.id,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
@@ -73,7 +74,7 @@ async function getOwnerAccessToken() {
   return session.access_token;
 }
 
-const NAV_ITEMS = [
+const OWNER_NAV_ITEMS = [
   { section: 'dashboard', href: '/owner', label: 'Dashboard', icon: FiHome },
   { section: 'client-management', href: '/owner/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
   { section: 'applicants-management', href: '/owner/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
@@ -86,6 +87,13 @@ const NAV_ITEMS = [
   { section: 'escalations-issues', href: '/owner/escalations-issues', label: 'Escalations & Issues', icon: FiAlertTriangle },
   { section: 'settings', href: '/owner/settings', label: 'Settings', icon: FiSettings },
 ];
+
+const OPERATIONS_NAV_ITEMS = [
+  { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
+  { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
+];
+
+const OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));
 
 const PAGE_META = {
   dashboard: ['Dashboard', 'Mission Control - Complete visibility and control over your platform'],
@@ -174,10 +182,10 @@ const paymentHistoryRows = [
   ['Alex Thompson', 'Applicant', 'May 2026', 114, '$608.00', 'Direct Deposit', '2026-05-28', 'Pending'],
 ].map(([worker, type, period, tasks, amount, method, date, status]) => ({ worker, type, period, tasks, amount, method, date, status }));
 
-function getSection(router) {
+function getSection(router, fallback = 'dashboard') {
   const raw = router.query?.section;
-  if (Array.isArray(raw) && raw.length) return raw[0] === 'task-distribution' ? 'dashboard' : raw[0];
-  return 'dashboard';
+  if (Array.isArray(raw) && raw.length) return raw[0] === 'task-distribution' ? fallback : raw[0];
+  return fallback;
 }
 
 function getDetail(router) {
@@ -199,12 +207,13 @@ function Brand() {
   );
 }
 
-function OwnerShell({ section, children }) {
+function OwnerShell({ section, children, portalRole, navItems }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const displayName = user?.name || 'Super Admin';
+  const isOperations = portalRole === USER_ROLES.OPERATIONS;
+  const displayName = user?.name || (isOperations ? 'Operations Team' : 'Super Admin');
 
   const initials = displayName
     .split(/\s+/)
@@ -215,8 +224,10 @@ function OwnerShell({ section, children }) {
     .toUpperCase();
 
   useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.OWNER) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+    if (user?.role && user.role !== portalRole) {
+      router.replace(getRoleHome(user.role));
+    }
+  }, [portalRole, router, user?.role]);
 
   return (
     <div className={styles.app}>
@@ -224,7 +235,7 @@ function OwnerShell({ section, children }) {
       <aside className={cn(styles.sidebar, menuOpen && styles.sidebarOpen)}>
         <div className={styles.logoRow}><Brand /></div>
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} className={cn(styles.navItem, section === item.section && styles.navItemActive)} onClick={() => setMenuOpen(false)}>
@@ -242,7 +253,7 @@ function OwnerShell({ section, children }) {
 
             <span className={styles.accountText}>
               <strong>{displayName}</strong>
-              <small>Owner</small>
+              <small>{isOperations ? 'Operations' : 'Owner'}</small>
             </span>
           </div>
 
@@ -264,6 +275,244 @@ function OwnerShell({ section, children }) {
           <button className={styles.bellButton} aria-label="Notifications"><FiBell /></button>
         </div>
         <main className={styles.surface}>{children}</main>
+      </div>
+    </div>
+  );
+}
+
+function OperationsShell({
+  section,
+  children,
+  navItems,
+}) {
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    logout,
+  } = useAuth();
+
+  const router = useRouter();
+
+  const [
+    menuOpen,
+    setMenuOpen,
+  ] = useState(false);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    if (
+      user?.role !==
+      USER_ROLES.OPERATIONS
+    ) {
+      router.replace(
+        getRoleHome(user?.role)
+      );
+    }
+  }, [
+    isAuthenticated,
+    isLoading,
+    router,
+    user?.role,
+  ]);
+
+  const displayName =
+    user?.name || 'Operations Team';
+
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(
+      (namePart) =>
+        namePart[0]
+    )
+    .join('')
+    .toUpperCase();
+
+  if (
+    isLoading ||
+    !isAuthenticated ||
+    user?.role !==
+      USER_ROLES.OPERATIONS
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading your workspace...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
+      {menuOpen && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+          className="fixed inset-0 z-30 bg-slate-950/30 lg:hidden"
+        />
+      )}
+
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0',
+          menuOpen
+            ? 'translate-x-0'
+            : '-translate-x-full'
+        )}
+      >
+        <div className="flex h-24 items-center border-b border-slate-200 px-6">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.svg"
+              alt="ApplyLoop logo"
+              width={48}
+              height={48}
+              priority
+              className="h-12 w-12 rounded-xl object-cover"
+            />
+
+            <div>
+              <p className="text-xl font-bold tracking-tight text-slate-950">
+                ApplyLoop
+              </p>
+
+              <p className="mt-0.5 text-xs font-medium text-slate-500">
+                Operations Portal
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+          {navItems.map(
+            (item) => {
+              const Icon =
+                item.icon;
+
+              const active =
+                section ===
+                item.section;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() =>
+                    setMenuOpen(
+                      false
+                    )
+                  }
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition',
+                    active
+                      ? 'bg-blue-50 font-semibold text-blue-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+
+                  <span>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            }
+          )}
+        </nav>
+
+        <div className="border-t border-slate-200 p-4">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                {initials}
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">
+                  {displayName}
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Operations
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="min-w-0 max-w-full lg:pl-64">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div className="flex min-h-24 items-center justify-between gap-4 px-5 py-4 sm:px-8">
+            <div className="flex items-center gap-3 lg:hidden">
+              <button
+                type="button"
+                onClick={() =>
+                  setMenuOpen(true)
+                }
+                aria-label="Open menu"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700"
+              >
+                <FiMenu className="h-5 w-5" />
+              </button>
+
+              <Image
+                src="/logo.svg"
+                alt="ApplyLoop logo"
+                width={42}
+                height={42}
+                priority
+                className="h-11 w-11 rounded-xl object-cover"
+              />
+
+              <span className="text-lg font-bold text-slate-950">
+                ApplyLoop
+              </span>
+            </div>
+
+            <div className="hidden lg:block">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">
+                Operations
+              </p>
+
+              <p className="mt-1.5 text-base font-semibold text-slate-800">
+                {displayName}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={logout}
+              className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
+              <FiLogOut className="h-4 w-4" />
+
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
+          {children}
+        </main>
       </div>
     </div>
   );
@@ -510,10 +759,12 @@ function DashboardPage() {
   );
 }
 
-function ClientManagementPage() {
+function ClientManagementPage({
+  mode = 'owner',
+}) {
   return (
     <div className={styles.clientManagementWorkspace}>
-      <ClientManagementWorkspace mode="owner" />
+      <ClientManagementWorkspace mode={mode} />
     </div>
   );
 }
@@ -522,6 +773,7 @@ function ApplicantsManagementPage({
   openAddApplicant,
   onPasswordReset,
   refreshKey,
+  mode = 'owner',
 }) {
   const router = useRouter();
   const [applicants, setApplicants] = useState([]);
@@ -1562,7 +1814,13 @@ function ApplicantsManagementPage({
         styles.clientManagementWorkspace
       }
     >
-      <section className="mx-auto w-full min-w-0 max-w-full pt-6 sm:pt-8">
+      <section
+        className={cn(
+          'mx-auto w-full min-w-0 max-w-full',
+          mode !== 'operations' &&
+            'pt-6 sm:pt-8'
+        )}
+      >
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
@@ -1772,7 +2030,17 @@ function ApplicantsManagementPage({
                             <td className="px-5 py-5">
                               <button
                                 type="button"
-                                onClick={() =>
+                                disabled={
+                                  mode === 'operations'
+                                }
+                                onClick={() => {
+                                  if (
+                                    mode ===
+                                    'operations'
+                                  ) {
+                                    return;
+                                  }
+
                                   router.push({
                                     pathname:
                                       '/applicant',
@@ -1780,11 +2048,24 @@ function ApplicantsManagementPage({
                                       previewApplicantId:
                                         applicant.id,
                                     },
-                                  })
-                                }
-                                className="group block text-left"
+                                  });
+                                }}
+                                className={cn(
+                                  'group block text-left',
+                                  mode ===
+                                    'operations' &&
+                                    'cursor-default'
+                                )}
                               >
-                                <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
+                                <span
+                                  className={cn(
+                                    'text-base font-semibold leading-5 underline-offset-4 transition-colors',
+                                    mode ===
+                                      'operations'
+                                      ? 'text-slate-900'
+                                      : 'text-blue-700 group-hover:text-blue-600 group-hover:underline'
+                                  )}
+                                >
                                   {applicant.fullName}
                                 </span>
 
@@ -1797,10 +2078,13 @@ function ApplicantsManagementPage({
                                     'No phone number'}
                                 </span>
 
-                                <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
-                                  View as Applicant
-                                  <FiExternalLink className="h-3 w-3" />
-                                </span>
+                                {mode !==
+                                  'operations' && (
+                                  <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                    View as Applicant
+                                    <FiExternalLink className="h-3 w-3" />
+                                  </span>
+                                )}
 
                                 <span className="mt-2 block text-xs text-slate-400">
                                   {applicant.completedTasks}{' '}
@@ -3390,10 +3674,10 @@ function AddNewApplicantModal({
                   type="number"
                   name="activeTasks"
                   required
-                  min="0"
+                  min="1"
                   step="1"
                   inputMode="numeric"
-                  defaultValue="0"
+                  defaultValue=""
                   className={fieldClassName}
                 />
               </label>
@@ -3860,10 +4144,15 @@ function NoticeBox({ tone, title, items, compact = false }) {
   return <div className={cn(styles.noticeBox, styles[`notice_${tone}`], compact && styles.noticeCompact)}><strong>{title}</strong><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></div>;
 }
 
-export default function OwnerPortal() {
+export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
   const router = useRouter();
-  const section = getSection(router);
+  const isOperations = portalRole === USER_ROLES.OPERATIONS;
+  const basePath = isOperations ? '/operations' : '/owner';
+  const defaultSection = isOperations ? 'client-management' : 'dashboard';
+  const requestedSection = getSection(router, defaultSection);
+  const section = isOperations && !OPERATIONS_SECTIONS.has(requestedSection) ? defaultSection : requestedSection;
   const detail = getDetail(router);
+  const navItems = isOperations ? OPERATIONS_NAV_ITEMS : OWNER_NAV_ITEMS;
 
 
   const [
@@ -3896,15 +4185,46 @@ export default function OwnerPortal() {
     paymentHistory: false,
   });
 
+  useEffect(() => {
+    if (isOperations && requestedSection !== section && router.isReady) {
+      router.replace(`${basePath}/${defaultSection}`);
+    }
+  }, [basePath, defaultSection, isOperations, requestedSection, router, section]);
+
   const openModal = (key) => setModals((current) => ({ ...current, [key]: true }));
   const closeModal = (key) => setModals((current) => ({ ...current, [key]: false }));
 
   const content = useMemo(() => {
     if (section === 'dashboard') return <DashboardPage />;
-    if (section === 'client-management' && detail) return <ClientDetailsPage />;
-    if (section === 'client-management') return <ClientManagementPage />;
+    if (
+      section === 'client-management' &&
+      detail &&
+      !isOperations
+    ) {
+      return (
+        <ClientDetailsPage
+          basePath={basePath}
+        />
+      );
+    }
+    if (section === 'client-management') {
+      return (
+        <ClientManagementPage
+          mode={
+            isOperations
+              ? 'operations'
+              : 'owner'
+          }
+        />
+      );
+    }
     if (section === 'applicants-management') return (
       <ApplicantsManagementPage
+        mode={
+          isOperations
+            ? 'operations'
+            : 'owner'
+        }
         openAddApplicant={() => {
           setApplicantResetCredentials(
             null
@@ -3939,9 +4259,19 @@ export default function OwnerPortal() {
     if (section === 'escalations-issues') return <EscalationsIssuesPage />;
     if (section === 'settings') return <SettingsPage />;
     return <PlaceholderPage section={section} />;
-  }, [applicantRefreshKey, detail, section]);
+  }, [
+    applicantRefreshKey,
+    basePath,
+    detail,
+    isOperations,
+    section,
+  ]);
 
   const [title, subtitle] = PAGE_META[section] || PAGE_META.dashboard;
+
+  const Shell = isOperations
+    ? OperationsShell
+    : OwnerShell;
 
   return (
     <>
@@ -3949,7 +4279,7 @@ export default function OwnerPortal() {
         <title>{title} | ApplyLoop</title>
         <meta name="description" content={subtitle} />
       </Head>
-      <OwnerShell section={section}>
+      <Shell section={section} portalRole={portalRole} navItems={navItems}>
         {content}
         <AddNewClientModal open={modals.addClient} onClose={() => closeModal('addClient')} />
         <ClientPerformanceModal open={modals.clientPerformance} onClose={() => closeModal('clientPerformance')} />
@@ -3987,7 +4317,7 @@ export default function OwnerPortal() {
         <EditSubscriptionModal open={modals.editSubscription} onClose={() => closeModal('editSubscription')} />
         <ManagePlansModal open={modals.managePlans} onClose={() => closeModal('managePlans')} />
         <PaymentHistoryModal open={modals.paymentHistory} onClose={() => closeModal('paymentHistory')} />
-      </OwnerShell>
+      </Shell>
     </>
   );
 }

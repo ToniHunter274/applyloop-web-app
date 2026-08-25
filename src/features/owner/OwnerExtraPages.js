@@ -198,10 +198,10 @@ export function SettingsPage() {
   );
 }
 
-export function ClientDetailsPage() {
+export function ClientDetailsPage({ basePath = '/owner' }) {
   return (
     <>
-      <div className={styles.clientDetailsPageHead}><div><Link href="/owner/client-management" className={styles.backLink}>← Back to Client Management</Link><h1>Olabanji David T.</h1><p>Client Performance Overview</p></div><Button icon={FiEdit2}>Edit Client</Button></div>
+      <div className={styles.clientDetailsPageHead}><div><Link href={`${basePath}/client-management`} className={styles.backLink}>← Back to Client Management</Link><h1>Olabanji David T.</h1><p>Client Performance Overview</p></div><Button icon={FiEdit2}>Edit Client</Button></div>
       <div className={styles.clientDetailMetricGrid}><MetricCard icon={FiFileText} label="Applications" value="245" tone="blue" /><MetricCard icon={FiTrendingUp} label="Interviews" value="68" tone="green" /><MetricCard icon={FiBarChart2} label="Success Rate" value="27.8%" tone="purple" /></div>
       <Card><h2 className={styles.sectionTitle}>Client Information</h2><div className={styles.clientInfoGrid}><div><small>Plan Type</small><strong>Enterprise</strong></div><div><small>Assigned Team</small><strong>Team Alpha</strong></div><div><small>Account Status</small><Badge tone="green">Active</Badge></div><div><small>Total Revenue</small><strong>$12,500</strong></div></div></Card>
       <Card><h2 className={styles.sectionTitle}>Current Onboarding Process</h2><div className={styles.onboardingSteps}>{['Profile Setup', 'Preference Disclosure', 'Payment', 'Resume Alignment', 'Preference Alignment', 'Analyst Onboarding', 'Application Commencement', 'Touch Call 1', 'Touch Call 2', 'Touch Call 3', 'Re-subscription', 'Season'].map((step, index) => <div key={step} className={index < 3 ? styles.onboardingComplete : index < 5 ? styles.onboardingActive : styles.onboardingPending}><span>{index < 3 ? <FiCheck /> : '•'}</span><small>{step}</small></div>)}</div></Card>

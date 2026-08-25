@@ -62,7 +62,16 @@ async function requireApplicant(
 }
 
 async function listAssignments(req, res) {
-  const { supabase } = await requireAdmin(req);
+  const {
+    profile,
+    supabase,
+  } = await requireAdmin(req);
+
+  const canAccessInternalNotes =
+    ['admin', 'owner'].includes(
+      profile.role
+    );
+
   const applicantId = getApplicantId(req);
 
   const applicant =
@@ -75,24 +84,28 @@ async function listAssignments(req, res) {
     applicant.accountStatus === 'active' &&
     applicant.availability === 'available';
 
+  const clientSelect = [
+    'id',
+    'user_id',
+    'plan',
+    'application_limit',
+    'applications_completed',
+    'interviews',
+    'gender',
+    ...(canAccessInternalNotes
+      ? ['notes']
+      : []),
+    'assigned_team',
+    'status',
+    'created_at',
+  ].join(', ');
+
   const {
     data: clientRows,
     error: clientsError,
   } = await supabase
     .from('clients')
-    .select(`
-      id,
-      user_id,
-      plan,
-      application_limit,
-      applications_completed,
-      interviews,
-      gender,
-      notes,
-      assigned_team,
-      status,
-      created_at
-    `)
+    .select(clientSelect)
     .order('created_at', {
       ascending: false,
     });
@@ -285,9 +298,13 @@ async function listAssignments(req, res) {
         selectedRoles: 0,
         feedbacks: 0,
         offers: 0,
-        notes:
-          client.notes ||
-          'No admin notes available.',
+        ...(canAccessInternalNotes
+          ? {
+              notes:
+                client.notes ||
+                'No admin notes available.',
+            }
+          : {}),
         assignedTeam:
           client.assigned_team || '',
         status: client.status,

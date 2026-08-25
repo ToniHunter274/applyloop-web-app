@@ -423,6 +423,7 @@ function ModalShell({
 function OnboardingTimeline({
   onboarding,
   onEditStep,
+  showInternalNotes = true,
 }) {
   const steps = onboarding?.steps || [];
   const currentStepKey =
@@ -447,8 +448,9 @@ function OnboardingTimeline({
           </h3>
 
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Select any stage to update its status or add
-            internal notes.
+            {showInternalNotes
+              ? 'Select any stage to update its status or add internal notes.'
+              : 'Select any stage to update its status.'}
           </p>
         </div>
 
@@ -592,11 +594,12 @@ function OnboardingTimeline({
                   </span>
                 </span>
 
-                {step.notes && (
-                  <span className="mt-2 block text-xs leading-5 text-slate-500">
-                    {step.notes}
-                  </span>
-                )}
+                {showInternalNotes &&
+                  step.notes && (
+                    <span className="mt-2 block text-xs leading-5 text-slate-500">
+                      {step.notes}
+                    </span>
+                  )}
               </span>
             </button>
           );
@@ -651,6 +654,11 @@ export default function ClientManagementWorkspace({
   mode = 'admin',
 }) {
   const router = useRouter();
+
+  const canAccessInternalNotes = [
+    'admin',
+    'owner',
+  ].includes(mode);
   const allowNextRouteRef = useRef(false);
 
   const [clients, setClients] = useState([]);
@@ -1108,7 +1116,11 @@ export default function ClientManagementWorkspace({
     setSelectedClient(client);
     setOnboardingStep(step);
     setOnboardingStatus(step.status);
-    setOnboardingNotes(step.notes || '');
+    setOnboardingNotes(
+      canAccessInternalNotes
+        ? step.notes || ''
+        : ''
+    );
     setFormError('');
     setActiveModal('onboarding');
   };
@@ -1135,7 +1147,11 @@ export default function ClientManagementWorkspace({
           body: JSON.stringify({
             stepKey: onboardingStep.stepKey,
             status: onboardingStatus,
-            notes: onboardingNotes,
+            ...(canAccessInternalNotes
+              ? {
+                  notes: onboardingNotes,
+                }
+              : {}),
           }),
         }
       );
@@ -1639,32 +1655,44 @@ export default function ClientManagementWorkspace({
                           className="border-b border-slate-100 transition-colors hover:bg-slate-50/80"
                         >
                           <td className="px-5 py-4">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                router.push({
-                                  pathname: '/dashboard',
-                                  query: {
-                                    previewClientId:
-                                      client.id,
-                                  },
-                                })
-                              }
-                              className="group text-left"
-                            >
-                              <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
-                                {client.fullName}
-                              </span>
+                            {mode === 'operations' ? (
+                              <div className="text-left">
+                                <span className="text-base font-semibold leading-5 text-slate-900">
+                                  {client.fullName}
+                                </span>
 
-                              <span className="mt-1 block text-xs text-slate-500">
-                                {client.email}
-                              </span>
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {client.email}
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  router.push({
+                                    pathname: '/dashboard',
+                                    query: {
+                                      previewClientId:
+                                        client.id,
+                                    },
+                                  })
+                                }
+                                className="group text-left"
+                              >
+                                <span className="text-base font-semibold leading-5 text-blue-700 underline-offset-4 transition-colors group-hover:text-blue-600 group-hover:underline">
+                                  {client.fullName}
+                                </span>
 
-                              <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
-                                View as Client
-                                <FiExternalLink className="h-3 w-3" />
-                              </span>
-                            </button>
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {client.email}
+                                </span>
+
+                                <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                  View as Client
+                                  <FiExternalLink className="h-3 w-3" />
+                                </span>
+                              </button>
+                            )}
                           </td>
 
                           <td className="px-5 py-4">
@@ -2086,14 +2114,19 @@ export default function ClientManagementWorkspace({
               )}
             </DetailItem>
 
-            <DetailItem label="Notes">
-              {selectedClient.notes || 'No notes'}
-            </DetailItem>
+            {canAccessInternalNotes && (
+              <DetailItem label="Notes">
+                {selectedClient.notes || 'No notes'}
+              </DetailItem>
+            )}
           </div>
 
           <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7">
             <OnboardingTimeline
               onboarding={selectedClient.onboarding}
+              showInternalNotes={
+                canAccessInternalNotes
+              }
               onEditStep={(step) =>
                 openOnboardingEditor(
                   selectedClient,
@@ -2477,26 +2510,28 @@ export default function ClientManagementWorkspace({
                 />
               </div>
 
-              <label className="mt-6 block text-sm font-semibold text-slate-700">
-                Internal notes
+              {canAccessInternalNotes && (
+                <label className="mt-6 block text-sm font-semibold text-slate-700">
+                  Internal notes
 
-                <textarea
-                  value={onboardingNotes}
-                  onChange={(event) =>
-                    setOnboardingNotes(
-                      event.target.value
-                    )
-                  }
-                  rows={4}
-                  maxLength={1000}
-                  placeholder="Add useful context about this onboarding stage."
-                  className={`${inputClassName} resize-y`}
-                />
+                  <textarea
+                    value={onboardingNotes}
+                    onChange={(event) =>
+                      setOnboardingNotes(
+                        event.target.value
+                      )
+                    }
+                    rows={4}
+                    maxLength={1000}
+                    placeholder="Add useful context about this onboarding stage."
+                    className={`${inputClassName} resize-y`}
+                  />
 
-                <span className="mt-2 block text-right text-xs text-slate-400">
-                  {onboardingNotes.length}/1000
-                </span>
-              </label>
+                  <span className="mt-2 block text-right text-xs text-slate-400">
+                    {onboardingNotes.length}/1000
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
@@ -2807,17 +2842,19 @@ export default function ClientManagementWorkspace({
                 </label>
               </div>
 
-              <label className="mt-5 block text-sm font-semibold text-slate-700">
-                Notes
+              {canAccessInternalNotes && (
+                <label className="mt-5 block text-sm font-semibold text-slate-700">
+                  Notes
 
-                <textarea
-                  name="notes"
-                  rows={4}
-                  maxLength={2000}
-                  placeholder="Add any onboarding details or instructions."
-                  className={`${inputClassName} resize-y`}
-                />
-              </label>
+                  <textarea
+                    name="notes"
+                    rows={4}
+                    maxLength={2000}
+                    placeholder="Add any onboarding details or instructions."
+                    className={`${inputClassName} resize-y`}
+                  />
+                </label>
+              )}
 
               <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
                 <button
