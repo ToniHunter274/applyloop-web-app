@@ -1099,16 +1099,26 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
 function WorkshopPage({
   clients,
   onRecordApplication,
-  onPreview,
   isPreview = false,
   isRecordingApplication = false,
 }) {
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [jobUrl, setJobUrl] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
-  const [analysisState, setAnalysisState] = useState('neutral');
-  const [processing, setProcessing] = useState(false);
+  const [selectedClientId, setSelectedClientId] =
+    useState('');
+  const [companyName, setCompanyName] =
+    useState('');
+  const [position, setPosition] =
+    useState('');
+  const [jobLocation, setJobLocation] =
+    useState('');
+  const [jobUrl, setJobUrl] =
+    useState('');
+  const [jobDescription, setJobDescription] =
+    useState('');
+  const [resumeStatus, setResumeStatus] =
+    useState('');
+  const [isOpeningResume, setIsOpeningResume] =
+    useState(false);
+
   const activeClients =
     clients.filter(
       (client) =>
@@ -1118,45 +1128,129 @@ function WorkshopPage({
   const selectedClient =
     activeClients.find(
       (client) =>
-        client.id ===
-        selectedClientId
+        client.id === selectedClientId
     );
 
   const isQuotaReached =
     Boolean(
       selectedClient &&
         Number(
-          selectedClient.applications ||
-            0
+          selectedClient.applications || 0
         ) >=
           Number(
-            selectedClient.applicationLimit ||
-              0
+            selectedClient.applicationLimit || 0
           )
     );
 
-  const score = analysisState === 'green' ? { resume: 80, fit: 100 } : { resume: 0, fit: 0 };
+  const targetRoles =
+    selectedClient?.targetRoles?.length
+      ? selectedClient.targetRoles.join(', ')
+      : 'Not provided';
 
-  const runAnalysis = () => {
-    const goodMatch = jobDescription.trim().length > 30 || /software|product|remote|design/i.test(jobDescription);
-    setAnalysisState(goodMatch ? 'green' : 'red');
+  const preferredLocations =
+    selectedClient?.locations?.length
+      ? selectedClient.locations.join(', ')
+      : 'Not provided';
+
+  const handleClientChange = (event) => {
+    setSelectedClientId(event.target.value);
+    setCompanyName('');
+    setPosition('');
+    setJobLocation('');
+    setJobUrl('');
+    setJobDescription('');
+    setResumeStatus('');
   };
 
-  const generate = (type) => {
-    if (!selectedClient) return;
-    setProcessing(true);
-    window.setTimeout(() => {
-      setProcessing(false);
-      setAnalysisState('green');
-      onPreview(type);
-    }, 1300);
+  const openClientResume = async () => {
+    if (!selectedClient?.hasResume) {
+      setResumeStatus(
+        'This client does not have a resume on file.'
+      );
+      return;
+    }
+
+    if (isPreview) {
+      setResumeStatus(
+        'Applicant preview is read-only.'
+      );
+      return;
+    }
+
+    if (isOpeningResume) {
+      return;
+    }
+
+    setIsOpeningResume(true);
+    setResumeStatus('');
+
+    const resumeWindow =
+      window.open(
+        'about:blank',
+        '_blank'
+      );
+
+    try {
+      const accessToken =
+        await getApplicantAccessToken();
+
+      const response = await fetch(
+        `/api/applicant/clients/${encodeURIComponent(
+          selectedClient.id
+        )}/resume`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The client resume could not be opened.'
+        );
+      }
+
+      if (!result.url) {
+        throw new Error(
+          'The client resume URL was not returned.'
+        );
+      }
+
+      if (resumeWindow) {
+        resumeWindow.opener = null;
+        resumeWindow.location.href =
+          result.url;
+      } else {
+        window.location.assign(
+          result.url
+        );
+      }
+    } catch (error) {
+      if (resumeWindow) {
+        resumeWindow.close();
+      }
+
+      setResumeStatus(
+        error?.message ||
+          'The client resume could not be opened.'
+      );
+    } finally {
+      setIsOpeningResume(false);
+    }
   };
 
   return (
     <>
       <PageHeader
-        title="Prompt Center"
-        subtitle="Analyze job fit, generate tailored resumes and cover letters"
+        title="Application Workshop"
+        subtitle="Review client preferences and record verified job applications"
         action={
           selectedClient &&
           !isPreview ? (
@@ -1171,12 +1265,15 @@ function WorkshopPage({
                 onRecordApplication(
                   selectedClient,
                   companyName,
+                  position,
+                  jobLocation,
                   jobUrl,
                   jobDescription
                 )
               }
             >
               <FiSave />
+
               {isQuotaReached
                 ? 'Application Limit Reached'
                 : isRecordingApplication
@@ -1186,11 +1283,27 @@ function WorkshopPage({
           ) : null
         }
       />
-      <section className={styles.workshopPanel}>
-        <div className={styles.clientSelector}>
-          <label className={styles.fieldLabel}>Select Client</label>
-          <select value={selectedClientId} onChange={(event) => { setSelectedClientId(event.target.value); setAnalysisState('neutral'); }}>
-            <option value="">Select a client</option>
+
+      <section
+        className={styles.workshopPanel}
+      >
+        <div
+          className={styles.clientSelector}
+        >
+          <label
+            className={styles.fieldLabel}
+          >
+            Select Client
+          </label>
+
+          <select
+            value={selectedClientId}
+            onChange={handleClientChange}
+          >
+            <option value="">
+              Select a client
+            </option>
+
             {activeClients.map(
               (client) => (
                 <option
@@ -1203,45 +1316,112 @@ function WorkshopPage({
             )}
           </select>
         </div>
+
         {selectedClient && (
-          <div className={styles.selectedClient}>
-            <Avatar name={selectedClient.name} />
-            <div className={styles.selectedClientInfo}>
-              <strong>{selectedClient.name}</strong>
-              <p>{selectedClient.role} · Remote</p>
-              <p>Job Type: Full-time | Location: Remote | Salary: $40k–$70k | Industry: Technology | Role DevOps Engineer | Experience: 6+ years | Skills: Kubernetes, Docker, AWS, Terraform</p>
+          <div
+            className={
+              styles.selectedClient
+            }
+          >
+            <Avatar
+              name={selectedClient.name}
+            />
+
+            <div
+              className={
+                styles.selectedClientInfo
+              }
+            >
+              <strong>
+                {selectedClient.name}
+              </strong>
+
+              <p>
+                Target Roles: {targetRoles}
+              </p>
+
+              <p>
+                Work Arrangement:{' '}
+                {selectedClient.workType} |
+                Employment Type:{' '}
+                {selectedClient.employmentType} |
+                Salary:{' '}
+                {selectedClient.salaryExpectation}
+              </p>
+
+              <p>
+                Industries:{' '}
+                {selectedClient.targetIndustries} |
+                Preferred Locations:{' '}
+                {preferredLocations} |
+                Experience:{' '}
+                {selectedClient.yearsExperience}
+              </p>
             </div>
-            <button type="button" className={styles.resumeLink} onClick={() => onPreview('resume')}>Client’s Resume</button>
+
+            <button
+              type="button"
+              className={styles.resumeLink}
+              onClick={openClientResume}
+              disabled={
+                isOpeningResume ||
+                !selectedClient.hasResume ||
+                isPreview
+              }
+              title={
+                selectedClient.hasResume
+                  ? 'Open client resume'
+                  : 'No resume is available'
+              }
+            >
+              {isOpeningResume
+                ? 'Opening...'
+                : selectedClient.hasResume
+                  ? "Client's Resume"
+                  : 'Resume Unavailable'}
+            </button>
           </div>
+        )}
+
+        {resumeStatus && (
+          <p
+            style={{
+              marginTop: 12,
+              color: '#d14343',
+              fontSize: 12,
+            }}
+          >
+            {resumeStatus}
+          </p>
         )}
       </section>
 
       {!selectedClient ? (
-        <section className={styles.workshopPanel}>
-          <div className={styles.emptyWorkshop}>
+        <section
+          className={styles.workshopPanel}
+        >
+          <div
+            className={
+              styles.emptyWorkshop
+            }
+          >
             <FiUser />
-            <h3>No Client Selected</h3>
-            <p>Select a client above to load their preferences, resume, and analyze job fit.</p>
+
+            <h3>
+              No Client Selected
+            </h3>
+
+            <p>
+              Select a client above to
+              review their preferences
+              and record an application.
+            </p>
           </div>
         </section>
       ) : (
-        <>
-          {processing && (
-            <div className={styles.processingList}>
-              <div className={styles.processingItem}>
-                <div className={styles.processingHead}><span>Request Processing</span><span>Ongoing</span></div>
-                <div className={styles.processingBar}><div className={styles.processingFill} /></div>
-              </div>
-              <div className={styles.processingItem}>
-                <div className={styles.processingHead}><span>Request Processing</span><span>Ongoing</span></div>
-                <div className={styles.processingBar}><div className={styles.processingFill} /></div>
-              </div>
-            </div>
-          )}
-          <div className={styles.scoreGrid}>
-            <ScoreCard label="Resume Match Score" value={score.resume} note="Based on skills & experience alignment" state={analysisState} icon={FiTarget} />
-            <ScoreCard label="Applicability Score" value={score.fit} note="Based on client preferences vs job" state={analysisState} icon={FiBriefcase} />
-          </div>
+        <section
+          className={styles.workshopPanel}
+        >
           <div
             className={styles.field}
             style={{ marginBottom: 14 }}
@@ -1249,6 +1429,7 @@ function WorkshopPage({
             <label>
               Company Name
             </label>
+
             <input
               value={companyName}
               onChange={(event) =>
@@ -1262,45 +1443,83 @@ function WorkshopPage({
             />
           </div>
 
-          <div className={styles.field} style={{ marginBottom: 14 }}>
-            <label>Job Posting URL</label>
-            <input value={jobUrl} onChange={(event) => setJobUrl(event.target.value)} placeholder="https://..." />
+          <div
+            className={styles.field}
+            style={{ marginBottom: 14 }}
+          >
+            <label>
+              Position
+            </label>
+
+            <input
+              value={position}
+              onChange={(event) =>
+                setPosition(
+                  event.target.value
+                )
+              }
+              placeholder="e.g. Frontend Developer"
+              required
+              aria-required="true"
+            />
           </div>
+
+          <div
+            className={styles.field}
+            style={{ marginBottom: 14 }}
+          >
+            <label>
+              Job Location
+            </label>
+
+            <input
+              value={jobLocation}
+              onChange={(event) =>
+                setJobLocation(
+                  event.target.value
+                )
+              }
+              placeholder="e.g. Remote, New York, NY"
+              required
+              aria-required="true"
+            />
+          </div>
+
+          <div
+            className={styles.field}
+            style={{ marginBottom: 14 }}
+          >
+            <label>
+              Job Posting URL
+            </label>
+
+            <input
+              value={jobUrl}
+              onChange={(event) =>
+                setJobUrl(
+                  event.target.value
+                )
+              }
+              placeholder="https://..."
+            />
+          </div>
+
           <div className={styles.field}>
-            <label style={{ display: 'flex', justifyContent: 'space-between' }}><span>Job Description</span><button type="button" className={styles.resumeLink} onClick={runAnalysis}>Analyze Job Fit</button></label>
-            <textarea value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} placeholder="Job Title: Software Engineer (Remote)" />
+            <label>
+              Job Description
+            </label>
+
+            <textarea
+              value={jobDescription}
+              onChange={(event) =>
+                setJobDescription(
+                  event.target.value
+                )
+              }
+              placeholder="Paste the job description here"
+            />
           </div>
-          <div className={styles.analysisGrid}>
-            <div className={styles.analysisBox}>
-              <div className={styles.analysisTitle}><FiTarget color="#18a66d" /> Resume Analysis</div>
-              <ul className={styles.analysisList}>
-                <li className={styles.analysisGood}>Matching Skills</li>
-                <li>• Python</li><li>• AWS</li><li>• Docker</li><li>• Kubernetes</li>
-                <li className={styles.analysisWarn}>Skills to Highlight</li>
-                <li>• React</li><li>• Agile</li><li>• Node</li>
-              </ul>
-            </div>
-            <div className={styles.analysisBox}>
-              <div className={styles.analysisTitle}><FiTrendingUp color="#18a66d" /> Preference Alignment</div>
-              <ul className={styles.analysisList}>
-                <li className={styles.analysisGood}>Matches</li>
-                <li>• Location: Remote match</li>
-                <li>• Role: Software Engineer match found</li>
-              </ul>
-            </div>
-          </div>
-          <section className={styles.generatePanel}>
-            <h3>Generate Documents</h3>
-            <div className={styles.generateButtons}>
-              <button type="button" className={classNames(styles.generateButton, styles.generateButtonActive)} onClick={() => generate('resume')}><FiFileText /> Generate Tailored Resume</button>
-              <button type="button" className={styles.generateButton} onClick={() => generate('cover')}><FiFileText /> Generate Cover Letter</button>
-            </div>
-            <div className={styles.recommendation}>
-              <strong>Recommendation:</strong>
-              <p>{analysisState === 'green' ? 'Very good match. This job aligns with client preferences.' : 'Low match. This job may not align with client preferences. Consider discussing with the client before applying.'}</p>
-            </div>
-          </section>
-        </>
+        </section>
       )}
     </>
   );
@@ -2641,6 +2860,8 @@ export default function ApplicantPortal() {
     async (
       client,
       companyName,
+      positionName,
+      jobLocation,
       jobUrl,
       jobDescription
     ) => {
@@ -2649,9 +2870,43 @@ export default function ApplicantPortal() {
           companyName || ''
         ).trim();
 
+      const position =
+        String(
+          positionName || ''
+        ).trim();
+
+      const location =
+        String(
+          jobLocation || ''
+        ).trim();
+
+      const jobPostingUrl =
+        String(
+          jobUrl || ''
+        ).trim();
+
+      const description =
+        String(
+          jobDescription || ''
+        ).trim();
+
       if (!company) {
         setToast(
           'Enter the company name.'
+        );
+        return;
+      }
+
+      if (!position) {
+        setToast(
+          'Enter the position.'
+        );
+        return;
+      }
+
+      if (!location) {
+        setToast(
+          'Enter the job location.'
         );
         return;
       }
@@ -2686,23 +2941,40 @@ export default function ApplicantPortal() {
         return;
       }
 
+      const preferences = [
+        client.workType,
+        client.employmentType,
+        ...(
+          Array.isArray(
+            client.locations
+          )
+            ? client.locations
+            : []
+        ),
+      ]
+        .map(
+          (value) =>
+            String(
+              value || ''
+            ).trim()
+        )
+        .filter(
+          (value) =>
+            value &&
+            value.toLowerCase() !==
+              'not provided'
+        );
+
+      const uniquePreferences = [
+        ...new Set(preferences),
+      ];
+
       recordApplicationInFlight
         .current = true;
 
       setIsRecordingApplication(
         true
       );
-
-      const position =
-        jobDescription
-          .split('\n')[0]
-          .replace(
-            /^Job Title:\s*/i,
-            ''
-          )
-          .trim() ||
-        client.role ||
-        'Job Application';
 
       try {
         const accessToken =
@@ -2724,27 +2996,20 @@ export default function ApplicantPortal() {
                   client.id,
                 company,
                 position,
-                location:
-                  'Remote',
+                location,
                 status:
                   'Submitted',
                 linkSource:
                   'Applicant',
                 role:
-                  client.role ||
                   position,
-                preferences: [
-                  'remote',
-                  'full-time',
-                ],
+                preferences:
+                  uniquePreferences,
                 jobUrl:
-                  jobUrl ||
-                  '',
+                  jobPostingUrl,
                 jobDetails:
-                  jobDescription.trim()
-                    ? [
-                        jobDescription.trim(),
-                      ]
+                  description
+                    ? [description]
                     : [],
               }),
             }
