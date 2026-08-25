@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import {
   FiRefreshCw,
   FiBriefcase,
+  FiMapPin,
   FiCalendar,
   FiClock,
   FiStar,
@@ -753,6 +754,17 @@ export default function ApplicationDetailPage() {
                   </div>
                 </div>
 
+                <div className="flex items-center py-3 gap-6">
+                  <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
+                    <FiMapPin />
+                    Location
+                  </div>
+
+                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                    {application.location || 'N/A'}
+                  </span>
+                </div>
+
                 <div className="flex items-start py-3 gap-6">
                   <div className="flex items-center gap-2 w-44 text-sm text-gray-500 shrink-0">
                     <FiLink />
@@ -776,6 +788,32 @@ export default function ApplicationDetailPage() {
                     </span>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+                  Job Description
+                </h2>
+
+                {Array.isArray(application.jobDetails) &&
+                application.jobDetails.length > 0 ? (
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/20">
+                    {application.jobDetails.map(
+                      (detail, index) => (
+                        <p
+                          key={`${index}-${detail}`}
+                          className="whitespace-pre-wrap text-sm leading-6 text-gray-700 dark:text-gray-300"
+                        >
+                          {detail}
+                        </p>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    No job description recorded.
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap justify-end gap-3 mt-6">
