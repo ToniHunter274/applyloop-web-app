@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -36,6 +36,7 @@ import {
   FiXCircle,
   FiZap,
 } from 'react-icons/fi';
+import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '../../shared/context/AuthContext';
 import styles from './TeamAuditorPortal.module.css';
 
@@ -108,13 +109,98 @@ const recentQualityIssues = [
   { id: 'NCR-144', status: 'pending', tone: 'red', title: 'Missing keyword optimization in resume', applicant: 'Applicant: David Park', time: '1 day ago' },
 ];
 
-const auditQueueList = [
-  { id: 'AUD-2847', level: 'HIGH', title: 'Senior Software Engineer', client: 'Olabanji David T.', owner: 'Sarah Mitchell', age: '2 hours ago', source: 'Random Audit' },
-  { id: 'AUD-2846', level: 'HIGH', title: 'Product Manager', client: 'Jonny Syndy', owner: 'Marcus Johnson', age: '3 hours ago', source: 'Client Complaint' },
-  { id: 'AUD-2845', level: 'MEDIUM', title: 'Financial Analyst', client: 'Jonny Syndy', owner: 'Emma Chen', age: '5 hours ago', source: 'Quality Query' },
-  { id: 'AUD-2844', level: 'MEDIUM', title: 'Data Scientist', client: 'Jonny Syndy', owner: 'David Park', age: '6 hours ago', source: 'Random Audit' },
-  { id: 'AUD-2843', level: 'LOW', title: 'DevOps Engineer', client: 'Jonny Syndy', owner: 'Lisa Anderson', age: '8 hours ago', source: 'Scheduled Review' },
-];
+const AUDIT_SOURCE_LABELS = {
+  random_audit: 'Random Audit',
+  client_complaint: 'Client Complaint',
+  quality_query: 'Quality Query',
+  scheduled_review: 'Scheduled Review',
+  manual: 'Manual Review',
+};
+
+function formatAuditAge(value) {
+  const createdAt =
+    new Date(value).getTime();
+
+  if (
+    Number.isNaN(createdAt)
+  ) {
+    return '';
+  }
+
+  const minutes =
+    Math.max(
+      0,
+      Math.floor(
+        (Date.now() - createdAt) /
+          60000
+      )
+    );
+
+  if (minutes < 1) {
+    return 'Just now';
+  }
+
+  if (minutes < 60) {
+    return `${minutes} minute${
+      minutes === 1 ? '' : 's'
+    } ago`;
+  }
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours} hour${
+      hours === 1 ? '' : 's'
+    } ago`;
+  }
+
+  const days =
+    Math.floor(hours / 24);
+
+  return `${days} day${
+    days === 1 ? '' : 's'
+  } ago`;
+}
+
+function formatAuditQueueItem(
+  audit
+) {
+  return {
+    id: audit.id,
+    displayId:
+      audit.displayId ||
+      `AUD-${String(audit.id)
+        .slice(0, 8)
+        .toUpperCase()}`,
+    level:
+      String(
+        audit.priority ||
+        'medium'
+      ).toUpperCase(),
+    title:
+      audit.application
+        ?.position ||
+      'Application',
+    client:
+      audit.application
+        ?.client?.name ||
+      'Client',
+    owner:
+      audit.application
+        ?.createdBy?.name ||
+      'Applicant',
+    age:
+      formatAuditAge(
+        audit.createdAt
+      ),
+    source:
+      AUDIT_SOURCE_LABELS[
+        audit.source
+      ] ||
+      'Manual Review',
+  };
+}
 
 const applicationReviewRows = [
   { id: 'APP-2847', client: 'Maya Patel', applicant: 'Olabanji David', chief: 'Raya Dava', quality: 'Excellent', qualityTone: 'green', date: '2026-05-23', status: 'Passed', statusTone: 'green' },
@@ -162,7 +248,7 @@ const complaints = [
 
 const chartWeeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'];
 
-function Sidebar({ current, open, onClose, basePath = '/team-auditor' }) {
+function Sidebar({ current, open, onClose, basePath = '/team-auditor', queueCount = 0 }) {
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -181,11 +267,16 @@ function Sidebar({ current, open, onClose, basePath = '/team-auditor' }) {
       <nav className={styles.nav}>
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
+          const count =
+            item.key === 'queue'
+              ? queueCount
+              : item.count;
+
           return (
             <Link key={item.key} href={item.href.replace('/team-auditor', basePath)} className={cx(styles.navItem, current === item.key && styles.navActive)} onClick={onClose}>
               <Icon />
               <span>{item.label}</span>
-              {item.count ? <b>{item.count}</b> : null}
+              {count ? <b>{count}</b> : null}
             </Link>
           );
         })}
@@ -337,7 +428,7 @@ function QueueStatusBadge({ level }) {
   return <Badge tone={tone}>{level}</Badge>;
 }
 
-function DashboardPage({ openAudit, openBreakdown }) {
+function DashboardPage({ openAudit, openBreakdown, auditQueue, auditQueueLoading, auditQueueError }) {
   return (
     <div className={styles.stack}>
       <PageTitle
@@ -403,10 +494,25 @@ function DashboardPage({ openAudit, openBreakdown }) {
           <Card>
             <div className={styles.sectionHead}><div><h2>Audit Queue</h2><p>Applications pending review</p></div></div>
             <div className={styles.queueMiniList}>
-              {auditQueueList.map((item) => (
+              {auditQueueLoading ? (
+                <div className={styles.queueMiniItem}>
+                  <p>Loading audit queue...</p>
+                </div>
+              ) : null}
+              {auditQueueError ? (
+                <div className={styles.queueMiniItem}>
+                  <p>{auditQueueError}</p>
+                </div>
+              ) : null}
+              {!auditQueueLoading && !auditQueueError && auditQueue.length === 0 ? (
+                <div className={styles.queueMiniItem}>
+                  <p>No applications pending review.</p>
+                </div>
+              ) : null}
+              {auditQueue.map((item) => (
                 <div key={item.id} className={styles.queueMiniItem}>
                   <div>
-                    <div className={styles.queueMiniTop}><strong>{item.id}</strong><QueueStatusBadge level={item.level} /></div>
+                    <div className={styles.queueMiniTop}><strong>{item.displayId}</strong><QueueStatusBadge level={item.level} /></div>
                     <h3>{item.title}</h3>
                     <p>{item.client}</p>
                     <div className={styles.queueMiniMeta}><span><FiUser /> {item.owner}</span><span><FiClock /> {item.age}</span><span><FiInfo /> {item.source}</span></div>
@@ -476,17 +582,32 @@ function DashboardPage({ openAudit, openBreakdown }) {
   );
 }
 
-function AuditQueuePage({ openAudit }) {
+function AuditQueuePage({ openAudit, auditQueue, auditQueueLoading, auditQueueError }) {
   return (
     <div className={styles.stack}>
       <PageTitle title="Audit Queue" subtitle="Applications pending audit review" />
       <Card className={styles.queueHeaderCard}>
         <div className={styles.tableSectionTitle}><h2>Audit Queue</h2><p>Applications pending review</p></div>
         <div className={styles.queuePageList}>
-          {auditQueueList.map((item) => (
+          {auditQueueLoading ? (
+            <div className={styles.queuePageRow}>
+              <p>Loading audit queue...</p>
+            </div>
+          ) : null}
+          {auditQueueError ? (
+            <div className={styles.queuePageRow}>
+              <p>{auditQueueError}</p>
+            </div>
+          ) : null}
+          {!auditQueueLoading && !auditQueueError && auditQueue.length === 0 ? (
+            <div className={styles.queuePageRow}>
+              <p>No applications pending review.</p>
+            </div>
+          ) : null}
+          {auditQueue.map((item) => (
             <div className={styles.queuePageRow} key={item.id}>
               <div>
-                <div className={styles.queueMiniTop}><strong>{item.id}</strong><QueueStatusBadge level={item.level} /></div>
+                <div className={styles.queueMiniTop}><strong>{item.displayId}</strong><QueueStatusBadge level={item.level} /></div>
                 <h3>{item.title}</h3>
                 <p>Client: {item.client}</p>
                 <div className={styles.queueMiniMeta}><span><FiUser /> {item.owner}</span><span><FiClock /> {item.age}</span><span><FiInfo /> {item.source}</span></div>
@@ -501,75 +622,421 @@ function AuditQueuePage({ openAudit }) {
   );
 }
 
-function AuditQueueDetailPage({ openModal }) {
+function AuditQueueDetailPage({
+  audit,
+  loading,
+  error,
+  openModal,
+  onBack,
+}) {
+  if (loading) {
+    return (
+      <div className={styles.stack}>
+        <PageTitle
+          title="Audit Queue"
+          subtitle="Applications pending audit review"
+        />
+        <button
+          className={styles.backLink}
+          onClick={onBack}
+        >
+          <FiArrowLeft /> Back
+        </button>
+        <Card className={styles.detailPanel}>
+          <p>Loading audit...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.stack}>
+        <PageTitle
+          title="Audit Queue"
+          subtitle="Applications pending audit review"
+        />
+        <button
+          className={styles.backLink}
+          onClick={onBack}
+        >
+          <FiArrowLeft /> Back
+        </button>
+        <Card className={styles.detailPanel}>
+          <p>{error}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!audit) {
+    return null;
+  }
+
+  const application =
+    audit.application || {};
+
+  const preferences =
+    Array.isArray(
+      application.preferences
+    )
+      ? application.preferences
+      : [];
+
+  const jobDetails =
+    Array.isArray(
+      application.jobDetails
+    )
+      ? application.jobDetails
+      : [];
+
+  const otherDetails =
+    Array.isArray(
+      application.otherDetails
+    )
+      ? application.otherDetails
+      : [];
+
   return (
     <div className={styles.stack}>
-      <PageTitle title="Audit Queue" subtitle="Applications pending audit review" />
-      <button className={styles.backLink}><FiArrowLeft /> Back</button>
+      <PageTitle
+        title="Audit Queue"
+        subtitle="Applications pending audit review"
+      />
+
+      <button
+        className={styles.backLink}
+        onClick={onBack}
+      >
+        <FiArrowLeft /> Back
+      </button>
+
       <div className={styles.detailGrid}>
         <Card className={styles.detailPanel}>
           <h2>Job Details</h2>
+
           <div className={styles.detailStack}>
-            <div><label>Audit ID</label><strong>AUD-2847</strong></div>
-            <div><label>Client</label><strong>Olabanji David T.</strong></div>
-            <div><label>Applicant</label><strong>Sarah Mitchell</strong></div>
-            <div><label>Chief Applicant</label><strong>Marcus Johnson</strong></div>
-          </div>
-          <hr className={styles.detailDivider} />
-          <div className={styles.detailStack}>
-            <div><label>Job Title</label><strong>Senior Software Engineer</strong></div>
-            <div><label>Company</label><strong>Amazon Web Services</strong></div>
             <div>
-              <label>Job Description</label>
-              <div className={styles.notesBox}>Looking for an experienced Senior Software Engineer to join our cloud infrastructure team. Must have 5+ years of experience with distributed systems, Python, and AWS services. Strong background in system design and scalability required.</div>
+              <label>Audit ID</label>
+              <strong>
+                {audit.displayId}
+              </strong>
             </div>
+
             <div>
-              <label>Client Preferences</label>
-              <ul className={styles.preferenceList}>
-                <li><FiCheckCircle /> Emphasize cloud architecture experience</li>
-                <li><FiCheckCircle /> Include specific AWS certifications</li>
-                <li><FiCheckCircle /> Highlight system design projects</li>
-              </ul>
+              <label>Client</label>
+              <strong>
+                {application.client
+                  ?.name ||
+                  'Client'}
+              </strong>
+            </div>
+
+            <div>
+              <label>Applicant</label>
+              <strong>
+                {application.applicant
+                  ?.name ||
+                  'Not assigned'}
+              </strong>
+            </div>
+
+            <div>
+              <label>
+                Chief Applicant
+              </label>
+              <strong>
+                {application
+                  .chiefApplicant
+                  ?.name ||
+                  'Not assigned'}
+              </strong>
+            </div>
+          </div>
+
+          <hr
+            className={
+              styles.detailDivider
+            }
+          />
+
+          <div className={styles.detailStack}>
+            <div>
+              <label>Job Title</label>
+              <strong>
+                {application.position ||
+                  'Not recorded'}
+              </strong>
+            </div>
+
+            <div>
+              <label>Company</label>
+              <strong>
+                {application.company ||
+                  'Not recorded'}
+              </strong>
+            </div>
+
+            <div>
+              <label>
+                Job Description
+              </label>
+              <div
+                className={
+                  styles.notesBox
+                }
+              >
+                {jobDetails.length
+                  ? jobDetails.join(
+                      ' • '
+                    )
+                  : 'No job details recorded.'}
+              </div>
+            </div>
+
+            <div>
+              <label>
+                Client Preferences
+              </label>
+
+              {preferences.length ? (
+                <ul
+                  className={
+                    styles.preferenceList
+                  }
+                >
+                  {preferences.map(
+                    (preference) => (
+                      <li
+                        key={
+                          preference
+                        }
+                      >
+                        <FiCheckCircle />
+                        {preference}
+                      </li>
+                    )
+                  )}
+                </ul>
+              ) : (
+                <div
+                  className={
+                    styles.notesBox
+                  }
+                >
+                  No client preferences
+                  recorded.
+                </div>
+              )}
             </div>
           </div>
         </Card>
 
-        <div className={styles.detailRightColumn}>
-          <Card className={styles.detailPanel}>
+        <div
+          className={
+            styles.detailRightColumn
+          }
+        >
+          <Card
+            className={
+              styles.detailPanel
+            }
+          >
             <h2>Submitted Assets</h2>
-            <div className={cx(styles.assetCard, styles.assetCardBlue)}>
+
+            <div
+              className={cx(
+                styles.assetCard,
+                styles.assetCardBlue
+              )}
+            >
               <div>
-                <strong><FiFileText /> Resume Used</strong>
-                <p>sarah_mitchell_resume_v3.pdf</p>
-                <small>Last modified: May 28, 2026</small>
+                <strong>
+                  <FiFileText /> Resume
+                  Used
+                </strong>
+
+                <p>
+                  {application.resume
+                    ?.name ||
+                    'No resume recorded'}
+                </p>
+
+                <small>
+                  {application.resume
+                    ?.path
+                    ? 'Stored document available'
+                    : 'No stored file path'}
+                </small>
               </div>
-              <button className={styles.linkButton}>View</button>
+
+              <button
+                className={
+                  styles.linkButton
+                }
+                disabled={
+                  !application.resume
+                    ?.path
+                }
+              >
+                View
+              </button>
             </div>
-            <div className={cx(styles.assetCard, styles.assetCardGreen)}>
+
+            <div
+              className={cx(
+                styles.assetCard,
+                styles.assetCardGreen
+              )}
+            >
               <div>
-                <strong><FiFileText /> Cover Letter Used</strong>
-                <p>cover_letter_aws_senior_swe.pdf</p>
-                <small>Tailored for this position</small>
+                <strong>
+                  <FiFileText /> Cover
+                  Letter Used
+                </strong>
+
+                <p>
+                  {application
+                    .coverLetter?.name ||
+                    'No cover letter recorded'}
+                </p>
+
+                <small>
+                  {application
+                    .coverLetter?.path
+                    ? 'Stored document available'
+                    : 'No stored file path'}
+                </small>
               </div>
-              <button className={styles.linkButton}>View</button>
+
+              <button
+                className={
+                  styles.linkButton
+                }
+                disabled={
+                  !application
+                    .coverLetter?.path
+                }
+              >
+                View
+              </button>
             </div>
-            <div className={styles.atsCard}>
-              <div className={styles.atsScoreTop}><span>ATS Match Score</span><strong>94%</strong></div>
-              <div className={styles.progress}><i className={styles.progress_green} style={{ width: '94%' }} /></div>
+
+            <div
+              className={
+                styles.atsCard
+              }
+            >
+              <div
+                className={
+                  styles.atsScoreTop
+                }
+              >
+                <span>
+                  ATS Match Score
+                </span>
+                <strong>
+                  Not available
+                </strong>
+              </div>
+
+              <div
+                className={
+                  styles.progress
+                }
+              >
+                <i
+                  className={
+                    styles.progress_green
+                  }
+                  style={{
+                    width: '0%',
+                  }}
+                />
+              </div>
             </div>
+
             <div>
-              <label>Submission Notes</label>
-              <div className={styles.notesBox}>Resume customized to emphasize AWS cloud architecture experience. Added recent certification achievements. Cover letter highlights distributed systems projects matching job requirements.</div>
+              <label>
+                Submission Notes
+              </label>
+
+              <div
+                className={
+                  styles.notesBox
+                }
+              >
+                {otherDetails.length
+                  ? otherDetails.join(
+                      ' • '
+                    )
+                  : application.feedback ||
+                    'No submission notes recorded.'}
+              </div>
             </div>
           </Card>
 
-          <Card className={styles.detailPanel}>
-            <h2 className={styles.centerText}>Audit Actions</h2>
-            <div className={styles.actionGrid}>
-              <Button tone="success" icon={FiCheckCircle} onClick={() => openModal('pass')}>Pass Audit</Button>
-              <Button tone="warning" icon={FiAlertCircle} onClick={() => openModal('query')}>Raise Query</Button>
-              <Button tone="primary" icon={FiSend} onClick={() => openModal('correction')}>Request Correction</Button>
-              <Button tone="danger" icon={FiAlertCircle} onClick={() => openModal('escalate')}>Escalate Case</Button>
+          <Card
+            className={
+              styles.detailPanel
+            }
+          >
+            <h2
+              className={
+                styles.centerText
+              }
+            >
+              Audit Actions
+            </h2>
+
+            <div
+              className={
+                styles.actionGrid
+              }
+            >
+              <Button
+                tone="success"
+                icon={FiCheckCircle}
+                onClick={() =>
+                  openModal('pass')
+                }
+              >
+                Pass Audit
+              </Button>
+
+              <Button
+                tone="warning"
+                icon={FiAlertCircle}
+                onClick={() =>
+                  openModal('query')
+                }
+              >
+                Raise Query
+              </Button>
+
+              <Button
+                tone="primary"
+                icon={FiSend}
+                onClick={() =>
+                  openModal(
+                    'correction'
+                  )
+                }
+              >
+                Request Correction
+              </Button>
+
+              <Button
+                tone="danger"
+                icon={FiAlertCircle}
+                onClick={() =>
+                  openModal(
+                    'escalate'
+                  )
+                }
+              >
+                Escalate Case
+              </Button>
             </div>
           </Card>
         </div>
@@ -765,11 +1232,220 @@ function ReportModal({ type, onClose }) {
   return <Modal title={title} onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button>Generate & Download</Button></>}><div className={styles.reportModalBanner}><strong>{innerTitle}</strong><span>Configure report parameters and export format</span></div><FormField label="Date Range"><select><option>Today</option><option>Last 7 Days</option><option>This Month</option></select></FormField><div><span className={styles.fieldTitle}>Export Format</span><div className={styles.formatGrid}><button className={styles.formatSelected}><FiFileText /><span>PDF</span></button><button><FiFileText /><span>Excel</span></button><button><FiBarChart2 /><span>CSV</span></button></div></div><label className={styles.checkbox}><input type="checkbox" defaultChecked /> Include charts and visualizations</label><label className={styles.checkbox}><input type="checkbox" defaultChecked /> Include executive summary</label></Modal>;
 }
 
-function ActionModal({ type, onClose }) {
-  if (type === 'pass') return <Modal title="Pass Audit" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button tone="success">Pass Audit</Button></>}><div className={cx(styles.actionBanner, styles.actionGreen)}><FiCheckCircle /><span><strong>Audit Assessment</strong><small>You are about to mark application AUD-8382 as passed.</small></span></div><FormField label="Quality Score (0-100)"><div className={styles.scoreSlider}><input type="range" defaultValue="100" /><strong>100</strong></div></FormField><FormField label="Audit Comments"><textarea rows="5" placeholder="Add any notes about the quality assessment..." /></FormField></Modal>;
-  if (type === 'query') return <Modal title="Raise Quality Query" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button tone="warning">Raise Query</Button></>}><div className={cx(styles.actionBanner, styles.actionOrange)}><FiAlertCircle /><span><strong>Quality Issue Detected</strong><small>Document the quality concern for application AUD-8382.</small></span></div><div className={styles.formGrid}><FormField label="Query Category"><select><option>Select Category</option></select></FormField><FormField label="Severity Level"><select><option>Medium</option></select></FormField><FormField label="Issue Description" full><textarea rows="6" placeholder="Describe the quality issue in detail..." /></FormField><FormField label="Response Due Date" full><input /></FormField></div></Modal>;
-  if (type === 'correction') return <Modal title="Request Correction" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button>Send Request</Button></>}><div className={cx(styles.actionBanner, styles.actionBlue)}><FiSend /><span><strong>Correction Required</strong><small>Request corrections for application AUD-8382.</small></span></div><div className={styles.formGrid}><FormField label="Assign To"><input /></FormField><FormField label="Priority"><input /></FormField><FormField label="Required Corrections" full><textarea rows="7" placeholder="List specific corrections needed..." /></FormField></div></Modal>;
-  if (type === 'escalate') return <Modal title="Escalate Case" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button tone="danger">Escalate Now</Button></>}><div className={cx(styles.actionBanner, styles.actionRed)}><FiAlertCircle /><span><strong>Critical Issue - Escalation Required</strong><small>Escalate application AUD-8382 to senior management.</small></span></div><div className={styles.formGrid}><FormField label="Escalate To"><input /></FormField><FormField label="Urgency Level"><input /></FormField><FormField label="Escalation Reason" full><textarea rows="7" placeholder="Explain why this case requires escalation..." /></FormField></div></Modal>;
+function ActionModal({
+  type,
+  audit,
+  onClose,
+  onPassed,
+}) {
+  const [qualityScore, setQualityScore] =
+    useState(100);
+  const [comments, setComments] =
+    useState('');
+  const [submitting, setSubmitting] =
+    useState(false);
+  const [submitError, setSubmitError] =
+    useState('');
+
+  const handlePassAudit =
+    async () => {
+      if (!audit?.id) {
+        setSubmitError(
+          'The audit could not be identified.'
+        );
+        return;
+      }
+
+      try {
+        setSubmitting(true);
+        setSubmitError('');
+
+        const supabase =
+          createClient();
+
+        const {
+          data: {
+            session,
+          },
+          error: sessionError,
+        } =
+          await supabase.auth
+            .getSession();
+
+        if (
+          sessionError ||
+          !session?.access_token
+        ) {
+          throw new Error(
+            'Your session could not be verified.'
+          );
+        }
+
+        const response =
+          await fetch(
+            `/api/audits/${encodeURIComponent(
+              audit.id
+            )}/approve`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${session.access_token}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body:
+                JSON.stringify({
+                  qualityScore,
+                  comments,
+                }),
+            }
+          );
+
+        const body =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            body.error ||
+              'The audit could not be passed.'
+          );
+        }
+
+        await onPassed?.(
+          body.audit
+        );
+
+        onClose();
+      } catch (error) {
+        setSubmitError(
+          error.message ||
+            'The audit could not be passed.'
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+  if (type === 'pass') {
+    return (
+      <Modal
+        title="Pass Audit"
+        onClose={onClose}
+        footer={
+          <>
+            <Button
+              tone="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              tone="success"
+              onClick={
+                handlePassAudit
+              }
+              disabled={
+                submitting
+              }
+            >
+              {submitting
+                ? 'Passing...'
+                : 'Pass Audit'}
+            </Button>
+          </>
+        }
+      >
+        <div
+          className={cx(
+            styles.actionBanner,
+            styles.actionGreen
+          )}
+        >
+          <FiCheckCircle />
+
+          <span>
+            <strong>
+              Audit Assessment
+            </strong>
+
+            <small>
+              You are about to mark
+              application{' '}
+              {audit?.displayId ||
+                'audit'}{' '}
+              as passed.
+            </small>
+          </span>
+        </div>
+
+        <FormField
+          label="Quality Score (0-100)"
+        >
+          <div
+            className={
+              styles.scoreSlider
+            }
+          >
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={
+                qualityScore
+              }
+              onChange={(
+                event
+              ) =>
+                setQualityScore(
+                  Number(
+                    event.target
+                      .value
+                  )
+                )
+              }
+            />
+
+            <strong>
+              {qualityScore}
+            </strong>
+          </div>
+        </FormField>
+
+        <FormField
+          label="Audit Comments"
+        >
+          <textarea
+            rows="5"
+            value={comments}
+            maxLength="5000"
+            placeholder="Add any notes about the quality assessment..."
+            onChange={(
+              event
+            ) =>
+              setComments(
+                event.target.value
+              )
+            }
+          />
+        </FormField>
+
+        {submitError ? (
+          <p>
+            {submitError}
+          </p>
+        ) : null}
+      </Modal>
+    );
+  }
+
+  if (type === 'query') return <Modal title="Raise Quality Query" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button tone="warning">Raise Query</Button></>}><div className={cx(styles.actionBanner, styles.actionOrange)}><FiAlertCircle /><span><strong>Quality Issue Detected</strong><small>Document the quality concern for this application.</small></span></div><div className={styles.formGrid}><FormField label="Query Category"><select><option>Select Category</option></select></FormField><FormField label="Severity Level"><select><option>Medium</option></select></FormField><FormField label="Issue Description" full><textarea rows="6" placeholder="Describe the quality issue in detail..." /></FormField><FormField label="Response Due Date" full><input /></FormField></div></Modal>;
+
+  if (type === 'correction') return <Modal title="Request Correction" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button>Send Request</Button></>}><div className={cx(styles.actionBanner, styles.actionBlue)}><FiSend /><span><strong>Correction Required</strong><small>Request corrections for this application.</small></span></div><div className={styles.formGrid}><FormField label="Assign To"><input /></FormField><FormField label="Priority"><input /></FormField><FormField label="Required Corrections" full><textarea rows="7" placeholder="List specific corrections needed..." /></FormField></div></Modal>;
+
+  if (type === 'escalate') return <Modal title="Escalate Case" onClose={onClose} footer={<><Button tone="outline" onClick={onClose}>Cancel</Button><Button tone="danger">Escalate Now</Button></>}><div className={cx(styles.actionBanner, styles.actionRed)}><FiAlertCircle /><span><strong>Critical Issue - Escalation Required</strong><small>Escalate this application to senior management.</small></span></div><div className={styles.formGrid}><FormField label="Escalate To"><input /></FormField><FormField label="Urgency Level"><input /></FormField><FormField label="Escalation Reason" full><textarea rows="7" placeholder="Explain why this case requires escalation..." /></FormField></div></Modal>;
+
   return null;
 }
 
@@ -794,12 +1470,229 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [auditQueue, setAuditQueue] = useState([]);
+  const [auditQueueLoading, setAuditQueueLoading] = useState(true);
+  const [auditQueueError, setAuditQueueError] = useState('');
+  const [auditDetail, setAuditDetail] = useState(null);
+  const [auditDetailLoading, setAuditDetailLoading] = useState(false);
+  const [auditDetailError, setAuditDetailError] = useState('');
 
-  const openAuditDetail = (id = 'AUD-2847') => router.push(`${basePath}/audit-queue/${id}`);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAuditQueue = async () => {
+      try {
+        setAuditQueueLoading(true);
+        setAuditQueueError('');
+
+        const supabase =
+          createClient();
+
+        const {
+          data: {
+            session,
+          },
+          error: sessionError,
+        } =
+          await supabase.auth
+            .getSession();
+
+        if (
+          sessionError ||
+          !session?.access_token
+        ) {
+          throw new Error(
+            'Your session could not be verified.'
+          );
+        }
+
+        const response =
+          await fetch(
+            '/api/audits',
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${session.access_token}`,
+              },
+            }
+          );
+
+        const body =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            body.error ||
+            'The audit queue could not be loaded.'
+          );
+        }
+
+        if (!cancelled) {
+          setAuditQueue(
+            (body.audits || []).map(
+              formatAuditQueueItem
+            )
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAuditQueue([]);
+          setAuditQueueError(
+            error.message ||
+            'The audit queue could not be loaded.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setAuditQueueLoading(
+            false
+          );
+        }
+      }
+    };
+
+    loadAuditQueue();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!detailId) {
+      setAuditDetail(null);
+      setAuditDetailError('');
+      setAuditDetailLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadAuditDetail =
+      async () => {
+        try {
+          setAuditDetailLoading(
+            true
+          );
+
+          setAuditDetailError('');
+
+          const supabase =
+            createClient();
+
+          const {
+            data: {
+              session,
+            },
+            error: sessionError,
+          } =
+            await supabase.auth
+              .getSession();
+
+          if (
+            sessionError ||
+            !session?.access_token
+          ) {
+            throw new Error(
+              'Your session could not be verified.'
+            );
+          }
+
+          const response =
+            await fetch(
+              `/api/audits/${encodeURIComponent(
+                detailId
+              )}`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${session.access_token}`,
+                },
+              }
+            );
+
+          const body =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              body.error ||
+                'The audit could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setAuditDetail(
+              body.audit
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setAuditDetail(null);
+
+            setAuditDetailError(
+              error.message ||
+                'The audit could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setAuditDetailLoading(
+              false
+            );
+          }
+        }
+      };
+
+    loadAuditDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailId]);
+
+  const openAuditDetail = (id) => {
+    if (!id) {
+      return router.push(
+        `${basePath}/audit-queue`
+      );
+    }
+
+    return router.push(
+      `${basePath}/audit-queue/${id}`
+    );
+  };
+
+  const handleAuditPassed =
+    async (passedAudit) => {
+      setAuditQueue(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.id !==
+              passedAudit.id
+          )
+      );
+
+      setAuditDetail(
+        (current) =>
+          current?.id ===
+          passedAudit.id
+            ? {
+                ...current,
+                ...passedAudit,
+              }
+            : current
+      );
+
+      await router.push(
+        `${basePath}/audit-queue`
+      );
+    };
 
   const page = {
-    dashboard: <DashboardPage openAudit={openAuditDetail} openBreakdown={(row) => { setSelected(row); setModal('payout'); }} />,
-    queue: detailId ? <AuditQueueDetailPage openModal={(type) => setModal(type)} /> : <AuditQueuePage openAudit={openAuditDetail} />,
+    dashboard: <DashboardPage openAudit={openAuditDetail} openBreakdown={(row) => { setSelected(row); setModal('payout'); }} auditQueue={auditQueue} auditQueueLoading={auditQueueLoading} auditQueueError={auditQueueError} />,
+    queue: detailId ? <AuditQueueDetailPage audit={auditDetail} loading={auditDetailLoading} error={auditDetailError} openModal={(type) => { setSelected(auditDetail); setModal(type); }} onBack={() => router.push(`${basePath}/audit-queue`)} /> : <AuditQueuePage openAudit={openAuditDetail} auditQueue={auditQueue} auditQueueLoading={auditQueueLoading} auditQueueError={auditQueueError} />,
     ai: <AiAuditingPage />,
     reviews: <ApplicationReviewsPage openReview={() => openAuditDetail('AUD-2847')} />,
     quality: <TeamQualityPage openBreakdown={(row) => { setSelected(row); setModal('payout'); }} />,
@@ -814,7 +1707,7 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
       <Head><title>{portalTitle} | ApplyLoop</title></Head>
       <div className={styles.app}>
         {mobileOpen ? <button className={styles.backdrop} onClick={() => setMobileOpen(false)} aria-label="Close navigation" /> : null}
-        <Sidebar current={section} open={mobileOpen} onClose={() => setMobileOpen(false)} basePath={basePath} />
+        <Sidebar current={section} open={mobileOpen} onClose={() => setMobileOpen(false)} basePath={basePath} queueCount={auditQueue.length} />
         <main className={styles.main}>
           <div className={styles.mobileHeader}><button onClick={() => setMobileOpen(true)}><FiMenu /></button><strong>ApplyLoop</strong><button><FiBell /></button></div>
           <div className={styles.surface}>{page}</div>
@@ -822,7 +1715,7 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
       </div>
       {modal === 'payout' ? <PayoutBreakdownModal row={selected} onClose={() => setModal(null)} /> : null}
       {modal === 'report' ? <ReportModal type={selected} onClose={() => setModal(null)} /> : null}
-      {['pass', 'query', 'correction', 'escalate'].includes(modal) ? <ActionModal type={modal} onClose={() => setModal(null)} /> : null}
+      {['pass', 'query', 'correction', 'escalate'].includes(modal) ? <ActionModal type={modal} audit={selected} onPassed={handleAuditPassed} onClose={() => setModal(null)} /> : null}
       {['update', 'findings', 'resolved'].includes(modal) ? <ComplaintModal type={modal} item={selected} onClose={() => setModal(null)} /> : null}
     </>
   );
