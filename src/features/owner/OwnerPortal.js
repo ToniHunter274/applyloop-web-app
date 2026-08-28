@@ -461,14 +461,14 @@ const plans = [
 ];
 
 const payrollRows = [
-  { initials: 'OT', name: 'Olivia Taylor', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n312 Ã— $2 = $624.00\nApplications:\n298 Ã— $1.5 = $447.00', tasks: 610, earnings: '$1071.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'JA', name: 'James Anderson', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n289 Ã— $2 = $578.00\nApplications:\n272 Ã— $1.5 = $408.00', tasks: 561, earnings: '$986.00', status: 'Paid', action: 'Completed' },
-  { initials: 'ER', name: 'Emily Rodriguez', period: 'May 2026', type: 'Applicant', work: 'Applications:\n58 Ã— $8 = $464.00', tasks: 174, earnings: '$928.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'JS', name: 'James Smith', period: 'June 2026', type: 'Applicant', work: 'Reviews:\n45 Ã— $10 = $450.00', tasks: 132, earnings: '$780.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'AL', name: 'Alicia Lee', period: 'July 2026', type: 'Applicant', work: 'Applications:\n60 Ã— $7 = $420.00', tasks: 190, earnings: '$950.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'ML', name: 'Maria Lopez', period: 'June 2026', type: 'Chief Applicant', work: 'Reviews:\n320 Ã— $2 = $640.00\nApplications:\n295 Ã— $1.5 = $442.50', tasks: 615, earnings: '$1082.50', status: 'Paid', action: 'Completed' },
-  { initials: 'RT', name: 'Robert Thompson', period: 'July 2026', type: 'Chief Applicant', work: 'Reviews:\n267 Ã— $2 = $534.00\nApplications:\n310 Ã— $1.5 = $465.00', tasks: 577, earnings: '$999.00', status: 'Paid', action: 'Mark Paid' },
-  { initials: 'SK', name: 'Samantha Kim', period: 'August 2026', type: 'Chief Applicant', work: 'Reviews:\n310 Ã— $2 = $620.00\nApplications:\n280 Ã— $1.5 = $420.00', tasks: 590, earnings: '$1040.00', status: 'Paid', action: 'Completed' },
+  { initials: 'OT', name: 'Olivia Taylor', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n312 × $2 = $624.00\nApplications:\n298 × $1.5 = $447.00', tasks: 610, earnings: '$1071.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'JA', name: 'James Anderson', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n289 × $2 = $578.00\nApplications:\n272 × $1.5 = $408.00', tasks: 561, earnings: '$986.00', status: 'Paid', action: 'Completed' },
+  { initials: 'ER', name: 'Emily Rodriguez', period: 'May 2026', type: 'Applicant', work: 'Applications:\n58 × $8 = $464.00', tasks: 174, earnings: '$928.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'JS', name: 'James Smith', period: 'June 2026', type: 'Applicant', work: 'Reviews:\n45 × $10 = $450.00', tasks: 132, earnings: '$780.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'AL', name: 'Alicia Lee', period: 'July 2026', type: 'Applicant', work: 'Applications:\n60 × $7 = $420.00', tasks: 190, earnings: '$950.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'ML', name: 'Maria Lopez', period: 'June 2026', type: 'Chief Applicant', work: 'Reviews:\n320 × $2 = $640.00\nApplications:\n295 × $1.5 = $442.50', tasks: 615, earnings: '$1082.50', status: 'Paid', action: 'Completed' },
+  { initials: 'RT', name: 'Robert Thompson', period: 'July 2026', type: 'Chief Applicant', work: 'Reviews:\n267 × $2 = $534.00\nApplications:\n310 × $1.5 = $465.00', tasks: 577, earnings: '$999.00', status: 'Paid', action: 'Mark Paid' },
+  { initials: 'SK', name: 'Samantha Kim', period: 'August 2026', type: 'Chief Applicant', work: 'Reviews:\n310 × $2 = $620.00\nApplications:\n280 × $1.5 = $420.00', tasks: 590, earnings: '$1040.00', status: 'Paid', action: 'Completed' },
 ];
 
 const paymentHistoryRows = [
@@ -2997,7 +2997,7 @@ export function ApplicantsManagementPage({
                                 </span>
 
                                 <span className="text-base text-amber-500">
-                                  â˜…
+                                  ★
                                 </span>
                               </div>
                             </td>
@@ -3551,28 +3551,28 @@ export function ApplicantsManagementPage({
             'suspended' ? (
               <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
                 <li>
-                  â€¢ Restore login access.
+                  • Restore login access.
                 </li>
                 <li>
-                  â€¢ Allow new Client assignments.
+                  • Allow new Client assignments.
                 </li>
                 <li>
-                  â€¢ Previous Client assignments will not be restored automatically.
+                  • Previous Client assignments will not be restored automatically.
                 </li>
               </ul>
             ) : (
               <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
                 <li>
-                  â€¢ Block the Applicant from logging in.
+                  • Block the Applicant from logging in.
                 </li>
                 <li>
-                  â€¢ Prevent new Client assignments.
+                  • Prevent new Client assignments.
                 </li>
                 <li>
-                  â€¢ Remove all current Client assignments.
+                  • Remove all current Client assignments.
                 </li>
                 <li>
-                  â€¢ Keep completed work and account history.
+                  • Keep completed work and account history.
                 </li>
               </ul>
             )}
@@ -4964,7 +4964,7 @@ function PaymentHistoryModal({ open, onClose }) {
 
 function FormGrid({ children }) { return <div className={styles.formGrid}>{children}</div>; }
 function InputField({ label, placeholder = '', icon }) {
-  return <label className={styles.formField}><span>{label}</span><div className={styles.inputWrap}><input placeholder={placeholder} />{icon === 'clip' && <span className={styles.inputIcon}>âŒ•</span>}</div></label>;
+  return <label className={styles.formField}><span>{label}</span><div className={styles.inputWrap}><input placeholder={placeholder} />{icon === 'clip' && <span className={styles.inputIcon}>⌕</span>}</div></label>;
 }
 function SelectField({ label, placeholder }) {
   return <label className={styles.formField}><span>{label}</span><div className={styles.inputWrap}><input placeholder={placeholder} readOnly /><FiChevronDown className={styles.selectIcon} /></div></label>;
