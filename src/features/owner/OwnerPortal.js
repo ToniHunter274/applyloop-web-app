@@ -109,25 +109,325 @@ const PAGE_META = {
   settings: ['Settings', 'Manage workspace settings and platform rules'],
 };
 
-const dashboardCards = [
-  { label: 'TOTAL ACTIVE CLIENTS', value: '342', note: '+12.5% from last month', tone: 'green', icon: HiOutlineUserGroup, iconTone: 'blue' },
-  { label: 'APPLICATIONS\nSUBMITTED', value: '1,245', note: '+8.3% this week', tone: 'green', icon: FiFileText, iconTone: 'gray' },
-  { label: 'MONTHLY REVENUE', value: '$75,420', note: '+18.2% from last month', tone: 'green', icon: FiDollarSign, iconTone: 'green' },
-  { label: 'ACTIVE APPLICANTS', value: '892', note: '+6.7% from last week', tone: 'green', icon: FiBriefcase, iconTone: 'blue' },
-  { label: 'CHIEF APPLICANTS', value: '24', note: 'Stable', tone: 'neutral', icon: FaRegGem, iconTone: 'orange' },
-  { label: 'INTERVIEW\nSUCCESS RATE', value: '87', note: '+2.1% improvement', tone: 'green', icon: FiTrendingUp, iconTone: 'green' },
-  { label: 'PENDING ESCALATIONS', value: '15', note: '-3 from yesterday', tone: 'green', icon: FiAlertTriangle, iconTone: 'red' },
-  { label: 'SUBSCRIPTION\nRENEWAL', value: '6', note: 'Due this week', tone: 'neutral', icon: FiRefreshCw, iconTone: 'blue' },
-];
+function formatOwnerCurrency(value) {
+  return new Intl.NumberFormat(
+    'en-US',
+    {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }
+  ).format(Number(value) || 0);
+}
 
-const dashboardFeed = [
-  ['Applicant Sarah Johnson\nsubmitted 12 applications', '2 minutes ago', 'green'],
-  ['Premium client "Amanda\nWaller" assigned', '5 minutes ago', 'blue'],
-  ['Subscription renewed -\nEnterprise Plan', '12 minutes ago', 'purple'],
-  ['Chief Applicant approved task\nfor review', '18 minutes ago', 'amber'],
-  ['Interview scheduled: Michael\nChen - Google', '23 minutes ago', 'green'],
-  ['New client onboarded - Pro\nPlan', '31 minutes ago', 'blue'],
-];
+function formatOwnerRelativeTime(value) {
+  const timestamp =
+    new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return 'Recent';
+  }
+
+  const seconds = Math.max(
+    0,
+    Math.floor(
+      (Date.now() - timestamp) /
+        1000
+    )
+  );
+
+  if (seconds < 60) {
+    return 'Just now';
+  }
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  const days =
+    Math.floor(hours / 24);
+
+  if (days < 7) {
+    return `${days}d ago`;
+  }
+
+  return new Date(value)
+    .toLocaleDateString(
+      'en-US',
+      {
+        month: 'short',
+        day: 'numeric',
+      }
+    );
+}
+
+function getOwnerOverviewMetrics({
+  clients = [],
+  applications = [],
+  applicationSummary = {},
+  audits = [],
+}) {
+  const activeClients =
+    clients.filter(
+      (client) =>
+        client.status === 'active'
+    );
+
+  const totalApplications =
+    Number(
+      applicationSummary
+        ?.totalApplications
+    ) || applications.length;
+
+  const interviews =
+    clients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.interviews || 0
+        ),
+      0
+    );
+
+  const completedApplications =
+    clients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.applicationsCompleted ||
+            0
+        ),
+      0
+    );
+
+  const interviewSuccessRate =
+    completedApplications > 0
+      ? Math.round(
+          (
+            interviews /
+            completedApplications
+          ) * 100
+        )
+      : 0;
+
+  const estimatedMonthlyRevenue =
+    activeClients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.planPrice || 0
+        ),
+      0
+    );
+
+  const activePlans =
+    new Set(
+      activeClients
+        .map(
+          (client) =>
+            client.plan
+        )
+        .filter(Boolean)
+    ).size;
+
+  const priorityClients =
+    activeClients.filter(
+      (client) =>
+        [
+          'high',
+          'urgent',
+          'critical',
+        ].includes(
+          client.priority
+        )
+    ).length;
+
+  return {
+    activeClients:
+      activeClients.length,
+    totalClients:
+      clients.length,
+    totalApplications,
+    persistedApplications:
+      applications.length,
+    interviews,
+    completedApplications,
+    interviewSuccessRate,
+    estimatedMonthlyRevenue,
+    activePlans,
+    pendingAudits:
+      audits.length,
+    priorityClients,
+  };
+}
+
+function getOwnerDashboardCards(
+  metrics,
+  unavailable
+) {
+  const value = (
+    resolvedValue
+  ) =>
+    unavailable
+      ? '—'
+      : resolvedValue;
+
+  return [
+    {
+      label:
+        'TOTAL ACTIVE CLIENTS',
+      value: value(
+        String(
+          metrics.activeClients
+        )
+      ),
+      note: unavailable
+        ? 'Live data unavailable'
+        : `${metrics.totalClients} total client records`,
+      tone: 'green',
+      icon: HiOutlineUserGroup,
+      iconTone: 'blue',
+    },
+    {
+      label:
+        'APPLICATIONS\nSUBMITTED',
+      value: value(
+        String(
+          metrics.totalApplications
+        )
+      ),
+      note: unavailable
+        ? 'Live data unavailable'
+        : `${metrics.persistedApplications} persisted application records`,
+      tone: 'green',
+      icon: FiFileText,
+      iconTone: 'gray',
+    },
+    {
+      label:
+        'EST. MONTHLY\nREVENUE',
+      value: value(
+        formatOwnerCurrency(
+          metrics
+            .estimatedMonthlyRevenue
+        )
+      ),
+      note:
+        'Based on active client plan prices',
+      tone: 'green',
+      icon: FiDollarSign,
+      iconTone: 'green',
+    },
+    {
+      label:
+        'TOTAL INTERVIEWS',
+      value: value(
+        String(
+          metrics.interviews
+        )
+      ),
+      note:
+        'Recorded across client accounts',
+      tone: 'neutral',
+      icon: FiBriefcase,
+      iconTone: 'blue',
+    },
+    {
+      label:
+        'PLANS IN USE',
+      value: value(
+        String(
+          metrics.activePlans
+        )
+      ),
+      note:
+        'Across active clients',
+      tone: 'neutral',
+      icon: FaRegGem,
+      iconTone: 'orange',
+    },
+    {
+      label:
+        'INTERVIEW\nSUCCESS RATE',
+      value: value(
+        `${metrics.interviewSuccessRate}%`
+      ),
+      note:
+        'Interviews / completed applications',
+      tone: 'green',
+      icon: FiTrendingUp,
+      iconTone: 'green',
+    },
+    {
+      label:
+        'PENDING AUDITS',
+      value: value(
+        String(
+          metrics.pendingAudits
+        )
+      ),
+      note:
+        'Pending or in review',
+      tone: 'neutral',
+      icon: FiAlertTriangle,
+      iconTone: 'red',
+    },
+    {
+      label:
+        'PRIORITY\nCLIENTS',
+      value: value(
+        String(
+          metrics.priorityClients
+        )
+      ),
+      note:
+        'Active high, urgent, or critical',
+      tone: 'neutral',
+      icon: FiRefreshCw,
+      iconTone: 'blue',
+    },
+  ];
+}
+
+function getOwnerDashboardFeed(
+  applications = []
+) {
+  return applications
+    .slice(0, 6)
+    .map(
+      (application) => {
+        const tone =
+          application.status ===
+          'Interview Scheduled'
+            ? 'green'
+            : application.status ===
+                'Offer Received'
+              ? 'purple'
+              : application.status ===
+                  'Rejected'
+                ? 'amber'
+                : 'blue';
+
+        return [
+          `${application.client || 'Client'}\n${application.company} — ${application.position}`,
+          formatOwnerRelativeTime(
+            application.appliedAt
+          ),
+          tone,
+        ];
+      }
+    );
+}
 
 const applicants = [];
 
@@ -161,14 +461,14 @@ const plans = [
 ];
 
 const payrollRows = [
-  { initials: 'OT', name: 'Olivia Taylor', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n312 × $2 = $624.00\nApplications:\n298 × $1.5 = $447.00', tasks: 610, earnings: '$1071.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'JA', name: 'James Anderson', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n289 × $2 = $578.00\nApplications:\n272 × $1.5 = $408.00', tasks: 561, earnings: '$986.00', status: 'Paid', action: 'Completed' },
-  { initials: 'ER', name: 'Emily Rodriguez', period: 'May 2026', type: 'Applicant', work: 'Applications:\n58 × $8 = $464.00', tasks: 174, earnings: '$928.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'JS', name: 'James Smith', period: 'June 2026', type: 'Applicant', work: 'Reviews:\n45 × $10 = $450.00', tasks: 132, earnings: '$780.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'AL', name: 'Alicia Lee', period: 'July 2026', type: 'Applicant', work: 'Applications:\n60 × $7 = $420.00', tasks: 190, earnings: '$950.00', status: 'Pending', action: 'Mark Paid' },
-  { initials: 'ML', name: 'Maria Lopez', period: 'June 2026', type: 'Chief Applicant', work: 'Reviews:\n320 × $2 = $640.00\nApplications:\n295 × $1.5 = $442.50', tasks: 615, earnings: '$1082.50', status: 'Paid', action: 'Completed' },
-  { initials: 'RT', name: 'Robert Thompson', period: 'July 2026', type: 'Chief Applicant', work: 'Reviews:\n267 × $2 = $534.00\nApplications:\n310 × $1.5 = $465.00', tasks: 577, earnings: '$999.00', status: 'Paid', action: 'Mark Paid' },
-  { initials: 'SK', name: 'Samantha Kim', period: 'August 2026', type: 'Chief Applicant', work: 'Reviews:\n310 × $2 = $620.00\nApplications:\n280 × $1.5 = $420.00', tasks: 590, earnings: '$1040.00', status: 'Paid', action: 'Completed' },
+  { initials: 'OT', name: 'Olivia Taylor', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n312 Ã— $2 = $624.00\nApplications:\n298 Ã— $1.5 = $447.00', tasks: 610, earnings: '$1071.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'JA', name: 'James Anderson', period: 'May 2026', type: 'Chief Applicant', work: 'Reviews:\n289 Ã— $2 = $578.00\nApplications:\n272 Ã— $1.5 = $408.00', tasks: 561, earnings: '$986.00', status: 'Paid', action: 'Completed' },
+  { initials: 'ER', name: 'Emily Rodriguez', period: 'May 2026', type: 'Applicant', work: 'Applications:\n58 Ã— $8 = $464.00', tasks: 174, earnings: '$928.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'JS', name: 'James Smith', period: 'June 2026', type: 'Applicant', work: 'Reviews:\n45 Ã— $10 = $450.00', tasks: 132, earnings: '$780.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'AL', name: 'Alicia Lee', period: 'July 2026', type: 'Applicant', work: 'Applications:\n60 Ã— $7 = $420.00', tasks: 190, earnings: '$950.00', status: 'Pending', action: 'Mark Paid' },
+  { initials: 'ML', name: 'Maria Lopez', period: 'June 2026', type: 'Chief Applicant', work: 'Reviews:\n320 Ã— $2 = $640.00\nApplications:\n295 Ã— $1.5 = $442.50', tasks: 615, earnings: '$1082.50', status: 'Paid', action: 'Completed' },
+  { initials: 'RT', name: 'Robert Thompson', period: 'July 2026', type: 'Chief Applicant', work: 'Reviews:\n267 Ã— $2 = $534.00\nApplications:\n310 Ã— $1.5 = $465.00', tasks: 577, earnings: '$999.00', status: 'Paid', action: 'Mark Paid' },
+  { initials: 'SK', name: 'Samantha Kim', period: 'August 2026', type: 'Chief Applicant', work: 'Reviews:\n310 Ã— $2 = $620.00\nApplications:\n280 Ã— $1.5 = $420.00', tasks: 590, earnings: '$1040.00', status: 'Paid', action: 'Completed' },
 ];
 
 const paymentHistoryRows = [
@@ -208,7 +508,12 @@ function Brand() {
 }
 
 function OwnerShell({ section, children, portalRole, navItems }) {
-  const { user, logout } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    logout,
+  } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -224,10 +529,46 @@ function OwnerShell({ section, children, portalRole, navItems }) {
     .toUpperCase();
 
   useEffect(() => {
-    if (user?.role && user.role !== portalRole) {
-      router.replace(getRoleHome(user.role));
+    if (isLoading) {
+      return;
     }
-  }, [portalRole, router, user?.role]);
+
+    if (!isAuthenticated) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    if (
+      user?.role !== portalRole
+    ) {
+      router.replace(
+        getRoleHome(user?.role)
+      );
+    }
+  }, [
+    isAuthenticated,
+    isLoading,
+    portalRole,
+    router,
+    user?.role,
+  ]);
+
+  if (
+    isLoading ||
+    !isAuthenticated ||
+    user?.role !== portalRole
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading your workspace...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.app}>
@@ -702,57 +1043,546 @@ function HealthCard({ icon: Icon, title, score, tone }) {
 }
 
 function DashboardPage() {
+  const [
+    overview,
+    setOverview,
+  ] = useState({
+    clients: [],
+    applications: [],
+    applicationSummary: {},
+    audits: [],
+  });
+
+  const [
+    overviewLoading,
+    setOverviewLoading,
+  ] = useState(true);
+
+  const [
+    overviewError,
+    setOverviewError,
+  ] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOverview =
+      async () => {
+        setOverviewLoading(true);
+        setOverviewError('');
+
+        try {
+          const token =
+            await getOwnerAccessToken();
+
+          const headers = {
+            Authorization:
+              `Bearer ${token}`,
+          };
+
+          const responses =
+            await Promise.all([
+              fetch(
+                '/api/admin/clients',
+                { headers }
+              ),
+              fetch(
+                '/api/applications',
+                { headers }
+              ),
+              fetch(
+                '/api/audits',
+                { headers }
+              ),
+            ]);
+
+          const [
+            clientsResult,
+            applicationsResult,
+            auditsResult,
+          ] =
+            await Promise.all(
+              responses.map(
+                (response) =>
+                  response.json()
+              )
+            );
+
+          const failedIndex =
+            responses.findIndex(
+              (response) =>
+                !response.ok
+            );
+
+          if (
+            failedIndex !== -1
+          ) {
+            const failedBody = [
+              clientsResult,
+              applicationsResult,
+              auditsResult,
+            ][failedIndex];
+
+            throw new Error(
+              failedBody?.error ||
+                'Owner overview could not be loaded.'
+            );
+          }
+
+          if (cancelled) {
+            return;
+          }
+
+          setOverview({
+            clients:
+              clientsResult.clients ||
+              [],
+            applications:
+              applicationsResult
+                .applications || [],
+            applicationSummary:
+              applicationsResult
+                .summary || {},
+            audits:
+              auditsResult.audits ||
+              [],
+          });
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+
+          setOverviewError(
+            error?.message ||
+              'Owner overview could not be loaded.'
+          );
+        } finally {
+          if (!cancelled) {
+            setOverviewLoading(
+              false
+            );
+          }
+        }
+      };
+
+    loadOverview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const metrics =
+    getOwnerOverviewMetrics(
+      overview
+    );
+
+  const unavailable =
+    overviewLoading ||
+    Boolean(overviewError);
+
+  const cards =
+    getOwnerDashboardCards(
+      metrics,
+      unavailable
+    );
+
+  const feed =
+    getOwnerDashboardFeed(
+      overview.applications
+    );
+
   return (
     <>
       <PageHeader section="dashboard" />
-      <div className={styles.statsGridEight}>{dashboardCards.map((card) => <StatCard key={card.label} {...card} />)}</div>
-      <div className={styles.dashboardMain}>
+
+      {overviewError && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          {overviewError}
+        </div>
+      )}
+
+      <div
+        className={
+          styles.statsGridEight
+        }
+      >
+        {cards.map((card) => (
+          <StatCard
+            key={card.label}
+            {...card}
+          />
+        ))}
+      </div>
+
+      <div
+        className={
+          styles.dashboardMain
+        }
+      >
         <Card>
-          <div className={styles.dashboardAnalyticsHeader}>
-            <h2>Business Analytics</h2>
-            <label className={styles.inlineSelect}><span>Last 7 Days (May 7th - May 14th)</span><FiChevronDown /></label>
+          <div
+            className={
+              styles.dashboardAnalyticsHeader
+            }
+          >
+            <h2>
+              Analytics Preview
+            </h2>
+
+            <label
+              className={
+                styles.inlineSelect
+              }
+            >
+              <span>
+                Reference visualization
+              </span>
+              <FiChevronDown />
+            </label>
           </div>
-          <div className={styles.chartBlock}>
-            <p className={styles.chartTitle}>Applications & Interviews</p>
+
+          <div
+            className={
+              styles.chartBlock
+            }
+          >
+            <p
+              className={
+                styles.chartTitle
+              }
+            >
+              Applications & Interviews
+              (Reference)
+            </p>
+
             <AxisMultiLineChart
-              xLabels={['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']}
+              xLabels={[
+                'Mon',
+                'Tue',
+                'Wed',
+                'Thu',
+                'Fri',
+                'Sat',
+                'Sun',
+              ]}
               maxY={80}
               yStep={20}
               series={[
-                { label: 'Applications', color: '#3b82f6', values: [44, 52, 61, 58, 71, 38, 42] },
-                { label: 'Interviews', color: '#8b5cf6', values: [18, 24, 31, 29, 36, 20, 22] },
+                {
+                  label:
+                    'Applications',
+                  color:
+                    '#3b82f6',
+                  values: [
+                    44,
+                    52,
+                    61,
+                    58,
+                    71,
+                    38,
+                    42,
+                  ],
+                },
+                {
+                  label:
+                    'Interviews',
+                  color:
+                    '#8b5cf6',
+                  values: [
+                    18,
+                    24,
+                    31,
+                    29,
+                    36,
+                    20,
+                    22,
+                  ],
+                },
               ]}
             />
           </div>
-          <div className={styles.chartBlock}>
-            <div className={styles.chartHeaderMini}><p className={styles.chartTitle}>Revenue Growth (Last 5 Months)</p><label className={styles.inlineSelect}><span>Custom (January 01 - May 01)</span><FiChevronDown /></label></div>
-            <AxisBarChart values={[45000, 52000, 61000, 58000, 76000]} xLabels={['Jan', 'Feb', 'Mar', 'Apr', 'May']} maxY={80000} yStep={20000} color="#2d58cb" legend="Revenue ($)" />
+
+          <div
+            className={
+              styles.chartBlock
+            }
+          >
+            <div
+              className={
+                styles.chartHeaderMini
+              }
+            >
+              <p
+                className={
+                  styles.chartTitle
+                }
+              >
+                Revenue Growth
+                (Reference)
+              </p>
+
+              <label
+                className={
+                  styles.inlineSelect
+                }
+              >
+                <span>
+                  Reference visualization
+                </span>
+                <FiChevronDown />
+              </label>
+            </div>
+
+            <AxisBarChart
+              values={[
+                45000,
+                52000,
+                61000,
+                58000,
+                76000,
+              ]}
+              xLabels={[
+                'Jan',
+                'Feb',
+                'Mar',
+                'Apr',
+                'May',
+              ]}
+              maxY={80000}
+              yStep={20000}
+              color="#2d58cb"
+              legend="Revenue ($)"
+            />
           </div>
-          <div className={styles.chartBlock}>
-            <p className={styles.chartTitle}>Conversion Funnel</p>
+
+          <div
+            className={
+              styles.chartBlock
+            }
+          >
+            <p
+              className={
+                styles.chartTitle
+              }
+            >
+              Conversion Funnel
+              (Reference)
+            </p>
+
             <ConversionFunnelChart />
           </div>
         </Card>
-        <Card className={styles.feedCard}>
-          <div className={styles.feedHeader}><h2>Live Operations Feed</h2><span className={styles.livePill}><span />Real-time</span></div>
-          <div className={styles.feedList}>
-            {dashboardFeed.map(([text, time, tone]) => (
-              <div key={`${text}-${time}`} className={styles.feedItem}>
-                <span className={cn(styles.feedIcon, styles[`feed_${tone}`])} />
-                <div><strong>{formatMultiLine(text)}</strong><small>{time}</small></div>
+
+        <Card
+          className={
+            styles.feedCard
+          }
+        >
+          <div
+            className={
+              styles.feedHeader
+            }
+          >
+            <h2>
+              Recent Application Activity
+            </h2>
+
+            <span
+              className={
+                styles.livePill
+              }
+            >
+              <span />
+              Live data
+            </span>
+          </div>
+
+          <div
+            className={
+              styles.feedList
+            }
+          >
+            {overviewLoading ? (
+              <div
+                className={
+                  styles.feedItem
+                }
+              >
+                <div>
+                  <strong>
+                    Loading recent activity...
+                  </strong>
+                </div>
               </div>
-            ))}
+            ) : feed.length ? (
+              feed.map(
+                ([
+                  text,
+                  time,
+                  tone,
+                ]) => (
+                  <div
+                    key={`${text}-${time}`}
+                    className={
+                      styles.feedItem
+                    }
+                  >
+                    <span
+                      className={cn(
+                        styles.feedIcon,
+                        styles[
+                          `feed_${tone}`
+                        ]
+                      )}
+                    />
+
+                    <div>
+                      <strong>
+                        {formatMultiLine(
+                          text
+                        )}
+                      </strong>
+
+                      <small>
+                        {time}
+                      </small>
+                    </div>
+                  </div>
+                )
+              )
+            ) : (
+              <div
+                className={
+                  styles.feedItem
+                }
+              >
+                <div>
+                  <strong>
+                    No recent application activity.
+                  </strong>
+                  <small>
+                    Live data
+                  </small>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </div>
+
       <Card>
-        <div className={styles.operationalHead}><h2>Operational Health</h2><div className={styles.healthLegend}><span><i className={styles.dotGreen} /> Healthy</span><span><i className={styles.dotAmber} /> Attention</span><span><i className={styles.dotRed} /> Critical</span></div></div>
-        <div className={styles.healthGrid}>
-          <HealthCard icon={FiBarChart2} title="System Performance" score="98.5%" tone="green" />
-          <HealthCard icon={HiOutlineUserGroup} title="Team Productivity" score="High" tone="mint" />
-          <HealthCard icon={FiClock} title="Overdue Applications" score="12" tone="yellow" />
-          <HealthCard icon={FiTrendingUp} title="High-Priority Clients" score="8 Active" tone="orange" />
-          <HealthCard icon={FiAlertTriangle} title="Escalated Issues" score="3 Urgent" tone="red" />
+        <div
+          className={
+            styles.operationalHead
+          }
+        >
+          <h2>
+            Operational Overview
+          </h2>
+
+          <div
+            className={
+              styles.healthLegend
+            }
+          >
+            <span>
+              <i
+                className={
+                  styles.dotGreen
+                }
+              />{' '}
+              Live
+            </span>
+          </div>
+        </div>
+
+        <div
+          className={
+            styles.healthGrid
+          }
+        >
+          <HealthCard
+            icon={FiBarChart2}
+            title="Data Connection"
+            score={
+              overviewError
+                ? 'Attention'
+                : overviewLoading
+                  ? 'Loading'
+                  : 'Live'
+            }
+            tone={
+              overviewError
+                ? 'red'
+                : overviewLoading
+                  ? 'yellow'
+                  : 'green'
+            }
+          />
+
+          <HealthCard
+            icon={
+              HiOutlineUserGroup
+            }
+            title="Active Clients"
+            score={
+              unavailable
+                ? '—'
+                : String(
+                    metrics.activeClients
+                  )
+            }
+            tone="mint"
+          />
+
+          <HealthCard
+            icon={FiFileText}
+            title="Total Applications"
+            score={
+              unavailable
+                ? '—'
+                : String(
+                    metrics
+                      .totalApplications
+                  )
+            }
+            tone="green"
+          />
+
+          <HealthCard
+            icon={FiTrendingUp}
+            title="Priority Clients"
+            score={
+              unavailable
+                ? '—'
+                : String(
+                    metrics
+                      .priorityClients
+                  )
+            }
+            tone="orange"
+          />
+
+          <HealthCard
+            icon={
+              FiAlertTriangle
+            }
+            title="Pending Audits"
+            score={
+              unavailable
+                ? '—'
+                : String(
+                    metrics.pendingAudits
+                  )
+            }
+            tone={
+              metrics.pendingAudits >
+              0
+                ? 'yellow'
+                : 'green'
+            }
+          />
         </div>
       </Card>
     </>
@@ -2167,7 +2997,7 @@ export function ApplicantsManagementPage({
                                 </span>
 
                                 <span className="text-base text-amber-500">
-                                  ★
+                                  â˜…
                                 </span>
                               </div>
                             </td>
@@ -2721,28 +3551,28 @@ export function ApplicantsManagementPage({
             'suspended' ? (
               <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
                 <li>
-                  • Restore login access.
+                  â€¢ Restore login access.
                 </li>
                 <li>
-                  • Allow new Client assignments.
+                  â€¢ Allow new Client assignments.
                 </li>
                 <li>
-                  • Previous Client assignments will not be restored automatically.
+                  â€¢ Previous Client assignments will not be restored automatically.
                 </li>
               </ul>
             ) : (
               <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
                 <li>
-                  • Block the Applicant from logging in.
+                  â€¢ Block the Applicant from logging in.
                 </li>
                 <li>
-                  • Prevent new Client assignments.
+                  â€¢ Prevent new Client assignments.
                 </li>
                 <li>
-                  • Remove all current Client assignments.
+                  â€¢ Remove all current Client assignments.
                 </li>
                 <li>
-                  • Keep completed work and account history.
+                  â€¢ Keep completed work and account history.
                 </li>
               </ul>
             )}
@@ -4134,7 +4964,7 @@ function PaymentHistoryModal({ open, onClose }) {
 
 function FormGrid({ children }) { return <div className={styles.formGrid}>{children}</div>; }
 function InputField({ label, placeholder = '', icon }) {
-  return <label className={styles.formField}><span>{label}</span><div className={styles.inputWrap}><input placeholder={placeholder} />{icon === 'clip' && <span className={styles.inputIcon}>⌕</span>}</div></label>;
+  return <label className={styles.formField}><span>{label}</span><div className={styles.inputWrap}><input placeholder={placeholder} />{icon === 'clip' && <span className={styles.inputIcon}>âŒ•</span>}</div></label>;
 }
 function SelectField({ label, placeholder }) {
   return <label className={styles.formField}><span>{label}</span><div className={styles.inputWrap}><input placeholder={placeholder} readOnly /><FiChevronDown className={styles.selectIcon} /></div></label>;

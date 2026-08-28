@@ -52,6 +52,16 @@ export async function requireAdmin(req) {
     );
   }
 
+  if (
+    profile.role === 'owner' &&
+    req.method !== 'GET'
+  ) {
+    throw new ApiError(
+      403,
+      'Owner access is read-only.'
+    );
+  }
+
   return {
     accessToken,
     profile,
