@@ -1,5 +1,11 @@
 import TeamAuditorPortal from '../../features/team-auditor/TeamAuditorPortal';
 
 export default function ChiefAuditorRoute() {
-  return <TeamAuditorPortal basePath="/chief-auditor" portalTitle="Chief Auditor" />;
+  return (
+    <TeamAuditorPortal
+      basePath="/chief-auditor"
+      portalTitle="Chief Auditor"
+      requiredRole="chief_auditor"
+    />
+  );
 }

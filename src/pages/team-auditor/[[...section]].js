@@ -1,5 +1,9 @@
 import TeamAuditorPortal from '../../features/team-auditor/TeamAuditorPortal';
 
 export default function TeamAuditorRoute() {
-  return <TeamAuditorPortal />;
+  return (
+    <TeamAuditorPortal
+      requiredRole="team_auditor"
+    />
+  );
 }

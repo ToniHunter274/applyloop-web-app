@@ -38,6 +38,7 @@ import {
 } from 'react-icons/fi';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '../../shared/context/AuthContext';
+import { getRoleHome } from '../../shared/config/roles';
 import styles from './TeamAuditorPortal.module.css';
 
 const cx = (...values) => values.filter(Boolean).join(' ');
@@ -1462,8 +1463,15 @@ function PayoutBreakdownModal({ row, onClose }) {
   return <Modal title={person.name} subtitle={person.role} onClose={onClose} wide footer={<><Button tone="outline" onClick={onClose}>Close</Button><Button>Approve Payout — $454.00</Button></>}><div className={styles.personModalHeader}><span className={styles.initialAvatar}>{person.name.split(' ').map((part) => part[0]).join('')}</span><div className={styles.personModalStats}><div><span>Quality Score</span><strong className={styles.greenText}>{person.score}</strong></div><div><span>Applications</span><strong>{person.applications}</strong></div><div><span>Pass Rate</span><strong>{person.pass}</strong></div><div><span>Trend</span><strong className={styles.greenText}>↗ +2.3%</strong></div></div></div><div className={styles.earningsTitle}><h3><FiCheckCircle /> Activities & Earnings</h3><strong>+$490.00</strong></div><div className={styles.earningList}>{[['Completed 15 application audits', 'Jun 12, 2026', 'Audit', '+$150.00'], ['Cover letter quality review (10 apps)', 'Jun 11, 2026', 'Review', '+$100.00'], ['Quality performance bonus — 96% pass rate', 'Jun 10, 2026', 'Bonus', '+$70.00'], ['Completed 12 application audits', 'Jun 9, 2026', 'Audit', '+$120.00'], ['Peer quality review session', 'Jun 8, 2026', 'Review', '+$50.00']].map(([title, date, tag, amount]) => <div key={title}><span><strong>{title}</strong><small><FiClock /> {date} <Badge tone="green">{tag}</Badge></small></span><b className={styles.greenText}>{amount}</b></div>)}</div><div className={styles.earningsTitle}><h3><FiAlertCircle /> Deductions</h3><strong className={styles.redText}>-36.00</strong></div><div className={styles.earningList}>{[['QRY-888 — Quality query not resolved within SLA', 'Jun 12, 2026', 'Quality', '$-20.00'], ['CMP-061 — Client complaint (generic content)', 'Jun 10, 2026', 'Complaint', '$-16.00']].map(([title, date, tag, amount]) => <div key={title}><span><strong>{title}</strong><small><FiClock /> {date} <Badge tone="orange">{tag}</Badge></small></span><b className={styles.redText}>{amount}</b></div>)}</div><div className={styles.payoutSummary}><h3>Payout Summary</h3><div><span>Gross Earnings</span><strong>+$490.00</strong></div><div><span>Total Deductions</span><strong className={styles.redText}>-36.00</strong></div><div className={styles.approvedPayout}><span>$ &nbsp; Approved Payout</span><strong>$454.00</strong></div><footer><span>Period: Jun 7 – Jun 13, 2026</span><b>Awaiting approval</b></footer></div></Modal>;
 }
 
-export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTitle = 'Team Auditor' }) {
+export default function TeamAuditorPortal({
+  basePath = '/team-auditor',
+  portalTitle = 'Team Auditor',
+  requiredRole = 'team_auditor',
+}) {
   const router = useRouter();
+  const { user } = useAuth();
+  const hasWorkspaceAccess =
+    user?.role === requiredRole;
   const segments = Array.isArray(router.query.section) ? router.query.section : router.query.section ? [router.query.section] : [];
   const section = routeToSection(segments);
   const detailId = section === 'queue' && segments[1] ? segments[1] : null;
@@ -1478,6 +1486,28 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
   const [auditDetailError, setAuditDetailError] = useState('');
 
   useEffect(() => {
+    if (
+      user?.role &&
+      !hasWorkspaceAccess
+    ) {
+      router.replace(
+        getRoleHome(user.role)
+      );
+    }
+  }, [
+    hasWorkspaceAccess,
+    router,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (!hasWorkspaceAccess) {
+      setAuditQueue([]);
+      setAuditQueueError('');
+      setAuditQueueLoading(false);
+      return undefined;
+    }
+
     let cancelled = false;
 
     const loadAuditQueue = async () => {
@@ -1556,10 +1586,13 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasWorkspaceAccess]);
 
   useEffect(() => {
-    if (!detailId) {
+    if (
+      !hasWorkspaceAccess ||
+      !detailId
+    ) {
       setAuditDetail(null);
       setAuditDetailError('');
       setAuditDetailLoading(false);
@@ -1649,7 +1682,10 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
     return () => {
       cancelled = true;
     };
-  }, [detailId]);
+  }, [
+    detailId,
+    hasWorkspaceAccess,
+  ]);
 
   const openAuditDetail = (id) => {
     if (!id) {
@@ -1689,6 +1725,10 @@ export default function TeamAuditorPortal({ basePath = '/team-auditor', portalTi
         `${basePath}/audit-queue`
       );
     };
+
+  if (!hasWorkspaceAccess) {
+    return null;
+  }
 
   const page = {
     dashboard: <DashboardPage openAudit={openAuditDetail} openBreakdown={(row) => { setSelected(row); setModal('payout'); }} auditQueue={auditQueue} auditQueueLoading={auditQueueLoading} auditQueueError={auditQueueError} />,
