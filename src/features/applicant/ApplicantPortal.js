@@ -171,12 +171,19 @@ const normalizeAssignedClient = (
   currentLocation:
     client.currentLocation ||
     'Not provided',
+  targetMarkets:
+    Array.isArray(client.targetMarkets)
+      ? client.targetMarkets
+      : [],
   targetRoles:
     Array.isArray(client.targetRoles)
       ? client.targetRoles
       : [],
   targetIndustries:
     client.targetIndustries ||
+    'Not provided',
+  specialization:
+    client.specialization ||
     'Not provided',
   employmentType:
     client.employmentType ||
@@ -851,6 +858,14 @@ function ClientDetail({
             value={client.currentLocation}
           />
           <ReadonlyField
+            label="Target Markets"
+            value={
+              client.targetMarkets.length > 0
+                ? client.targetMarkets.join(', ')
+                : 'Not provided'
+            }
+          />
+          <ReadonlyField
             label="Target Roles"
             value={
               client.targetRoles.length > 0
@@ -861,6 +876,10 @@ function ClientDetail({
           <ReadonlyField
             label="Target Industries"
             value={client.targetIndustries}
+          />
+          <ReadonlyField
+            label="Specialization"
+            value={client.specialization}
           />
           <ReadonlyField
             label="Salary Expectation"
@@ -1155,6 +1174,11 @@ function WorkshopPage({
       ? selectedClient.targetRoles.join(', ')
       : 'Not provided';
 
+  const targetMarkets =
+    selectedClient?.targetMarkets?.length
+      ? selectedClient.targetMarkets.join(', ')
+      : 'Not provided';
+
   const preferredLocations =
     selectedClient?.locations?.length
       ? selectedClient.locations.join(', ')
@@ -1358,10 +1382,21 @@ function WorkshopPage({
               </p>
 
               <p>
+                Target Markets:{' '}
+                {targetMarkets} |
                 Industries:{' '}
                 {selectedClient.targetIndustries} |
+                Specialization:{' '}
+                {selectedClient.specialization}
+              </p>
+
+              <p>
                 Preferred Locations:{' '}
                 {preferredLocations} |
+                Work Authorization:{' '}
+                {selectedClient.workAuthorization} |
+                Sponsorship:{' '}
+                {selectedClient.sponsorship} |
                 Experience:{' '}
                 {selectedClient.yearsExperience}
               </p>

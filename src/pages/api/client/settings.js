@@ -1,5 +1,8 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
+import {
+  CLIENT_TARGET_MARKETS,
+} from '../../../shared/config/clientOnboardingQuestions';
 
 function optionalText(value, field, maxLength = 500) {
   if (value === undefined) return undefined;
@@ -28,6 +31,52 @@ function optionalStringArray(value, field) {
     .map((item) => String(item || '').trim())
     .filter(Boolean)
     .slice(0, 50);
+}
+
+function optionalTargetMarkets(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new ApiError(
+      400,
+      'Target markets must be a list.'
+    );
+  }
+
+  const markets = [
+    ...new Set(
+      value
+        .map((market) =>
+          String(market || '').trim()
+        )
+        .filter(Boolean)
+    ),
+  ];
+
+  if (markets.length === 0) {
+    throw new ApiError(
+      400,
+      'Select at least one target market.'
+    );
+  }
+
+  const invalidMarket = markets.find(
+    (market) =>
+      !CLIENT_TARGET_MARKETS.includes(
+        market
+      )
+  );
+
+  if (invalidMarket) {
+    throw new ApiError(
+      400,
+      'One or more selected target markets are invalid.'
+    );
+  }
+
+  return markets;
 }
 
 function parseList(value) {
@@ -257,6 +306,15 @@ async function getSettings(
     },
 
     workAuthorization: {
+      targetMarkets:
+        Array.isArray(answers.targetMarkets)
+          ? answers.targetMarkets.filter(
+              (market) =>
+                CLIENT_TARGET_MARKETS.includes(
+                  market
+                )
+            )
+          : [],
       requireSponsorship:
         answers.settingsRequireSponsorship ??
         answers.sponsorship ??
@@ -653,6 +711,11 @@ export default async function handler(
         );
       }
 
+      const targetMarkets =
+        optionalTargetMarkets(
+          workAuthorization.targetMarkets
+        );
+
       const requireSponsorship =
         optionalText(
           workAuthorization.requireSponsorship,
@@ -678,6 +741,11 @@ export default async function handler(
           workAuthorization.priorityCompanies,
           'Priority companies'
         );
+
+      if (targetMarkets !== undefined) {
+        answerChanges.targetMarkets =
+          targetMarkets;
+      }
 
       if (
         requireSponsorship !== undefined

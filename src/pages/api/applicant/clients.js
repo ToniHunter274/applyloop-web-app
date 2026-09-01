@@ -511,6 +511,17 @@ async function getClients(req, res) {
               answers.preferredLocations
           );
 
+        const targetMarkets =
+          Array.isArray(
+            answers.targetMarkets
+          )
+            ? answers.targetMarkets
+                .map((market) =>
+                  String(market || '').trim()
+                )
+                .filter(Boolean)
+            : [];
+
         const applicationLimit =
           Number(
             client.application_limit ||
@@ -568,10 +579,15 @@ async function getClients(req, res) {
             answers.currentLocation ||
             client.address ||
             'Not provided',
+          targetMarkets,
           targetRoles,
           targetIndustries:
             answers.settingsIndustry ??
             answers.targetIndustries ??
+            'Not provided',
+          specialization:
+            answers.settingsSpecialization ??
+            answers.specialization ??
             'Not provided',
           workType:
             answers.settingsWorkType ??
@@ -589,9 +605,11 @@ async function getClients(req, res) {
           locations:
             preferredLocations,
           targetCountries:
-            preferredLocations.length > 0
-              ? preferredLocations.join(', ')
-              : 'Not provided',
+            targetMarkets.length > 0
+              ? targetMarkets.join(', ')
+              : preferredLocations.length > 0
+                ? preferredLocations.join(', ')
+                : 'Not provided',
           salaryExpectation:
             answers.salaryExpectation ||
             'Not provided',

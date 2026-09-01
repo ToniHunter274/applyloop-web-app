@@ -32,6 +32,9 @@ import { FiPlus, FiX, FiChevronDown, FiEye, FiEyeOff } from 'react-icons/fi';
 import SEO from '../shared/components/SEO';
 import DashboardLayout from '../shared/components/DashboardLayout';
 import { createClient } from '../lib/supabase/client';
+import {
+  CLIENT_TARGET_MARKETS,
+} from '../shared/config/clientOnboardingQuestions';
 
 async function getAccessToken() {
   const supabase = createClient();
@@ -489,6 +492,15 @@ export default function Settings() {
         setSavedWorkPreferences(loadedWorkPreferences);
 
         const loadedWorkAuthorization = {
+          targetMarkets:
+            Array.isArray(
+              data.workAuthorization?.targetMarkets
+            )
+              ? [
+                  ...data.workAuthorization
+                    .targetMarkets,
+                ]
+              : [],
           requireSponsorship:
             data.workAuthorization?.requireSponsorship || '',
           authorizedToWork:
@@ -507,6 +519,9 @@ export default function Settings() {
               : [],
         };
 
+        setTargetMarkets([
+          ...loadedWorkAuthorization.targetMarkets,
+        ]);
         setRequireSponsorship(
           loadedWorkAuthorization.requireSponsorship
         );
@@ -560,6 +575,8 @@ export default function Settings() {
   const [workPreferencesMessage, setWorkPreferencesMessage] =
     useState('');
 
+  const [targetMarkets, setTargetMarkets] =
+    useState([]);
   const [requireSponsorship, setRequireSponsorship] =
     useState('');
   const [authorizedToWork, setAuthorizedToWork] =
@@ -1482,6 +1499,7 @@ export default function Settings() {
                       },
                       body: JSON.stringify({
                         workAuthorization: {
+                          targetMarkets,
                           requireSponsorship,
                           authorizedToWork,
                           excludedCompanies,
@@ -1501,6 +1519,16 @@ export default function Settings() {
                   }
 
                   const saved = {
+                    targetMarkets:
+                      Array.isArray(
+                        data.workAuthorization
+                          ?.targetMarkets
+                      )
+                        ? [
+                            ...data.workAuthorization
+                              .targetMarkets,
+                          ]
+                        : [],
                     requireSponsorship:
                       data.workAuthorization
                         ?.requireSponsorship || '',
@@ -1529,6 +1557,9 @@ export default function Settings() {
                         : [],
                   };
 
+                  setTargetMarkets([
+                    ...saved.targetMarkets,
+                  ]);
                   setRequireSponsorship(
                     saved.requireSponsorship
                   );
@@ -1680,6 +1711,10 @@ export default function Settings() {
                     disabled={isSavingWorkAuthorization}
                     onClick={() => {
                       if (savedWorkAuthorization) {
+                        setTargetMarkets([
+                          ...savedWorkAuthorization
+                            .targetMarkets,
+                        ]);
                         setRequireSponsorship(
                           savedWorkAuthorization
                             .requireSponsorship
