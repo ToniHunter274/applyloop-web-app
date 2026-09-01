@@ -63,8 +63,13 @@ function validateComment(value) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+  if (
+    !['GET', 'POST'].includes(req.method)
+  ) {
+    res.setHeader(
+      'Allow',
+      'GET, POST'
+    );
 
     return res.status(405).json({
       error: 'Method not allowed.',
@@ -76,14 +81,6 @@ export default async function handler(req, res) {
       profile,
       supabase,
     } = await requireClient(req);
-
-    const jobUrl = validateJobUrl(
-      req.body?.jobLink
-    );
-
-    const comment = validateComment(
-      req.body?.comment
-    );
 
     const {
       data: client,
@@ -100,6 +97,63 @@ export default async function handler(req, res) {
         'Your client record could not be found.'
       );
     }
+
+    if (req.method === 'GET') {
+      const {
+        data: requestRows,
+        error: requestsError,
+      } = await supabase
+        .from('client_job_requests')
+        .select(`
+          id,
+          job_url,
+          comment,
+          status,
+          converted_application_id,
+          reviewed_at,
+          created_at,
+          updated_at
+        `)
+        .eq('client_id', client.id)
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(20);
+
+      if (requestsError) {
+        throw new ApiError(
+          500,
+          'Your submitted job links could not be loaded.'
+        );
+      }
+
+      return res.status(200).json({
+        requests: (requestRows || []).map(
+          (request) => ({
+            id: request.id,
+            jobLink: request.job_url,
+            comment: request.comment,
+            status: request.status,
+            convertedApplicationId:
+              request.converted_application_id,
+            reviewedAt:
+              request.reviewed_at,
+            createdAt:
+              request.created_at,
+            updatedAt:
+              request.updated_at,
+          })
+        ),
+      });
+    }
+
+    const jobUrl = validateJobUrl(
+      req.body?.jobLink
+    );
+
+    const comment = validateComment(
+      req.body?.comment
+    );
 
     const {
       data: request,
@@ -155,7 +209,9 @@ export default async function handler(req, res) {
     return res.status(statusCode).json({
       error:
         statusCode >= 500
-          ? 'Unable to submit your job link right now.'
+          ? req.method === 'GET'
+            ? 'Unable to load your submitted job links right now.'
+            : 'Unable to submit your job link right now.'
           : error.message,
     });
   }

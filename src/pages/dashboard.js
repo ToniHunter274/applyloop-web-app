@@ -84,6 +84,19 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const [jobRequests, setJobRequests] = useState([]);
+  const [
+    isLoadingJobRequests,
+    setIsLoadingJobRequests,
+  ] = useState(false);
+  const [
+    jobRequestsError,
+    setJobRequestsError,
+  ] = useState('');
+  const [
+    jobRequestMessage,
+    setJobRequestMessage,
+  ] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [updateSlideIndex, setUpdateSlideIndex] = useState(0);
   const [announcements, setAnnouncements] = useState([]);
@@ -244,6 +257,82 @@ export default function Dashboard() {
     };
 
     loadApplications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewClientId,
+    router.isReady,
+  ]);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    if (previewClientId) {
+      setJobRequests([]);
+      setJobRequestsError('');
+      setJobRequestMessage('');
+      setIsLoadingJobRequests(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadJobRequests = async () => {
+      setIsLoadingJobRequests(true);
+      setJobRequestsError('');
+
+      try {
+        const accessToken =
+          await getAccessToken();
+
+        const response = await fetch(
+          '/api/client/job-requests',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const data = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Unable to load your submitted job links.'
+          );
+        }
+
+        if (!cancelled) {
+          setJobRequests(
+            Array.isArray(data.requests)
+              ? data.requests
+              : []
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setJobRequests([]);
+          setJobRequestsError(
+            error.message ||
+              'Unable to load your submitted job links.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingJobRequests(false);
+        }
+      }
+    };
+
+    loadJobRequests();
 
     return () => {
       cancelled = true;
@@ -912,14 +1001,105 @@ export default function Dashboard() {
 
       {/* Interactive Updates / Action Bar */}
       <div className="mb-4 flex items-center">
-        <button 
-          onClick={() => setIsAddJobModalOpen(true)}
+        <button
+          onClick={() => {
+            setJobRequestMessage('');
+            setIsAddJobModalOpen(true);
+          }}
           className="flex items-center gap-2 text-[#1E50C3] hover:text-[#1A45A7] font-semibold text-sm transition-colors"
         >
           <FiPlus className="text-lg" />
           <span>Add Job Link</span>
         </button>
       </div>
+
+      {!previewClientId && (
+        <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                Submitted Job Links
+              </h3>
+
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Job opportunities you have sent to the ApplyLoop team.
+              </p>
+            </div>
+
+            {jobRequests.length > 0 && (
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1E50C3] dark:bg-blue-900/30">
+                {jobRequests.length}
+              </span>
+            )}
+          </div>
+
+          {jobRequestMessage && (
+            <div className="mt-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-400">
+              {jobRequestMessage}
+            </div>
+          )}
+
+          {jobRequestsError && (
+            <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400">
+              {jobRequestsError}
+            </div>
+          )}
+
+          {isLoadingJobRequests ? (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              Loading submitted job links...
+            </p>
+          ) : jobRequests.length > 0 ? (
+            <div className="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
+              {jobRequests
+                .slice(0, 5)
+                .map((request) => (
+                  <div
+                    key={request.id}
+                    className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <a
+                        href={request.jobLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-sm font-semibold text-[#1E50C3] hover:underline"
+                      >
+                        {request.jobLink}
+                      </a>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span>
+                          {formatApplicationDate(
+                            request.createdAt
+                          )}
+                        </span>
+
+                        <span>•</span>
+
+                        <span className="capitalize">
+                          {String(
+                            request.status || 'new'
+                          ).replace(/_/g, ' ')}
+                        </span>
+                      </div>
+
+                      {request.comment && (
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                          {request.comment}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              You have not submitted any job links yet.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Applications Table */}
       <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
@@ -1113,6 +1293,23 @@ export default function Dashboard() {
                 'Unable to submit your job link.'
             );
           }
+
+          if (data.request) {
+            setJobRequests((current) => [
+              data.request,
+              ...current.filter(
+                (request) =>
+                  request.id !==
+                  data.request.id
+              ),
+            ]);
+          }
+
+          setJobRequestsError('');
+          setJobRequestMessage(
+            data.message ||
+              'Job link submitted successfully.'
+          );
         }}
       />
     </DashboardLayout>

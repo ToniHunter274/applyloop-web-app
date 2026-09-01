@@ -210,6 +210,10 @@ const normalizeAssignedClient = (
   additionalPreferences:
     client.additionalPreferences ||
     'Not provided',
+  jobRequests:
+    Array.isArray(client.jobRequests)
+      ? client.jobRequests
+      : [],
   hasResume:
     Boolean(client.hasResume),
   onboardingStatus:
@@ -1423,6 +1427,90 @@ function WorkshopPage({
                   ? "Client's Resume"
                   : 'Resume Unavailable'}
             </button>
+          </div>
+        )}
+
+        {selectedClient && (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Client Job Requests
+                </h3>
+
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Job opportunities submitted directly by this client.
+                </p>
+              </div>
+
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1E50C3] dark:bg-blue-900/30">
+                {selectedClient.jobRequests.length}
+              </span>
+            </div>
+
+            {selectedClient.jobRequests.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {selectedClient.jobRequests.map(
+                  (request) => (
+                    <div
+                      key={request.id}
+                      className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold capitalize text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                              {String(
+                                request.status ||
+                                  'new'
+                              ).replace(
+                                /_/g,
+                                ' '
+                              )}
+                            </span>
+
+                            {request.createdAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(
+                                  request.createdAt
+                                ).toLocaleDateString(
+                                  'en-US',
+                                  {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  }
+                                )}
+                              </span>
+                            )}
+                          </div>
+
+                          {request.comment && (
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                              {request.comment}
+                            </p>
+                          )}
+                        </div>
+
+                        <a
+                          href={request.jobLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7]"
+                        >
+                          Open Job Link
+                          <FiExternalLink />
+                        </a>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                This client has not submitted any job links.
+              </p>
+            )}
           </div>
         )}
 

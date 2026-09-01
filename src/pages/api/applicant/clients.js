@@ -380,6 +380,71 @@ async function getClients(req, res) {
       applicationMessageRows || [];
   }
 
+  const {
+    data: jobRequestRows,
+    error: jobRequestsError,
+  } = await supabase
+    .from('client_job_requests')
+    .select(`
+      id,
+      client_id,
+      job_url,
+      comment,
+      status,
+      converted_application_id,
+      reviewed_at,
+      created_at,
+      updated_at
+    `)
+    .in('client_id', clientIds)
+    .order('created_at', {
+      ascending: false,
+    });
+
+  if (jobRequestsError) {
+    console.error(
+      'Unable to load Client job requests:',
+      jobRequestsError
+    );
+
+    throw new ApiError(
+      500,
+      'Client job requests could not be loaded.'
+    );
+  }
+
+  const jobRequestsByClientId =
+    new Map();
+
+  (jobRequestRows || []).forEach(
+    (request) => {
+      const requests =
+        jobRequestsByClientId.get(
+          request.client_id
+        ) || [];
+
+      requests.push({
+        id: request.id,
+        jobLink: request.job_url,
+        comment: request.comment,
+        status: request.status,
+        convertedApplicationId:
+          request.converted_application_id,
+        reviewedAt:
+          request.reviewed_at,
+        createdAt:
+          request.created_at,
+        updatedAt:
+          request.updated_at,
+      });
+
+      jobRequestsByClientId.set(
+        request.client_id,
+        requests
+      );
+    }
+  );
+
   const profilesById = new Map(
     profiles.map((profile) => [
       profile.id,
@@ -635,6 +700,10 @@ async function getClients(req, res) {
           additionalPreferences:
             answers.additionalPreferences ||
             'Not provided',
+          jobRequests:
+            jobRequestsByClientId.get(
+              client.id
+            ) || [],
           hasResume:
             Boolean(client.resume_path),
           onboardingStatus:
