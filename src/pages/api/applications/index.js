@@ -817,12 +817,20 @@ async function createApplication(
       ? req.body.status
       : 'Submitted';
 
+  const jobRequestId =
+    String(
+      req.body?.jobRequestId ||
+      ''
+    ).trim();
+
   const linkSource =
-    LINK_SOURCES.has(
-      req.body?.linkSource
-    )
-      ? req.body.linkSource
-      : 'Applicant';
+    jobRequestId
+      ? 'Client'
+      : LINK_SOURCES.has(
+          req.body?.linkSource
+        )
+        ? req.body.linkSource
+        : 'Applicant';
 
   const preferences =
     getStringArrayInput(
@@ -848,63 +856,81 @@ async function createApplication(
       'Other details'
     );
 
+  const commonRpcParams = {
+    p_applicant_id:
+      applicant.id,
+    p_client_id:
+      clientId,
+    p_created_by:
+      profile.id,
+    p_company:
+      company,
+    p_position:
+      position,
+    p_location:
+      String(
+        req.body?.location ||
+        ''
+      ).trim(),
+    p_status:
+      status,
+    p_role:
+      String(
+        req.body?.role ||
+        position
+      ).trim(),
+    p_preferences:
+      preferences,
+    p_resume_name:
+      String(
+        req.body?.resumeName ||
+        ''
+      ).trim() ||
+      null,
+    p_cover_letter_name:
+      String(
+        req.body?.coverLetterName ||
+        ''
+      ).trim() ||
+      null,
+    p_job_details:
+      jobDetails,
+    p_qualities:
+      qualities,
+    p_other_details:
+      otherDetails,
+  };
+
+  const rpcName =
+    jobRequestId
+      ? 'create_client_requested_application'
+      : 'create_applicant_application';
+
+  const rpcParams =
+    jobRequestId
+      ? {
+          p_job_request_id:
+            jobRequestId,
+          ...commonRpcParams,
+        }
+      : {
+          ...commonRpcParams,
+          p_link_source:
+            linkSource,
+          p_job_url:
+            String(
+              req.body?.jobUrl ||
+              ''
+            ).trim() ||
+            null,
+        };
+
   const {
     data: applicationRows,
     error: insertError,
   } = await supabase.rpc(
-    'create_applicant_application',
-    {
-      p_applicant_id:
-        applicant.id,
-      p_client_id:
-        clientId,
-      p_created_by:
-        profile.id,
-      p_company:
-        company,
-      p_position:
-        position,
-      p_location:
-        String(
-          req.body?.location ||
-          ''
-        ).trim(),
-      p_status:
-        status,
-      p_link_source:
-        linkSource,
-      p_role:
-        String(
-          req.body?.role ||
-          position
-        ).trim(),
-      p_preferences:
-        preferences,
-      p_job_url:
-        String(
-          req.body?.jobUrl ||
-          ''
-        ).trim() ||
-        null,
-      p_resume_name:
-        String(
-          req.body?.resumeName ||
-          ''
-        ).trim() ||
-        null,
-      p_cover_letter_name:
-        String(
-          req.body?.coverLetterName ||
-          ''
-        ).trim() ||
-        null,
-      p_job_details:
-        jobDetails,
-      p_qualities:
-        qualities,
-      p_other_details:
-        otherDetails,
-    }
+    rpcName,
+    rpcParams
   );
 
   const application =
@@ -923,6 +949,39 @@ async function createApplication(
         insertError?.message ||
         ''
       ).toLowerCase();
+
+    if (
+      normalizedMessage.includes(
+        'client job request not found'
+      )
+    ) {
+      throw new PortalApiError(
+        404,
+        'The Client job request could not be found.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'does not belong to this client'
+      )
+    ) {
+      throw new PortalApiError(
+        403,
+        'This job request does not belong to the selected Client.'
+      );
+    }
+
+    if (
+      normalizedMessage.includes(
+        'already been completed'
+      )
+    ) {
+      throw new PortalApiError(
+        409,
+        'This job request has already been completed.'
+      );
+    }
 
     if (
       normalizedMessage.includes(

@@ -490,7 +490,8 @@
 
 .toolbarSearch {
   position: relative;
-  margin-bottom: 13px;
+  display: block;
+  margin-bottom: 12px;
 }
 
 .toolbarSearch svg {
@@ -518,14 +519,14 @@
   display: flex;
   gap: 37px;
   border-bottom: 1px solid #e8e9ed;
-  margin-bottom: 29px;
+  margin-bottom: 20px;
 }
 
 .tab {
   position: relative;
   border: 0;
   background: transparent;
-  padding: 0 0 14px;
+  padding: 0 0 11px;
   color: #4e535c;
   font-size: 11px;
   cursor: pointer;

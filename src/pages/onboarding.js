@@ -198,7 +198,10 @@ export default function ClientOnboarding() {
     ];
 
   const currentValue =
-    answers[currentQuestion?.id] || '';
+    answers[currentQuestion?.id] ??
+    (currentQuestion?.type === 'multi-select'
+      ? []
+      : '');
 
   const progress =
     ((currentIndex + 1) /
@@ -251,19 +254,32 @@ export default function ClientOnboarding() {
     };
 
   const handleNext = async () => {
-    const trimmedValue =
-      typeof currentValue === 'string'
-        ? currentValue.trim()
-        : currentValue;
+    const hasValue = Array.isArray(currentValue)
+      ? currentValue.length > 0
+      : Boolean(String(currentValue || '').trim());
 
     if (
       currentQuestion.required &&
-      !trimmedValue
+      !hasValue
     ) {
       setError(
         'Please answer this question before continuing.'
       );
       return;
+    }
+
+    if (currentQuestion.id === 'targetRoles') {
+      const roles = String(currentValue)
+        .split(/[,\n]/)
+        .map((role) => role.trim())
+        .filter(Boolean);
+
+      if (roles.length > 10) {
+        setError(
+          'You can add a maximum of 10 target roles.'
+        );
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -477,7 +493,7 @@ export default function ClientOnboarding() {
             <div className="mt-8 flex items-center justify-center gap-2 text-sm text-slate-400">
               <FiCheck className="text-[#1E50C3]" />
               <span>
-                15 short questions
+                {CLIENT_ONBOARDING_TOTAL} short questions
               </span>
               <span>•</span>
               <span>
@@ -583,7 +599,7 @@ export default function ClientOnboarding() {
               />
 
               <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
-                15 / 15 Complete
+                {CLIENT_ONBOARDING_TOTAL} / {CLIENT_ONBOARDING_TOTAL} Complete
               </span>
             </div>
           </header>
@@ -624,9 +640,11 @@ export default function ClientOnboarding() {
                         </h2>
 
                         <p className="mt-2 break-words text-sm leading-6 text-slate-600">
-                          {answers[
-                            question.id
-                          ] || (
+                          {Array.isArray(
+                            answers[question.id]
+                          )
+                            ? answers[question.id].join(', ')
+                            : answers[question.id] || (
                             <span className="italic text-slate-400">
                               Not provided
                             </span>
@@ -755,6 +773,54 @@ export default function ClientOnboarding() {
 
             <div className="mt-8">
               {currentQuestion.type ===
+              'multi-select' ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {currentQuestion.options.map(
+                    (option) => {
+                      const selected =
+                        Array.isArray(currentValue) &&
+                        currentValue.includes(option);
+
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            const values =
+                              Array.isArray(currentValue)
+                                ? currentValue
+                                : [];
+
+                            updateAnswer(
+                              selected
+                                ? values.filter(
+                                    (value) =>
+                                      value !== option
+                                  )
+                                : [
+                                    ...values,
+                                    option,
+                                  ]
+                            );
+                          }}
+                          className={`rounded-2xl border px-5 py-4 text-left text-sm font-semibold transition-all ${
+                            selected
+                              ? 'border-[#1E50C3] bg-blue-50 text-[#1E50C3] ring-2 ring-blue-100'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50/40'
+                          }`}
+                        >
+                          <span className="flex items-center justify-between gap-3">
+                            {option}
+                            {selected && (
+                              <FiCheck className="shrink-0" />
+                            )}
+                          </span>
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              ) : currentQuestion.type ===
               'textarea' ? (
                 <textarea
                   value={currentValue}
