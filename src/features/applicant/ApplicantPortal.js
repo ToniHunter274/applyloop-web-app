@@ -1130,6 +1130,7 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
 function WorkshopPage({
   clients,
   onRecordApplication,
+  onUpdateJobRequest,
   isPreview = false,
   isRecordingApplication = false,
 }) {
@@ -1149,6 +1150,18 @@ function WorkshopPage({
     useState('');
   const [isOpeningResume, setIsOpeningResume] =
     useState(false);
+  const [
+    activeJobRequestId,
+    setActiveJobRequestId,
+  ] = useState('');
+  const [
+    jobRequestActionId,
+    setJobRequestActionId,
+  ] = useState('');
+  const [
+    jobRequestActionError,
+    setJobRequestActionError,
+  ] = useState('');
 
   const activeClients =
     clients.filter(
@@ -1196,6 +1209,9 @@ function WorkshopPage({
     setJobUrl('');
     setJobDescription('');
     setResumeStatus('');
+    setActiveJobRequestId('');
+    setJobRequestActionId('');
+    setJobRequestActionError('');
   };
 
   const openClientResume = async () => {
@@ -1282,6 +1298,97 @@ function WorkshopPage({
     }
   };
 
+  const handleUseJobRequest =
+    async (request) => {
+      if (
+        !onUpdateJobRequest ||
+        !request ||
+        [
+          'converted',
+          'dismissed',
+        ].includes(request.status)
+      ) {
+        return;
+      }
+
+      setJobRequestActionId(
+        request.id
+      );
+      setJobRequestActionError('');
+
+      try {
+        const updated =
+          await onUpdateJobRequest(
+            request.id,
+            'in_review'
+          );
+
+        setActiveJobRequestId(
+          request.id
+        );
+
+        setJobUrl(
+          updated?.jobLink ||
+          request.jobLink ||
+          ''
+        );
+      } catch (error) {
+        setJobRequestActionError(
+          error?.message ||
+            'This job request could not be selected.'
+        );
+      } finally {
+        setJobRequestActionId('');
+      }
+    };
+
+  const handleDismissJobRequest =
+    async (request) => {
+      if (
+        !onUpdateJobRequest ||
+        !request ||
+        [
+          'converted',
+          'dismissed',
+        ].includes(request.status)
+      ) {
+        return;
+      }
+
+      setJobRequestActionId(
+        request.id
+      );
+      setJobRequestActionError('');
+
+      try {
+        await onUpdateJobRequest(
+          request.id,
+          'dismissed'
+        );
+
+        if (
+          activeJobRequestId ===
+          request.id
+        ) {
+          setActiveJobRequestId('');
+
+          if (
+            jobUrl ===
+            request.jobLink
+          ) {
+            setJobUrl('');
+          }
+        }
+      } catch (error) {
+        setJobRequestActionError(
+          error?.message ||
+            'This job request could not be dismissed.'
+        );
+      } finally {
+        setJobRequestActionId('');
+      }
+    };
+
   return (
     <>
       <PageHeader
@@ -1297,16 +1404,30 @@ function WorkshopPage({
                 isRecordingApplication ||
                 isQuotaReached
               }
-              onClick={() =>
-                onRecordApplication(
-                  selectedClient,
-                  companyName,
-                  position,
-                  jobLocation,
-                  jobUrl,
-                  jobDescription
-                )
-              }
+              onClick={async () => {
+                const recorded =
+                  await onRecordApplication(
+                    selectedClient,
+                    companyName,
+                    position,
+                    jobLocation,
+                    jobUrl,
+                    jobDescription,
+                    activeJobRequestId
+                  );
+
+                if (
+                  recorded &&
+                  activeJobRequestId
+                ) {
+                  setActiveJobRequestId('');
+                  setCompanyName('');
+                  setPosition('');
+                  setJobLocation('');
+                  setJobUrl('');
+                  setJobDescription('');
+                }
+              }}
             >
               <FiSave />
 
@@ -1448,6 +1569,12 @@ function WorkshopPage({
               </span>
             </div>
 
+            {jobRequestActionError && (
+              <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400">
+                {jobRequestActionError}
+              </div>
+            )}
+
             {selectedClient.jobRequests.length > 0 ? (
               <div className="mt-4 space-y-3">
                 {selectedClient.jobRequests.map(
@@ -1492,15 +1619,67 @@ function WorkshopPage({
                           )}
                         </div>
 
-                        <a
-                          href={request.jobLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7]"
-                        >
-                          Open Job Link
-                          <FiExternalLink />
-                        </a>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <a
+                            href={request.jobLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                          >
+                            Open Job
+                            <FiExternalLink />
+                          </a>
+
+                          {!isPreview &&
+                            ![
+                              'converted',
+                              'dismissed',
+                            ].includes(
+                              request.status
+                            ) && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={
+                                    Boolean(
+                                      jobRequestActionId
+                                    )
+                                  }
+                                  onClick={() =>
+                                    handleUseJobRequest(
+                                      request
+                                    )
+                                  }
+                                  className="rounded-xl bg-[#1E50C3] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {jobRequestActionId ===
+                                  request.id
+                                    ? 'Updating...'
+                                    : activeJobRequestId ===
+                                        request.id
+                                      ? 'Selected'
+                                      : 'Use This Job'}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    Boolean(
+                                      jobRequestActionId
+                                    )
+                                  }
+                                  onClick={() =>
+                                    handleDismissJobRequest(
+                                      request
+                                    )
+                                  }
+                                  className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                  Dismiss
+                                </button>
+                              </>
+                            )}
+                        </div>
                       </div>
                     </div>
                   )
@@ -3005,6 +3184,77 @@ export default function ApplicantPortal() {
   const selectedClient = assignedClients.find((client) => client.id === clientId);
   const selectedApplication = visibleApplications.find((application) => application.id === applicationId);
 
+  const updateJobRequestStatus =
+    async (
+      requestId,
+      status
+    ) => {
+      const accessToken =
+        await getApplicantAccessToken();
+
+      const response =
+        await fetch(
+          `/api/applicant/job-requests/${encodeURIComponent(
+            requestId
+          )}`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              status,
+            }),
+          }
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The Client job request could not be updated.'
+        );
+      }
+
+      const updated =
+        result.request;
+
+      if (updated) {
+        setAssignedClients(
+          (current) =>
+            current.map(
+              (client) => ({
+                ...client,
+                jobRequests:
+                  Array.isArray(
+                    client.jobRequests
+                  )
+                    ? client.jobRequests.map(
+                        (request) =>
+                          request.id ===
+                          updated.id
+                            ? {
+                                ...request,
+                                ...updated,
+                              }
+                            : request
+                      )
+                    : [],
+              })
+            )
+        );
+      }
+
+      return updated;
+    };
+
   const recordApplication =
     async (
       client,
@@ -3012,7 +3262,8 @@ export default function ApplicantPortal() {
       positionName,
       jobLocation,
       jobUrl,
-      jobDescription
+      jobDescription,
+      jobRequestId = ''
     ) => {
       const company =
         String(
@@ -3149,7 +3400,12 @@ export default function ApplicantPortal() {
                 status:
                   'Submitted',
                 linkSource:
-                  'Applicant',
+                  jobRequestId
+                    ? 'Client'
+                    : 'Applicant',
+                jobRequestId:
+                  jobRequestId ||
+                  undefined,
                 role:
                   position,
                 preferences:
@@ -3247,6 +3503,30 @@ export default function ApplicantPortal() {
                     ...item,
                     applications,
                     progress,
+                    jobRequests:
+                      jobRequestId &&
+                      Array.isArray(
+                        item.jobRequests
+                      )
+                        ? item.jobRequests.map(
+                            (request) =>
+                              request.id ===
+                              jobRequestId
+                                ? {
+                                    ...request,
+                                    status:
+                                      'converted',
+                                    convertedApplicationId:
+                                      result
+                                        .application
+                                        .id,
+                                    reviewedAt:
+                                      new Date()
+                                        .toISOString(),
+                                  }
+                                : request
+                          )
+                        : item.jobRequests,
                   };
                 }
               )
@@ -3256,11 +3536,15 @@ export default function ApplicantPortal() {
         setToast(
           'Application recorded in the client database.'
         );
+
+        return true;
       } catch (error) {
         setToast(
           error?.message ||
             'The Application could not be recorded.'
         );
+
+        return false;
       } finally {
         recordApplicationInFlight
           .current = false;
@@ -3298,6 +3582,9 @@ export default function ApplicantPortal() {
         clients={assignedClients}
         onRecordApplication={
           recordApplication
+        }
+        onUpdateJobRequest={
+          updateJobRequestStatus
         }
         onPreview={setPreviewType}
         isPreview={
