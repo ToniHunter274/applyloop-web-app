@@ -216,6 +216,177 @@ function FormInput({
 }
 
 // ─── Main Settings Component ─────────────────────────────────────────────────
+
+function getSpreadNumber(value) {
+  const number = parseInt(value, 10);
+
+  if (!Number.isFinite(number)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, number));
+}
+
+function createBalancedSpreads(count) {
+  if (!count) {
+    return [];
+  }
+
+  const base =
+    Math.floor(100 / count / 5) * 5;
+
+  let remainder =
+    100 - base * count;
+
+  return Array.from(
+    { length: count },
+    (_, index) => {
+      let value = base;
+
+      if (remainder >= 5) {
+        value += 5;
+        remainder -= 5;
+      }
+
+      if (
+        index === count - 1 &&
+        remainder > 0
+      ) {
+        value += remainder;
+      }
+
+      return `${value}%`;
+    }
+  );
+}
+
+function rebalanceJobs(jobs) {
+  const spreads =
+    createBalancedSpreads(jobs.length);
+
+  return jobs.map((job, index) => ({
+    ...job,
+    spread: spreads[index] || '0%',
+  }));
+}
+
+function updateJobSpread(
+  jobs,
+  index,
+  requestedValue
+) {
+  if (
+    !jobs.length ||
+    index === jobs.length - 1
+  ) {
+    return jobs;
+  }
+
+  const updated = jobs.map(
+    (job) => ({ ...job })
+  );
+
+  const otherSpread = updated
+    .slice(0, -1)
+    .reduce(
+      (total, job, jobIndex) =>
+        jobIndex === index
+          ? total
+          : total +
+            getSpreadNumber(job.spread),
+      0
+    );
+
+  const maximum =
+    Math.max(0, 100 - otherSpread);
+
+  const requested =
+    getSpreadNumber(requestedValue);
+
+  const selected =
+    Math.min(requested, maximum);
+
+  updated[index].spread =
+    `${selected}%`;
+
+  const assignedSpread = updated
+    .slice(0, -1)
+    .reduce(
+      (total, job) =>
+        total +
+        getSpreadNumber(job.spread),
+      0
+    );
+
+  updated[updated.length - 1].spread =
+    `${Math.max(
+      0,
+      100 - assignedSpread
+    )}%`;
+
+  return updated;
+}
+
+function calculateApplicationNumbers(
+  jobs,
+  applicationLimit
+) {
+  const limit =
+    Number(applicationLimit) || 0;
+
+  if (!jobs.length || limit <= 0) {
+    return jobs.map(() => 0);
+  }
+
+  const rawValues = jobs.map(
+    (job) =>
+      (limit *
+        getSpreadNumber(job.spread)) /
+      100
+  );
+
+  const numbers = rawValues.map(
+    (value) => Math.floor(value)
+  );
+
+  let remainder =
+    limit -
+    numbers.reduce(
+      (total, value) =>
+        total + value,
+      0
+    );
+
+  const order = rawValues
+    .map((value, index) => ({
+      index,
+      fraction:
+        value - Math.floor(value),
+    }))
+    .sort(
+      (a, b) =>
+        b.fraction - a.fraction
+    );
+
+  let cursor = 0;
+
+  while (
+    remainder > 0 &&
+    order.length > 0
+  ) {
+    numbers[
+      order[
+        cursor % order.length
+      ].index
+    ] += 1;
+
+    remainder -= 1;
+    cursor += 1;
+  }
+
+  return numbers;
+}
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('Basic Information');
 
@@ -306,6 +477,9 @@ export default function Settings() {
         };
 
         setJobs(loadedWorkPreferences.jobs);
+        setApplicationLimit(
+          Number(data.applicationLimit) || 0
+        );
         setIndustry(loadedWorkPreferences.industry);
         setSpecialization(loadedWorkPreferences.specialization);
         setWorkType(loadedWorkPreferences.workType);
@@ -367,6 +541,8 @@ export default function Settings() {
   }, []);
 
   const [jobs, setJobs] = useState([]);
+  const [applicationLimit, setApplicationLimit] =
+    useState(0);
   const [industry, setIndustry] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [workType, setWorkType] = useState('');
@@ -424,6 +600,26 @@ export default function Settings() {
 
   // ── Shared input class ──
   const inputClass = 'w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#1E50C3] focus:border-transparent outline-none transition-all placeholder-gray-400';
+
+  const applicationNumbers =
+    calculateApplicationNumbers(
+      jobs,
+      applicationLimit
+    );
+
+  const totalSpread = jobs.reduce(
+    (total, job) =>
+      total +
+      getSpreadNumber(job.spread),
+    0
+  );
+
+  const totalApplications =
+    applicationNumbers.reduce(
+      (total, value) =>
+        total + value,
+      0
+    );
 
   return (
     <DashboardLayout>
@@ -881,7 +1077,7 @@ export default function Settings() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 dark:text-gray-300 mb-2">
                     Job Title
@@ -921,8 +1117,10 @@ export default function Settings() {
                             type="button"
                             onClick={() =>
                               setJobs(
-                                jobs.filter(
-                                  (_, i) => i !== idx
+                                rebalanceJobs(
+                                  jobs.filter(
+                                    (_, i) => i !== idx
+                                  )
                                 )
                               )
                             }
@@ -978,54 +1176,112 @@ export default function Settings() {
                     Application Spread %
                   </label>
 
+                  {jobs.map((job, idx) => {
+                    const isFinalRole =
+                      idx === jobs.length - 1;
+
+                    return (
+                      <StyledSelect
+                        key={idx}
+                        value={job.spread}
+                        disabled={
+                          !isEditingWorkPreferences ||
+                          isFinalRole
+                        }
+                        onChange={(value) =>
+                          setJobs(
+                            updateJobSpread(
+                              jobs,
+                              idx,
+                              value
+                            )
+                          )
+                        }
+                        options={
+                          DROPDOWN_OPTIONS.spreadOptions
+                        }
+                        className={
+                          idx > 0 ? 'mt-3' : ''
+                        }
+                      />
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 dark:text-gray-300 mb-2">
+                    Application Number
+                  </label>
+
                   {jobs.map((job, idx) => (
-                    <StyledSelect
+                    <div
                       key={idx}
-                      value={job.spread}
-                      disabled={!isEditingWorkPreferences}
-                      onChange={(value) => {
-                        const updated = [...jobs];
-
-                        updated[idx] = {
-                          ...updated[idx],
-                          spread: value,
-                        };
-
-                        setJobs(updated);
-                      }}
-                      options={
-                        DROPDOWN_OPTIONS.spreadOptions
-                      }
-                      className={
+                      className={`w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 ${
                         idx > 0 ? 'mt-3' : ''
-                      }
-                    />
+                      }`}
+                    >
+                      {applicationNumbers[idx] || 0}
+                    </div>
                   ))}
                 </div>
               </div>
+
+              {jobs.length > 0 && (
+                <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    Application spread:{' '}
+                    <strong
+                      className={
+                        totalSpread === 100
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }
+                    >
+                      {totalSpread}%
+                    </strong>
+                  </span>
+
+                  <span>
+                    Application allocation:{' '}
+                    <strong className="text-gray-900 dark:text-white">
+                      {totalApplications}
+                      {' / '}
+                      {applicationLimit || 0}
+                    </strong>
+                  </span>
+                </div>
+              )}
 
               {isEditingWorkPreferences && (
                 <div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setJobs([
-                        ...jobs,
-                        {
-                          title: '',
-                          level: 'Intermediate Level',
-                          spread: '10%',
-                        },
-                      ])
-                    }
-                    className="flex items-center gap-2 text-sm font-semibold text-[#1E50C3] hover:text-[#1A45A7] transition-colors mb-1"
+                    onClick={() => {
+                      if (jobs.length >= 10) {
+                        return;
+                      }
+
+                      setJobs(
+                        rebalanceJobs([
+                          ...jobs,
+                          {
+                            title: '',
+                            level:
+                              'Intermediate Level',
+                            spread: '0%',
+                          },
+                        ])
+                      );
+                    }}
+                    disabled={jobs.length >= 10}
+                    className="flex items-center gap-2 text-sm font-semibold text-[#1E50C3] hover:text-[#1A45A7] transition-colors mb-1 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <FiPlus className="text-lg" />
                     <span>Add New Job</span>
                   </button>
 
                   <p className="text-[10px] text-gray-500">
-                    * application spread must total 100%
+                    {jobs.length}/10 target roles · application spread must total 100%
                   </p>
                 </div>
               )}
@@ -1049,13 +1305,16 @@ export default function Settings() {
                     Specialization
                   </label>
 
-                  <StyledSelect
+                  <input
+                    type="text"
                     value={specialization}
-                    onChange={setSpecialization}
-                    options={
-                      DROPDOWN_OPTIONS.specializations
+                    onChange={(e) =>
+                      setSpecialization(e.target.value)
                     }
                     disabled={!isEditingWorkPreferences}
+                    placeholder="Enter your specialization"
+                    maxLength={200}
+                    className={inputClass}
                   />
                 </div>
               </div>

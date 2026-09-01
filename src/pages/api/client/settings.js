@@ -101,7 +101,7 @@ function createJobs(answers) {
     Array.isArray(answers.settingsJobs) &&
     answers.settingsJobs.length
   ) {
-    return answers.settingsJobs;
+    return answers.settingsJobs.slice(0, 10);
   }
 
   const roles = parseList(
@@ -134,7 +134,7 @@ async function getSettings(
     supabase
       .from('clients')
       .select(
-        'gender, portfolio_url, linkedin_url, address, state_province, disability, veteran'
+        'gender, portfolio_url, linkedin_url, address, state_province, disability, veteran, plan, application_limit'
       )
       .eq('user_id', profile.id)
       .single(),
@@ -223,6 +223,10 @@ async function getSettings(
       client.portfolio_url || '',
     linkedinUrl:
       client.linkedin_url || '',
+    plan:
+      client.plan || '',
+    applicationLimit:
+      Number(client.application_limit) || 0,
 
     workPreferences: {
       jobs: createJobs(answers),
@@ -232,6 +236,7 @@ async function getSettings(
         '',
       specialization:
         answers.settingsSpecialization ??
+        answers.specialization ??
         '',
       workType:
         answers.settingsWorkType ??
@@ -287,8 +292,14 @@ function validateJobs(value) {
     );
   }
 
-  return value
-    .slice(0, 20)
+  if (value.length > 10) {
+    throw new ApiError(
+      400,
+      'You can add a maximum of 10 target roles.'
+    );
+  }
+
+  const jobs = value
     .map((job) => {
       if (
         !job ||
@@ -322,6 +333,24 @@ function validateJobs(value) {
       };
     })
     .filter((job) => job.title);
+
+  const totalSpread = jobs.reduce(
+    (total, job) =>
+      total + (parseInt(job.spread, 10) || 0),
+    0
+  );
+
+  if (
+    jobs.length > 0 &&
+    totalSpread !== 100
+  ) {
+    throw new ApiError(
+      400,
+      `Application spread must total 100%. Currently: ${totalSpread}%`
+    );
+  }
+
+  return jobs;
 }
 
 export default async function handler(
@@ -570,6 +599,9 @@ export default async function handler(
         specialization !== undefined
       ) {
         answerChanges.settingsSpecialization =
+          specialization;
+
+        answerChanges.specialization =
           specialization;
       }
 
