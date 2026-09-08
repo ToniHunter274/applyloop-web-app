@@ -12,12 +12,7 @@ const APPLICATION_STATUSES =
     'Submitted',
   ]);
 
-const LINK_SOURCES =
-  new Set([
-    'Client',
-    'Finder',
-    'Applicant',
-  ]);
+
 
 function sanitizeStringArray(value) {
   if (!Array.isArray(value)) {
@@ -823,14 +818,9 @@ async function createApplication(
       ''
     ).trim();
 
-  const linkSource =
-    jobRequestId
-      ? 'Client'
-      : LINK_SOURCES.has(
-          req.body?.linkSource
-        )
-        ? req.body.linkSource
-        : 'Applicant';
+  // Direct creation is restricted to authenticated Applicants.
+  // Client requests use the conversion RPC, which preserves Client source.
+  const linkSource = 'Applicant';
 
   const preferences =
     getStringArrayInput(

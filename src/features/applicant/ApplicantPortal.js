@@ -40,7 +40,6 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  LINK_SOURCE_OPTIONS,
   PERFORMANCE_PERIODS,
   STATUS_OPTIONS,
 } from '../../data/applicantData';
@@ -509,16 +508,9 @@ function ApplicationTable({
                 </td>
                 <td>
                   <div className={styles.sourceCell}>
-                    <select
-                      aria-label={`Link source for ${record.company}`}
-                      value={record.linkSource}
-                      disabled={readOnly}
-                      className={styles.sourceSelect}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={(event) => onChangeRecord(record.id, { linkSource: event.target.value })}
-                    >
-                      {LINK_SOURCE_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-                    </select>
+                    <span title="Automatically recorded from the original link provider">
+                      {record.linkSource || 'Not recorded'}
+                    </span>
                     <button type="button" className={styles.rowLinkButton} aria-label={`Open ${record.company} application`} onClick={(event) => { event.stopPropagation(); onOpen(record); }}>
                       <FiExternalLink />
                     </button>
@@ -3386,10 +3378,6 @@ export default function ApplicantPortal() {
                 location,
                 status:
                   'Submitted',
-                linkSource:
-                  jobRequestId
-                    ? 'Client'
-                    : 'Applicant',
                 jobRequestId:
                   jobRequestId ||
                   undefined,

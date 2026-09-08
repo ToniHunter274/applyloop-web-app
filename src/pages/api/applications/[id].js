@@ -12,12 +12,7 @@ const APPLICATION_STATUSES =
     'Submitted',
   ]);
 
-const LINK_SOURCES =
-  new Set([
-    'Client',
-    'Finder',
-    'Applicant',
-  ]);
+
 
 function sanitizeStringArray(value) {
   if (!Array.isArray(value)) {
@@ -350,25 +345,13 @@ async function updateApplication(
   }
 
   if (
-    Object.prototype
-      .hasOwnProperty.call(
-        req.body || {},
-        'linkSource'
-      )
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'linkSource') ||
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'link_source')
   ) {
-    if (
-      !LINK_SOURCES.has(
-        req.body.linkSource
-      )
-    ) {
-      throw new PortalApiError(
-        400,
-        'Select a valid link source.'
-      );
-    }
-
-    changes.link_source =
-      req.body.linkSource;
+    throw new PortalApiError(
+      400,
+      'Link source is assigned automatically and cannot be edited.'
+    );
   }
 
   if (
@@ -398,9 +381,8 @@ async function updateApplication(
         p_status:
           changes.status ||
           null,
-        p_link_source:
-          changes.link_source ||
-          null,
+        // Null preserves the existing source in the update RPC.
+        p_link_source: null,
       }
     );
 
