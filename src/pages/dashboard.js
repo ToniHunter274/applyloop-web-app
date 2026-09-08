@@ -85,6 +85,72 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   const [jobRequests, setJobRequests] = useState([]);
+  const [withdrawingRequestId, setWithdrawingRequestId] = useState('');
+
+  async function handleWithdrawJobRequest(request) {
+    if (
+      previewClientId ||
+      withdrawingRequestId ||
+      !['new', 'in_review'].includes(request.status)
+    ) {
+      return;
+    }
+
+    if (!window.confirm(
+      'Withdraw this job link? The applicant will no longer be able to record an application from this request.'
+    )) {
+      return;
+    }
+
+    setWithdrawingRequestId(request.id);
+    setJobRequestsError('');
+    setJobRequestMessage('');
+
+    try {
+      const accessToken = await getAccessToken();
+
+      const response = await fetch('/api/client/job-requests', {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requestId: request.id,
+          action: 'withdraw',
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || 'The job link could not be withdrawn.');
+      }
+
+      if (
+        result.request?.id !== request.id ||
+        result.request?.status !== 'withdrawn'
+      ) {
+        throw new Error('Withdrawal response could not be verified. Refresh to check the current status.');
+      }
+
+      setJobRequests((previous) =>
+        previous.map((item) =>
+          item.id === request.id
+            ? { ...item, ...result.request }
+            : item
+        )
+      );
+
+      setJobRequestMessage('Job link withdrawn successfully.');
+    } catch (error) {
+      setJobRequestsError(
+        error.message || 'Unable to withdraw this link. Refresh to check its current status.'
+      );
+    } finally {
+      setWithdrawingRequestId('');
+    }
+  }
   const [
     isLoadingJobRequests,
     setIsLoadingJobRequests,
@@ -1059,6 +1125,19 @@ export default function Dashboard() {
                         </p>
                       )}
                     </div>
+
+                    {['new', 'in_review'].includes(request.status) && (
+                      <button
+                        type="button"
+                        onClick={() => handleWithdrawJobRequest(request)}
+                        disabled={Boolean(withdrawingRequestId)}
+                        className="shrink-0 rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {withdrawingRequestId === request.id
+                          ? 'Withdrawing...'
+                          : 'Withdraw Link'}
+                      </button>
+                    )}
                   </div>
                 ))}
             </div>

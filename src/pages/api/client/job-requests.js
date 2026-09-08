@@ -64,11 +64,11 @@ function validateComment(value) {
 
 export default async function handler(req, res) {
   if (
-    !['GET', 'POST'].includes(req.method)
+    !['GET', 'POST', 'PATCH'].includes(req.method)
   ) {
     res.setHeader(
       'Allow',
-      'GET, POST'
+      'GET, POST, PATCH'
     );
 
     return res.status(405).json({
@@ -96,6 +96,55 @@ export default async function handler(req, res) {
         404,
         'Your client record could not be found.'
       );
+    }
+
+    if (req.method === 'PATCH') {
+      const requestId =
+        typeof req.body?.requestId === 'string'
+          ? req.body.requestId.trim()
+          : '';
+
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)
+        || req.body?.action !== 'withdraw'
+      ) {
+        throw new ApiError(400, 'A valid job request and withdrawal action are required.');
+      }
+
+      const { data: withdrawn, error: withdrawalError } = await supabase
+        .from('client_job_requests')
+        .update({
+          status: 'withdrawn',
+          withdrawn_at: new Date().toISOString(),
+          withdrawn_by: profile.id,
+        })
+        .eq('id', requestId)
+        .eq('client_id', client.id)
+        .eq('submitted_by', profile.id)
+        .in('status', ['new', 'in_review'])
+        .is('converted_application_id', null)
+        .select('id, status, withdrawn_at')
+        .maybeSingle();
+
+      if (withdrawalError) {
+        throw new ApiError(500, 'The job link could not be withdrawn.');
+      }
+
+      if (!withdrawn) {
+        throw new ApiError(
+          409,
+          'This link is unavailable for withdrawal. It may already be withdrawn or recorded as an application.'
+        );
+      }
+
+      return res.status(200).json({
+        message: 'Job link withdrawn successfully.',
+        request: {
+          id: withdrawn.id,
+          status: withdrawn.status,
+          withdrawnAt: withdrawn.withdrawn_at,
+        },
+      });
     }
 
     if (req.method === 'GET') {
@@ -211,7 +260,9 @@ export default async function handler(req, res) {
         statusCode >= 500
           ? req.method === 'GET'
             ? 'Unable to load your submitted job links right now.'
-            : 'Unable to submit your job link right now.'
+            : req.method === 'PATCH'
+              ? 'Unable to withdraw your job link right now.'
+              : 'Unable to submit your job link right now.'
           : error.message,
     });
   }
