@@ -1306,6 +1306,7 @@ function WorkshopPage({
         [
           'converted',
           'dismissed',
+          'withdrawn',
         ].includes(request.status)
       ) {
         return;
@@ -1588,6 +1589,7 @@ function WorkshopPage({
                             ![
                               'converted',
                               'dismissed',
+                              'withdrawn',
                             ].includes(
                               request.status
                             ) && (
@@ -3156,10 +3158,34 @@ export default function ApplicantPortal() {
           .catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
+        let message =
           result.error ||
-            'The Client job request could not be updated.'
-        );
+          'The Client job request could not be updated.';
+
+        if (response.status === 409) {
+          try {
+            const refreshResponse = await fetch('/api/applicant/clients', {
+              cache: 'no-store',
+              headers: {
+                Authorization: 'Bearer ' + accessToken,
+              },
+            });
+
+            const refreshed = await refreshResponse.json();
+
+            if (!refreshResponse.ok || !Array.isArray(refreshed.clients)) {
+              throw new Error('Refresh failed.');
+            }
+
+            setAssignedClients(
+              refreshed.clients.map(normalizeAssignedClient)
+            );
+          } catch {
+            message += ' Refresh the page to see the latest job-link status.';
+          }
+        }
+
+        throw new Error(message);
       }
 
       const updated =

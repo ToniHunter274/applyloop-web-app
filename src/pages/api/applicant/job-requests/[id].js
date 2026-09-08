@@ -177,13 +177,16 @@ export default async function handler(
       [
         'converted',
         'dismissed',
+        'withdrawn',
       ].includes(
         jobRequest.status
       )
     ) {
       throw new PortalApiError(
         409,
-        'This job request has already been completed.'
+        jobRequest.status === 'withdrawn'
+          ? 'This job link was withdrawn by the client.'
+          : 'This job request has already been completed.'
       );
     }
 
@@ -239,9 +242,7 @@ export default async function handler(
 
     return res.status(200).json({
       message:
-        status === 'dismissed'
-          ? 'Job request dismissed.'
-          : 'Job request is now in review.',
+        'Job request is now in review.',
       request:
         formatRequest(
           updatedRequest
