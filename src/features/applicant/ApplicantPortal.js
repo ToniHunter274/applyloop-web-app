@@ -1298,50 +1298,69 @@ function WorkshopPage({
     }
   };
 
-  const handleUseJobRequest =
-    async (request) => {
-      if (
-        !onUpdateJobRequest ||
-        !request ||
-        [
-          'converted',
-          'dismissed',
-          'withdrawn',
-        ].includes(request.status)
-      ) {
-        return;
+  const jobSelectionInFlight = useRef(false);
+
+  const handleUseJobRequest = async (request) => {
+    if (
+      isPreview ||
+      isRecordingApplication ||
+      jobSelectionInFlight.current ||
+      !onUpdateJobRequest ||
+      !request ||
+      !['new', 'in_review'].includes(request.status)
+    ) {
+      return;
+    }
+
+    let destination;
+    try {
+      destination = new URL(request.jobLink);
+      if (!['http:', 'https:'].includes(destination.protocol)) {
+        throw new Error('Unsupported URL.');
+      }
+    } catch {
+      setJobRequestActionError('This job link is invalid.');
+      return;
+    }
+
+    jobSelectionInFlight.current = true;
+    setJobRequestActionId(request.id);
+    setJobRequestActionError('');
+
+    let jobWindow = null;
+
+    try {
+      // Open during the click to avoid blocking a later asynchronous popup.
+      jobWindow = window.open('about:blank', '_blank');
+      if (jobWindow) jobWindow.opener = null;
+
+      const updated = await onUpdateJobRequest(request.id, 'in_review');
+
+      destination = new URL(updated?.jobLink || request.jobLink);
+      if (!['http:', 'https:'].includes(destination.protocol)) {
+        throw new Error('The returned job link is invalid.');
       }
 
-      setJobRequestActionId(
-        request.id
-      );
-      setJobRequestActionError('');
+      setActiveJobRequestId(request.id);
+      setJobUrl(destination.href);
 
-      try {
-        const updated =
-          await onUpdateJobRequest(
-            request.id,
-            'in_review'
-          );
-
-        setActiveJobRequestId(
-          request.id
-        );
-
-        setJobUrl(
-          updated?.jobLink ||
-          request.jobLink ||
-          ''
-        );
-      } catch (error) {
+      if (jobWindow && !jobWindow.closed) {
+        jobWindow.location.replace(destination.href);
+      } else {
         setJobRequestActionError(
-          error?.message ||
-            'This job request could not be selected.'
+          'Job selected. Your browser blocked the new tab. Click Open Job, apply on the employer website, then return here to mark it as applied.'
         );
-      } finally {
-        setJobRequestActionId('');
       }
-    };
+    } catch (error) {
+      if (jobWindow && !jobWindow.closed) jobWindow.close();
+      setJobRequestActionError(
+        error?.message || 'This job request could not be selected.'
+      );
+    } finally {
+      jobSelectionInFlight.current = false;
+      setJobRequestActionId('');
+    }
+  };
 
 
   return (
@@ -1390,7 +1409,9 @@ function WorkshopPage({
                 ? 'Application Limit Reached'
                 : isRecordingApplication
                   ? 'Recording...'
-                  : 'Record Application'}
+                  : activeJobRequestId
+                    ? 'Mark as Applied'
+                    : 'Record Application'}
             </button>
           ) : null
         }
@@ -1411,6 +1432,7 @@ function WorkshopPage({
           <select
             value={selectedClientId}
             onChange={handleClientChange}
+            disabled={Boolean(jobRequestActionId) || isRecordingApplication}
           >
             <option value="">
               Select a client
@@ -1614,7 +1636,7 @@ function WorkshopPage({
                                     : activeJobRequestId ===
                                         request.id
                                       ? 'Selected'
-                                      : 'Use This Job'}
+                                      : 'Open Job & Start Application'}
                                 </button>
 
 
