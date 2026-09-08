@@ -2,19 +2,18 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { 
-  FiFileText, 
-  FiMail, 
-  FiUserX, 
-  FiCalendar, 
-  FiMessageSquare, 
-  FiChevronLeft, 
+import {
+  FiFileText,
+  FiMail,
+  FiUserX,
+  FiCalendar,
+  FiMessageSquare,
+  FiChevronLeft,
   FiChevronRight,
   FiPlus,
   FiCheck,
   FiFile,
   FiTrash2,
-  FiStar
 } from 'react-icons/fi';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
 
@@ -168,26 +167,6 @@ export default function Dashboard() {
   const [announcements, setAnnouncements] = useState([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
   const [announcementsError, setAnnouncementsError] = useState('');
-  const [
-    applicantRatings,
-    setApplicantRatings,
-  ] = useState([]);
-  const [
-    isLoadingApplicantRatings,
-    setIsLoadingApplicantRatings,
-  ] = useState(false);
-  const [
-    applicantRatingsError,
-    setApplicantRatingsError,
-  ] = useState('');
-  const [
-    applicantRatingMessage,
-    setApplicantRatingMessage,
-  ] = useState('');
-  const [
-    savingApplicantRatingId,
-    setSavingApplicantRatingId,
-  ] = useState('');
 
   useEffect(() => {
     if (!router.isReady) {
@@ -472,213 +451,6 @@ export default function Dashboard() {
     };
   }, [previewClientId]);
 
-  useEffect(() => {
-    if (!router.isReady) {
-      return undefined;
-    }
-
-    if (previewClientId) {
-      setApplicantRatings([]);
-      setApplicantRatingsError('');
-      setApplicantRatingMessage('');
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    const loadApplicantRatings =
-      async () => {
-        setIsLoadingApplicantRatings(
-          true
-        );
-        setApplicantRatingsError('');
-
-        try {
-          const supabase =
-            createClient();
-
-          if (!supabase) {
-            throw new Error(
-              'The Supabase connection is unavailable.'
-            );
-          }
-
-          const {
-            data: { session },
-            error: sessionError,
-          } =
-            await supabase.auth.getSession();
-
-          if (
-            sessionError ||
-            !session?.access_token
-          ) {
-            throw new Error(
-              'Your session has expired. Please sign in again.'
-            );
-          }
-
-          const response = await fetch(
-            '/api/client/applicant-ratings',
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${session.access_token}`,
-              },
-            }
-          );
-
-          const result =
-            await response
-              .json()
-              .catch(() => ({}));
-
-          if (!response.ok) {
-            throw new Error(
-              result.error ||
-                'Applicant ratings could not be loaded.'
-            );
-          }
-
-          if (!cancelled) {
-            setApplicantRatings(
-              result.applicants || []
-            );
-          }
-        } catch (error) {
-          if (!cancelled) {
-            setApplicantRatings([]);
-            setApplicantRatingsError(
-              error?.message ||
-                'Applicant ratings could not be loaded.'
-            );
-          }
-        } finally {
-          if (!cancelled) {
-            setIsLoadingApplicantRatings(
-              false
-            );
-          }
-        }
-      };
-
-    loadApplicantRatings();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    previewClientId,
-    router.isReady,
-  ]);
-
-  const saveApplicantRating =
-    async (
-      applicantId,
-      rating
-    ) => {
-      if (
-        savingApplicantRatingId
-      ) {
-        return;
-      }
-
-      setSavingApplicantRatingId(
-        applicantId
-      );
-      setApplicantRatingsError('');
-      setApplicantRatingMessage('');
-
-      try {
-        const supabase =
-          createClient();
-
-        if (!supabase) {
-          throw new Error(
-            'The Supabase connection is unavailable.'
-          );
-        }
-
-        const {
-          data: { session },
-          error: sessionError,
-        } =
-          await supabase.auth.getSession();
-
-        if (
-          sessionError ||
-          !session?.access_token
-        ) {
-          throw new Error(
-            'Your session has expired. Please sign in again.'
-          );
-        }
-
-        const response = await fetch(
-          '/api/client/applicant-ratings',
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type':
-                'application/json',
-              Authorization:
-                `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              applicantId,
-              rating,
-            }),
-          }
-        );
-
-        const result =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ||
-              'Your rating could not be saved.'
-          );
-        }
-
-        setApplicantRatings(
-          (current) =>
-            current.map(
-              (applicant) =>
-                applicant.id ===
-                applicantId
-                  ? {
-                      ...applicant,
-                      rating:
-                        result.rating
-                          ?.rating ||
-                        rating,
-                      ratingUpdatedAt:
-                        result.rating
-                          ?.updatedAt ||
-                        new Date()
-                          .toISOString(),
-                    }
-                  : applicant
-            )
-        );
-
-        setApplicantRatingMessage(
-          'Thank you. Your Applicant rating has been saved.'
-        );
-      } catch (error) {
-        setApplicantRatingsError(
-          error?.message ||
-            'Your rating could not be saved.'
-        );
-      } finally {
-        setSavingApplicantRatingId(
-          ''
-        );
-      }
-    };
 
   // Status Badge styles helper
   const getStatusBadge = (status) => {
@@ -811,12 +583,12 @@ export default function Dashboard() {
           const isActive = activeFilter === stat.filterKey;
 
           return (
-            <div 
+            <div
               key={i}
               onClick={() => { setActiveFilter(stat.filterKey); setCurrentPage(1); }}
               className={`p-1 sm:p-6 bg-white dark:bg-gray-800 border rounded-xl sm:rounded-2xl cursor-pointer hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden ${
-                isActive 
-                  ? 'border-primary ring-2 ring-primary/10' 
+                isActive
+                  ? 'border-primary ring-2 ring-primary/10'
                   : 'border-gray-100 dark:border-gray-700'
               }`}
             >
@@ -835,106 +607,6 @@ export default function Dashboard() {
           );
         })}
       </div>
-
-      {!previewClientId && (
-        <div className="mb-6">
-          {applicantRatingsError && (
-            <p
-              role="alert"
-              className="mb-2 text-xs font-medium text-red-600"
-            >
-              {applicantRatingsError}
-            </p>
-          )}
-
-          {applicantRatingMessage && (
-            <p
-              role="status"
-              className="mb-2 text-xs font-medium text-emerald-600"
-            >
-              {applicantRatingMessage}
-            </p>
-          )}
-
-          {isLoadingApplicantRatings ? (
-            <div className="rounded-xl border border-gray-100 bg-white px-5 py-4 text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 md:w-1/2">
-              Loading your assigned Applicant...
-            </div>
-          ) : applicantRatings.length === 0 ? (
-            <div className="rounded-xl border border-gray-100 bg-white px-5 py-4 text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 md:w-1/2">
-              No Applicant is currently assigned to your account.
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {applicantRatings.map((applicant) => (
-                <div
-                  key={applicant.id}
-                  className="rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
-                >
-                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                    <div>
-                      <p className="text-sm font-bold text-gray-950 dark:text-white">
-                        {applicant.fullName}
-                      </p>
-
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {applicant.rating
-                          ? `Your rating: ${applicant.rating}/5`
-                          : 'Not rated yet'}
-                      </p>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-0.5"
-                      aria-label={`Rate ${applicant.fullName}`}
-                    >
-                      {[1, 2, 3, 4, 5].map((star) => {
-                        const selected =
-                          star <= Number(applicant.rating || 0);
-
-                        return (
-                          <button
-                            key={star}
-                            type="button"
-                            disabled={Boolean(
-                              savingApplicantRatingId
-                            )}
-                            aria-label={`${star} star${star === 1 ? '' : 's'} for ${applicant.fullName}`}
-                            title={`Rate ${star} star${star === 1 ? '' : 's'}`}
-                            onClick={() =>
-                              saveApplicantRating(
-                                applicant.id,
-                                star
-                              )
-                            }
-                            className="rounded-md p-1 text-amber-400 transition hover:scale-110 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <FiStar
-                              className="h-6 w-6"
-                              fill={
-                                selected
-                                  ? 'currentColor'
-                                  : 'none'
-                              }
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {savingApplicantRatingId ===
-                    applicant.id && (
-                    <p className="mt-2 text-xs font-medium text-blue-600">
-                      Saving...
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Important Updates */}
       <div className="bg-white dark:bg-gray-800 border border-[#1E50C3] rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
@@ -1195,7 +867,7 @@ export default function Dashboard() {
                 </tr>
               ) : paginatedApps.length > 0 ? (
                 paginatedApps.map((app) => (
-                  <tr 
+                  <tr
                     key={app.id}
                     className="hover:bg-gray-50/40 dark:hover:bg-gray-700/20 transition-colors text-xs sm:text-sm text-gray-700 dark:text-gray-300"
                   >

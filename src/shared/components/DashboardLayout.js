@@ -20,6 +20,7 @@ import { getRoleHome, USER_ROLES } from '../config/roles';
 import { createClient } from '../../lib/supabase/client';
 import { Avatar } from './PortalUI';
 import ClientProductTour from './ClientProductTour';
+import ClientApplicantRating from './ClientApplicantRating';
 
 async function getClientAccessToken() {
   const supabase = createClient();
@@ -684,8 +685,8 @@ export default function DashboardLayout({
           </Link>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-500 md:hidden"><FiX /></button>
         </div>
-        
-        <nav className="mt-3 flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
+
+        <nav className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
           {navItems.map(({ icon: Icon, label, href, tour }) => {
             const active =
               router.pathname === href ||
@@ -717,7 +718,7 @@ export default function DashboardLayout({
                 }`}><Icon className="h-4 w-4" />{label}</Link>;
           })}
         </nav>
-        <div className="border-t border-slate-100 p-4">
+        <div className="shrink-0 border-t border-slate-100 p-4">
           <Link
             href={
               isClientPreview
@@ -739,6 +740,10 @@ export default function DashboardLayout({
             <FiHelpCircle />
             Help & Support
           </Link>
+          {!isClientPreview && (
+            <ClientApplicantRating />
+          )}
+
           <div className="relative">
             <button
               data-tour="profile-menu"
