@@ -1,0 +1,407 @@
+.workspace {
+  min-height: 100vh;
+  background: #f6f8fc;
+  color: #172033;
+}
+
+.sidebar,
+.sidebarOpen {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  display: flex;
+  width: 278px;
+  flex-direction: column;
+  border-right: 1px solid #e5e9f2;
+  background: #ffffff;
+  padding: 24px 18px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding: 0 10px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.brand img {
+  width: 32px;
+  height: 32px;
+}
+
+.closeMenu {
+  display: none;
+}
+
+.sidebar nav,
+.sidebarOpen nav {
+  display: grid;
+  gap: 6px;
+}
+
+.navItem,
+.navActive {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  padding: 0 13px;
+  color: #647087;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.navItem:hover {
+  background: #f2f5ff;
+  color: #2f5bea;
+}
+
+.navActive {
+  background: #edf2ff;
+  color: #2f5bea;
+}
+
+.navItem svg,
+.navActive svg {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+}
+
+.account {
+  display: grid;
+  grid-template-columns:
+    40px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  border-top: 1px solid #edf0f5;
+  padding: 20px 6px 0;
+}
+
+.avatar {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: #2f5bea;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.accountText {
+  min-width: 0;
+}
+
+.accountText strong,
+.accountText small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountText strong {
+  font-size: 13px;
+}
+
+.accountText small {
+  margin-top: 3px;
+  color: #7b8497;
+  font-size: 11px;
+}
+
+.account button,
+.mobileHeader button,
+.closeMenu {
+  border: 0;
+  background: transparent;
+  color: #647087;
+  cursor: pointer;
+}
+
+.account button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+}
+
+.main {
+  min-height: 100vh;
+  margin-left: 278px;
+}
+
+.mobileHeader {
+  display: none;
+}
+
+.content {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 42px 36px 64px;
+}
+
+.pageHeader {
+  margin-bottom: 28px;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 34px);
+  line-height: 1.2;
+}
+
+.pageHeader p {
+  margin: 8px 0 0;
+  color: #6f798d;
+  font-size: 15px;
+}
+
+.pageGrid {
+  display: grid;
+  gap: 22px;
+}
+
+.welcomeCard {
+  display: flex;
+  min-height: 190px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, #214ed2, #6384ed);
+  padding: 34px;
+  color: #ffffff;
+}
+
+.welcomeCard h2 {
+  margin: 8px 0 10px;
+  font-size: 26px;
+}
+
+.welcomeCard p {
+  max-width: 650px;
+  margin: 0;
+  color: #e8edff;
+  line-height: 1.65;
+}
+
+.welcomeCard > svg {
+  flex: 0 0 auto;
+  width: 68px;
+  height: 68px;
+  opacity: 0.85;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.emptyState,
+.recordCard,
+.settingsCard {
+  border: 1px solid #e2e7f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 54px 28px;
+  text-align: center;
+  box-shadow:
+    0 8px 28px rgba(37, 52, 84, 0.04);
+}
+
+.emptyIcon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  place-items: center;
+  border-radius: 16px;
+  background: #edf2ff;
+  color: #2f5bea;
+}
+
+.emptyIcon svg {
+  width: 25px;
+  height: 25px;
+}
+
+.emptyState h2,
+.recordCard h2,
+.settingsCard h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.emptyState p,
+.recordCard p,
+.settingsCard > p {
+  max-width: 560px;
+  margin: 10px auto 0;
+  color: #738096;
+  line-height: 1.6;
+}
+
+.recordCard button {
+  margin-top: 24px;
+  border: 0;
+  border-radius: 10px;
+  background: #dfe4ee;
+  padding: 12px 18px;
+  color: #8a93a5;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+.settingsCard {
+  text-align: left;
+}
+
+.settingsCard > p {
+  margin-left: 0;
+}
+
+.settingsCard dl {
+  display: grid;
+  gap: 0;
+  margin: 28px 0 0;
+  border: 1px solid #e5e9f1;
+  border-radius: 12px;
+}
+
+.settingsCard dl div {
+  display: grid;
+  grid-template-columns:
+    180px minmax(0, 1fr);
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.settingsCard dl div + div {
+  border-top: 1px solid #e5e9f1;
+}
+
+.settingsCard dt {
+  color: #748097;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settingsCard dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.backdrop {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar,
+  .sidebarOpen {
+    transition: transform 180ms ease;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+    box-shadow:
+      20px 0 50px rgba(20, 30, 55, 0.2);
+  }
+
+  .closeMenu {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: block;
+    border: 0;
+    background: rgba(15, 23, 42, 0.42);
+  }
+
+  .main {
+    margin-left: 0;
+  }
+
+  .mobileHeader {
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    gap: 18px;
+    border-bottom: 1px solid #e4e8f0;
+    background: #ffffff;
+    padding: 0 20px;
+  }
+
+  .mobileHeader button {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+  }
+
+  .mobileHeader a {
+    color: #172033;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .content {
+    padding: 30px 20px 50px;
+  }
+
+  .welcomeCard {
+    align-items: flex-start;
+    padding: 28px 24px;
+  }
+
+  .welcomeCard > svg {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sidebar,
+  .sidebarOpen {
+    width: min(86vw, 300px);
+  }
+
+  .welcomeCard > svg {
+    display: none;
+  }
+
+  .settingsCard dl div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
