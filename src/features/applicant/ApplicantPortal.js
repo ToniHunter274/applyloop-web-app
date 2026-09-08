@@ -1342,52 +1342,6 @@ function WorkshopPage({
       }
     };
 
-  const handleDismissJobRequest =
-    async (request) => {
-      if (
-        !onUpdateJobRequest ||
-        !request ||
-        [
-          'converted',
-          'dismissed',
-        ].includes(request.status)
-      ) {
-        return;
-      }
-
-      setJobRequestActionId(
-        request.id
-      );
-      setJobRequestActionError('');
-
-      try {
-        await onUpdateJobRequest(
-          request.id,
-          'dismissed'
-        );
-
-        if (
-          activeJobRequestId ===
-          request.id
-        ) {
-          setActiveJobRequestId('');
-
-          if (
-            jobUrl ===
-            request.jobLink
-          ) {
-            setJobUrl('');
-          }
-        }
-      } catch (error) {
-        setJobRequestActionError(
-          error?.message ||
-            'This job request could not be dismissed.'
-        );
-      } finally {
-        setJobRequestActionId('');
-      }
-    };
 
   return (
     <>
@@ -1661,22 +1615,7 @@ function WorkshopPage({
                                       : 'Use This Job'}
                                 </button>
 
-                                <button
-                                  type="button"
-                                  disabled={
-                                    Boolean(
-                                      jobRequestActionId
-                                    )
-                                  }
-                                  onClick={() =>
-                                    handleDismissJobRequest(
-                                      request
-                                    )
-                                  }
-                                  className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                                >
-                                  Dismiss
-                                </button>
+
                               </>
                             )}
                         </div>

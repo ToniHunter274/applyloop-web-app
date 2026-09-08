@@ -3,11 +3,7 @@ import {
   requirePortalProfile,
 } from '../../../../lib/auth/requirePortalProfile';
 
-const ALLOWED_STATUSES =
-  new Set([
-    'in_review',
-    'dismissed',
-  ]);
+const ALLOWED_STATUSES = new Set(['in_review']);
 
 function formatRequest(request) {
   return {
@@ -92,7 +88,7 @@ export default async function handler(
     ) {
       throw new PortalApiError(
         400,
-        'The job request status is invalid.'
+        'Applicants can only start reviewing a job request. Only the submitting client can withdraw it.'
       );
     }
 
