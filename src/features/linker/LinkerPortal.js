@@ -37,9 +37,14 @@ const validSections = new Set([
 const emptyAssignmentData = {
   applicants: [],
   clients: [],
+  applications: [],
   summary: {
     assignedApplicants: 0,
     assignedClients: 0,
+    linksFoundToday: 0,
+    activeClients: 0,
+    linksSourced: 0,
+    pendingReview: 0,
   },
 };
 
@@ -146,6 +151,13 @@ function DashboardPage({
   isLoading,
   error,
 }) {
+  const [search, setSearch] =
+    useState('');
+  const [
+    selectedClient,
+    setSelectedClient,
+  ] = useState('');
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -154,55 +166,222 @@ function DashboardPage({
     return <ErrorState message={error} />;
   }
 
-  const hasAssignments =
-    data.applicants.length > 0;
+  const term =
+    search.trim().toLowerCase();
+
+  const applications =
+    data.applications.filter(
+      (application) =>
+        (
+          !selectedClient ||
+          application.clientId ===
+            selectedClient
+        ) &&
+               (
+          !term ||
+          [
+            application.company,
+            application.position,
+            application.clientName,
+            application.jobLink,
+          ].some((value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(term)
+          )
+        )
+    );
+
+  const metrics = [
+    [
+      'Links Found Today',
+      data.summary.linksFoundToday,
+      'Verified today',
+    ],
+    [
+      'Active Clients',
+      data.summary.activeClients,
+      'Ready for links',
+    ],
+    [
+      'Links Sourced',
+      data.summary.linksSourced,
+      'All Linker submissions',
+    ],
+    [
+      'Pending Review',
+      data.summary.pendingReview,
+      'Awaiting Applicant action',
+    ],
+  ];
 
   return (
-    <div className={styles.pageGrid}>
-      <section className={styles.welcomeCard}>
-        <div>
-          <span className={styles.eyebrow}>
-            Linker workspace
-          </span>
-          <h2>
-            {hasAssignments
-              ? 'Your assignment queue'
-              : 'No assignments yet'}
-          </h2>
-          <p>
-            Applicant and client access is derived
-            from your current verified assignments.
-          </p>
-        </div>
-        <FiLink aria-hidden="true" />
+    <div className={styles.figmaDashboard}>
+      <label
+        className={styles.dashboardSearch}
+      >
+        <span className="sr-only">
+          Search job links
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) =>
+            setSearch(event.target.value)
+          }
+          placeholder="Search Job Links"
+        />
+      </label>
+
+      <section
+        className={styles.figmaMetrics}
+        aria-label="Linker activity summary"
+      >
+        {metrics.map(
+          ([label, value, note]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{note}</small>
+            </article>
+          )
+        )}
       </section>
 
       <section
-        className={styles.summaryGrid}
-        aria-label="Assignment summary"
+        className={styles.figmaDashboardTable}
       >
-        <article>
-          <span>Assigned Applicants</span>
-          <strong>
-            {data.summary.assignedApplicants}
-          </strong>
-        </article>
+        <header>
+          <h2>All Assigned Clients</h2>
 
-        <article>
-          <span>Assigned Clients</span>
-          <strong>
-            {data.summary.assignedClients}
-          </strong>
-        </article>
+          <select
+            value={selectedClient}
+            onChange={(event) =>
+              setSelectedClient(
+                event.target.value
+              )
+            }
+            aria-label="Select Client"
+          >
+            <option value="">
+              Select Client
+            </option>
+
+            {data.clients.map(
+              (client) => (
+                <option
+                  key={client.id}
+                  value={client.id}
+                >
+                  {client.fullName}
+                </option>
+              )
+            )}
+          </select>
+        </header>
+
+        <div className={styles.tableScroll}>
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Position</th>
+                <th>Client</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Links</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {applications.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className={
+                      styles.figmaTableEmpty
+                    }
+                  >
+                    No assigned Client
+                    applications match this
+                    view.
+                  </td>
+                </tr>
+              ) : (
+                applications.map(
+                  (application) => (
+                    <tr key={application.id}>
+                      <td>
+                        {application.company}
+                      </td>
+                      <td>
+                        {application.position}
+                      </td>
+                      <td>
+                        {application.clientName}
+                      </td>
+                      <td>
+                        {formatDate(
+                          application.appliedAt
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            application.status ===
+                            'Rejected'
+                              ? styles.figmaRejected
+                              : application.status ===
+                                  'Offer Received'
+                                ? styles.statusReady
+                                : styles.figmaInfo
+                          }
+                        >
+                          {application.status}
+                        </span>
+                      </td>
+                      <td>
+                        {application.jobLink ? (
+                          <a
+                            href={
+                              application.jobLink
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {
+                              application.linkSource
+                            }
+                          </a>
+                        ) : (
+                          application.linkSource
+                        )}
+                      </td>
+                      <td>
+                        {application.jobLink ? (
+                          <a
+                            href={
+                              application.jobLink
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Open job link"
+                          >
+                            <FiExternalLink />
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  )
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
-
-      {!hasAssignments && (
-        <EmptyState
-          icon={FiBriefcase}
-          title="No assignments available"
-          description="Admin or Operations has not assigned an Applicant to your Linker account."
-        />
-      )}
     </div>
   );
 }
@@ -212,6 +391,15 @@ function ClientsPage({
   isLoading,
   error,
 }) {
+  const [search, setSearch] =
+    useState('');
+  const [filter, setFilter] =
+    useState('all');
+  const [
+    selectedClientId,
+    setSelectedClientId,
+  ] = useState('');
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -220,15 +408,11 @@ function ClientsPage({
     return <ErrorState message={error} />;
   }
 
-  if (data.clients.length === 0) {
-    return (
-      <EmptyState
-        icon={FiBriefcase}
-        title="No assigned clients"
-        description="Clients belonging to your assigned Applicants will appear here."
-      />
+  const selectedClient =
+    data.clients.find(
+      (client) =>
+        client.id === selectedClientId
     );
-  }
 
   const applicantsById =
     new Map(
@@ -240,34 +424,421 @@ function ClientsPage({
       )
     );
 
-  return (
-    <section className={styles.tableCard}>
-      <div className={styles.tableHeading}>
-        <div>
-          <h2>Assigned clients</h2>
+  if (selectedClient) {
+    const assignedApplicants =
+      selectedClient.applicantIds
+        .map(
+          (id) =>
+            applicantsById.get(id)
+        )
+        .filter(Boolean);
+
+    const progress =
+      selectedClient.applicationLimit > 0
+        ? Math.min(
+            100,
+            Math.round(
+              (
+                selectedClient
+                  .applicationsCompleted /
+                selectedClient
+                  .applicationLimit
+              ) * 100
+            )
+          )
+        : 0;
+
+    return (
+      <div className={styles.clientDetail}>
+        <button
+          type="button"
+          className={styles.backLink}
+          onClick={() =>
+            setSelectedClientId('')
+          }
+        >
+          ← {selectedClient.fullName}
+        </button>
+
+        <p className={styles.detailPlan}>
+          {selectedClient.plan ||
+            'Client plan'}
+        </p>
+
+        <section
+          className={styles.clientDetailMetrics}
+        >
+          <article>
+            <span>Total Applications</span>
+            <strong>
+              {
+                selectedClient
+                  .applicationsCompleted
+              }
+              /
+              {
+                selectedClient
+                  .applicationLimit
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Upcoming Interviews</span>
+            <strong>
+              {
+                selectedClient
+                  .upcomingInterviews
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Total Rejected Jobs</span>
+            <strong>
+              {
+                selectedClient
+                  .rejectedApplications
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Total Accepted Jobs</span>
+            <strong>
+              {
+                selectedClient
+                  .offersReceived
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Resumes</span>
+            <strong>—</strong>
+          </article>
+        </section>
+
+        <section className={styles.readinessSection}>
+          <div>
+            <h2>Client Dashboard Readiness</h2>
+            <span
+              className={
+                selectedClient.canReceiveLinks
+                  ? styles.statusReady
+                  : styles.statusUnavailable
+              }
+            >
+              {selectedClient.canReceiveLinks
+                ? 'Setup complete'
+                : 'Setup required'}
+            </span>
+          </div>
+
+          <div className={styles.readinessGrid}>
+            <article>
+              <strong>Email</strong>
+              <span>
+                {selectedClient.email
+                  ? 'Available'
+                  : 'Missing'}
+              </span>
+            </article>
+
+            <article>
+              <strong>Tracker</strong>
+              <span>
+                {selectedClient.linksSourced}
+                {' links sourced'}
+              </span>
+            </article>
+
+            <article
+              className={
+                selectedClient.canReceiveLinks
+                  ? ''
+                  : styles.readinessWarning
+              }
+            >
+              <strong>
+                Request Available
+              </strong>
+              <span>
+                {selectedClient.canReceiveLinks
+                  ? 'Ready to receive links'
+                  : 'Client or Applicant unavailable'}
+              </span>
+            </article>
+          </div>
+        </section>
+
+        <section className={styles.clientInformation}>
+          <h2>Personal Information</h2>
+
+          <dl>
+            <div>
+              <dt>Full Name</dt>
+              <dd>
+                {selectedClient.fullName}
+              </dd>
+            </div>
+            <div>
+              <dt>Plan</dt>
+              <dd>
+                {selectedClient.plan ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Email Address</dt>
+              <dd>
+                {selectedClient.email ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Country</dt>
+              <dd>
+                {selectedClient.country ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>State/Province</dt>
+              <dd>
+                {selectedClient.state ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Application Progress</dt>
+              <dd>{progress}%</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className={styles.clientInformation}>
+          <h2>Work Availability</h2>
+
+          <dl>
+            <div>
+              <dt>Client Status</dt>
+              <dd>
+                {selectedClient.status}
+              </dd>
+            </div>
+            <div>
+              <dt>Assigned Applicants</dt>
+              <dd>
+                {assignedApplicants
+                  .map(
+                    (applicant) =>
+                      applicant.fullName
+                  )
+                  .join(', ') ||
+                  'Not assigned'}
+              </dd>
+            </div>
+            <div>
+              <dt>Last Activity</dt>
+              <dd>
+                {formatDate(
+                  selectedClient.lastActivity
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Links Sourced</dt>
+              <dd>
+                {selectedClient.linksSourced}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className={styles.adminNotes}>
+          <h2>Notes from Admin</h2>
           <p>
-            Derived from your current Applicant
-            assignments.
+            Private administrative notes are not
+            exposed in the Linker workspace.
           </p>
-        </div>
-        <strong>
-          {data.clients.length}
-        </strong>
+        </section>
+      </div>
+    );
+  }
+
+  const term =
+    search.trim().toLowerCase();
+
+  const filteredClients =
+    data.clients.filter((client) => {
+      const matchesSearch =
+        !term ||
+        [
+          client.fullName,
+          client.email,
+          client.plan,
+          client.country,
+        ].some((value) =>
+          String(value || '')
+            .toLowerCase()
+            .includes(term)
+        );
+
+      const isActive =
+        client.status === 'active' &&
+        client.accountStatus === 'active';
+
+      const matchesFilter =
+        filter === 'all' ||
+        (
+          filter === 'active' &&
+          isActive
+        ) ||
+        (
+          filter === 'inactive' &&
+          !isActive
+        );
+
+      return (
+        matchesSearch &&
+        matchesFilter
+      );
+    });
+
+  const totals = {
+    clients: data.clients.length,
+    links: data.clients.reduce(
+      (sum, client) =>
+        sum + client.linksSourced,
+      0
+    ),
+    completed: data.clients.reduce(
+      (sum, client) =>
+        sum + client.completedLinks,
+      0
+    ),
+    interviews: data.clients.reduce(
+      (sum, client) =>
+        sum +
+        client.upcomingInterviews,
+      0
+    ),
+  };
+
+  const activeCount =
+    data.clients.filter(
+      (client) =>
+        client.status === 'active' &&
+        client.accountStatus === 'active'
+    ).length;
+
+  if (data.clients.length === 0) {
+    return (
+      <EmptyState
+        icon={FiBriefcase}
+        title="No assigned clients"
+        description="Clients belonging to your assigned Applicants will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className={styles.figmaClients}>
+      <section className={styles.clientMetrics}>
+        <article>
+          <span>Total Clients</span>
+          <strong>{totals.clients}</strong>
+        </article>
+        <article>
+          <span>Total Links</span>
+          <strong>{totals.links}</strong>
+        </article>
+        <article>
+          <span>Completed Links</span>
+          <strong>{totals.completed}</strong>
+        </article>
+        <article>
+          <span>Total Interviews</span>
+          <strong>{totals.interviews}</strong>
+        </article>
+      </section>
+
+      <label className={styles.clientSearch}>
+        <span className="sr-only">
+          Search Clients
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) =>
+            setSearch(event.target.value)
+          }
+          placeholder="Search Clients"
+        />
+      </label>
+
+      <div className={styles.clientTabs}>
+        {[
+          [
+            'all',
+            'All Clients',
+            data.clients.length,
+          ],
+          [
+            'active',
+            'Active Clients',
+            activeCount,
+          ],
+          [
+            'inactive',
+            'Inactive Clients',
+            data.clients.length -
+              activeCount,
+          ],
+        ].map(
+          ([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                filter === value
+                  ? styles.clientTabActive
+                  : styles.clientTab
+              }
+              onClick={() =>
+                setFilter(value)
+              }
+            >
+              {label} ({count})
+            </button>
+          )
+        )}
       </div>
 
-      <div className={styles.tableScroll}>
-        <table>
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th>Applicant</th>
-              <th>Plan</th>
-              <th>Progress</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.clients.map((client) => {
+      {filteredClients.length === 0 ? (
+        <div className={styles.clientEmpty}>
+          No Clients match this view.
+        </div>
+      ) : (
+        <section className={styles.clientCardGrid}>
+          {filteredClients.map(
+            (client) => {
+              const progress =
+                client.applicationLimit > 0
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        (
+                          client
+                            .applicationsCompleted /
+                          client
+                            .applicationLimit
+                        ) * 100
+                      )
+                    )
+                  : 0;
+
               const applicantNames =
                 client.applicantIds
                   .map(
@@ -277,27 +848,23 @@ function ClientsPage({
                   )
                   .filter(Boolean)
                   .join(', ') ||
-                'Not available';
+                'Not assigned';
 
               return (
-                <tr key={client.id}>
-                  <td>
-                    <strong>
-                      {client.fullName}
-                    </strong>
-                    <small>
-                      {client.email ||
-                        'No email available'}
-                    </small>
-                  </td>
-                  <td>{applicantNames}</td>
-                  <td>{client.plan}</td>
-                  <td>
-                    {client.applicationsCompleted}
-                    {' / '}
-                    {client.applicationLimit}
-                  </td>
-                  <td>
+                <article
+                  key={client.id}
+                  className={styles.clientCard}
+                >
+                  <header>
+                    <div>
+                      <h2>
+                        {client.fullName}
+                      </h2>
+                      <p>
+                        {client.plan ||
+                          'Client plan'}
+                      </p>
+                    </div>
                     <span
                       className={
                         client.canReceiveLinks
@@ -306,17 +873,90 @@ function ClientsPage({
                       }
                     >
                       {client.canReceiveLinks
-                        ? 'Ready'
-                        : 'Unavailable'}
+                        ? 'Active'
+                        : 'Inactive'}
                     </span>
-                  </td>
-                </tr>
+                  </header>
+
+                  <div
+                    className={
+                      styles.progressLabel
+                    }
+                  >
+                    <span>Links Progress</span>
+                    <strong>
+                      {
+                        client
+                          .applicationsCompleted
+                      }
+                      /
+                      {
+                        client
+                          .applicationLimit
+                      }
+                    </strong>
+                  </div>
+
+                  <div
+                    className={
+                      styles.clientProgress
+                    }
+                  >
+                    <span
+                      style={{
+                        width:
+                          progress + '%',
+                      }}
+                    />
+                  </div>
+
+                  <dl>
+                    <div>
+                      <dt>Total Links</dt>
+                      <dd>
+                        {client.linksSourced}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Upcoming Interviews</dt>
+                      <dd>
+                        {
+                          client
+                            .upcomingInterviews
+                        }
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Target Countries</dt>
+                      <dd>
+                        {client.country ||
+                          'Not provided'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <footer>
+                    <span>
+                      Applicant: {applicantNames}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedClientId(
+                          client.id
+                        )
+                      }
+                    >
+                      View Details →
+                    </button>
+                  </footer>
+                </article>
               );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
+            }
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 
@@ -325,6 +965,11 @@ function ApplicantsPage({
   isLoading,
   error,
 }) {
+  const [search, setSearch] =
+    useState('');
+  const [filter, setFilter] =
+    useState('all');
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -333,87 +978,367 @@ function ApplicantsPage({
     return <ErrorState message={error} />;
   }
 
-  if (data.applicants.length === 0) {
-    return (
-      <EmptyState
-        icon={FiUsers}
-        title="No assigned Applicants"
-        description="Applicants assigned directly to your Linker account will appear here."
-      />
+  const applicants =
+    data.applicants || [];
+
+  const clients =
+    data.clients || [];
+
+  const normalizedSearch =
+    search.trim().toLowerCase();
+
+  const applicantMetrics =
+    applicants.map((applicant) => {
+      const assignedClients =
+        clients.filter((client) =>
+          client.applicantIds.includes(
+            applicant.id
+          )
+        );
+
+      return {
+        ...applicant,
+        assignedClients,
+        activeClients:
+          assignedClients.filter(
+            (client) =>
+              client.status === 'active'
+          ).length,
+        totalLinks:
+          assignedClients.reduce(
+            (total, client) =>
+              total +
+              Number(
+                client.linksSourced || 0
+              ),
+            0
+          ),
+      };
+    });
+
+  const filteredApplicants =
+    applicantMetrics.filter(
+      (applicant) => {
+        const matchesSearch =
+          !normalizedSearch ||
+          [
+            applicant.fullName,
+            applicant.email,
+            applicant.team,
+          ].some((value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(
+                normalizedSearch
+              )
+          );
+
+        const matchesFilter =
+          filter === 'all' ||
+          (
+            filter === 'available' &&
+            applicant.canReceiveLinks
+          ) ||
+          (
+            filter === 'unavailable' &&
+            !applicant.canReceiveLinks
+          );
+
+        return (
+          matchesSearch &&
+          matchesFilter
+        );
+      }
     );
-  }
+
+  const availableApplicants =
+    applicantMetrics.filter(
+      (applicant) =>
+        applicant.canReceiveLinks
+    ).length;
+
+  const activeClientIds =
+    new Set(
+      clients
+        .filter(
+          (client) =>
+            client.status === 'active'
+        )
+        .map(
+          (client) => client.id
+        )
+    );
+
+  const totalLinks =
+    clients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.linksSourced || 0
+        ),
+      0
+    );
+
+  const averageCompletion =
+    applicants.length
+      ? Math.round(
+          applicants.reduce(
+            (total, applicant) =>
+              total +
+              Number(
+                applicant.completionRate ||
+                  0
+              ),
+            0
+          ) /
+            applicants.length
+        )
+      : 0;
 
   return (
-    <section className={styles.tableCard}>
-      <div className={styles.tableHeading}>
-        <div>
-          <h2>Assigned Applicants</h2>
-          <p>
-            Applicants currently supported by your
-            Linker account.
-          </p>
-        </div>
-        <strong>
-          {data.applicants.length}
-        </strong>
+    <div
+      className={
+        styles.figmaApplicants
+      }
+    >
+      <section
+        className={
+          styles.applicantMetrics
+        }
+      >
+        <article>
+          <span>Assigned Applicants</span>
+          <strong>
+            {applicants.length}
+          </strong>
+        </article>
+
+        <article>
+          <span>Available</span>
+          <strong>
+            {availableApplicants}
+          </strong>
+        </article>
+
+        <article>
+          <span>Active Clients</span>
+          <strong>
+            {activeClientIds.size}
+          </strong>
+        </article>
+
+        <article>
+          <span>Links Sourced</span>
+          <strong>{totalLinks}</strong>
+        </article>
+      </section>
+
+      <label
+        className={
+          styles.applicantSearch
+        }
+      >
+        <FiUsers aria-hidden="true" />
+        <input
+          type="search"
+          value={search}
+          onChange={(event) =>
+            setSearch(
+              event.target.value
+            )
+          }
+          placeholder="Search Applicants"
+          aria-label="Search Applicants"
+        />
+      </label>
+
+      <div
+        className={
+          styles.applicantTabs
+        }
+      >
+        {[
+          ['all', 'All Applicants'],
+          ['available', 'Available'],
+          [
+            'unavailable',
+            'Unavailable',
+          ],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={
+              filter === value
+                ? styles.applicantTabActive
+                : styles.applicantTab
+            }
+            onClick={() =>
+              setFilter(value)
+            }
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className={styles.tableScroll}>
-        <table>
-          <thead>
-            <tr>
-              <th>Applicant</th>
-              <th>Team</th>
-              <th>Assigned</th>
-              <th>Active tasks</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.applicants.map(
-              (applicant) => (
-                <tr key={applicant.id}>
-                  <td>
-                    <strong>
-                      {applicant.fullName}
-                    </strong>
-                    <small>
-                      {applicant.email ||
-                        'No email available'}
-                    </small>
-                  </td>
-                  <td>
-                    {applicant.team ||
-                      'Not assigned'}
-                  </td>
-                  <td>
-                    {formatDate(
-                      applicant.assignedAt
-                    )}
-                  </td>
-                  <td>
-                    {applicant.activeTasks}
-                  </td>
-                  <td>
-                    <span
-                      className={
-                        applicant.canReceiveLinks
-                          ? styles.statusReady
-                          : styles.statusUnavailable
-                      }
+      <section
+        className={
+          styles.applicantTable
+        }
+      >
+        <div
+          className={styles.tableScroll}
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Status</th>
+                <th>Active Clients</th>
+                <th>Total Links</th>
+                <th>Quality Rating</th>
+                <th>Completion Rate</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredApplicants.map(
+                (applicant) => {
+                  const completion =
+                    Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        Number(
+                          applicant
+                            .completionRate ||
+                            0
+                        )
+                      )
+                    );
+
+                  return (
+                    <tr
+                      key={applicant.id}
                     >
-                      {applicant.canReceiveLinks
-                        ? 'Available'
-                        : 'Unavailable'}
-                    </span>
+                      <td>
+                        <strong>
+                          {
+                            applicant.fullName
+                          }
+                        </strong>
+                        <small>
+                          {applicant.email ||
+                            'No email available'}
+                        </small>
+                      </td>
+
+                      <td>
+                        <span
+                          className={
+                            applicant
+                              .canReceiveLinks
+                              ? styles
+                                  .applicantAvailable
+                              : styles
+                                  .applicantUnavailable
+                          }
+                        >
+                          {applicant
+                            .canReceiveLinks
+                            ? 'Available'
+                            : 'Unavailable'}
+                        </span>
+                      </td>
+
+                      <td>
+                        {
+                          applicant.activeClients
+                        }
+                      </td>
+
+                      <td>
+                        {applicant.totalLinks}
+                      </td>
+
+                      <td>
+                        {Number(
+                          applicant.qualityRating ||
+                            0
+                        ).toFixed(1)}
+                      </td>
+
+                      <td>
+                        <div
+                          className={
+                            styles
+                              .completionValue
+                          }
+                        >
+                          <span>
+                            {completion}%
+                          </span>
+                          <div>
+                            <span
+                              style={{
+                                width:
+                                  completion +
+                                  '%',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <Link
+                          href="/linker/record-link"
+                          className={
+                            styles
+                              .applicantAction
+                          }
+                        >
+                          + Submit Link
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
+
+              {filteredApplicants.length ===
+                0 && (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className={
+                      styles
+                        .applicantTableEmpty
+                    }
+                  >
+                    No Applicants match
+                    this search.
                   </td>
                 </tr>
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p
+        className={
+          styles.applicantSummary
+        }
+      >
+        Average completion rate:{' '}
+        <strong>
+          {averageCompletion}%
+        </strong>
+      </p>
+    </div>
   );
 }
 
@@ -426,16 +1351,22 @@ function RecordLinkPage({
     useState('');
   const [clientId, setClientId] =
     useState('');
+  const [company, setCompany] =
+    useState('');
+  const [position, setPosition] =
+    useState('');
+  const [location, setLocation] =
+    useState('');
+  const [jobType, setJobType] =
+    useState('');
+  const [salaryRange, setSalaryRange] =
+    useState('');
   const [jobLink, setJobLink] =
+    useState('');
+  const [linkProvider, setLinkProvider] =
     useState('');
   const [comment, setComment] =
     useState('');
-  const [requests, setRequests] =
-    useState([]);
-  const [
-    isLoadingRequests,
-    setIsLoadingRequests,
-  ] = useState(true);
   const [
     isSubmitting,
     setIsSubmitting,
@@ -448,71 +1379,6 @@ function RecordLinkPage({
     successMessage,
     setSuccessMessage,
   ] = useState('');
-
-  useEffect(() => {
-    let active = true;
-
-    const loadRequests = async () => {
-      setIsLoadingRequests(true);
-
-      try {
-        const accessToken =
-          await getLinkerAccessToken();
-
-        const response = await fetch(
-          '/api/linker/job-requests',
-          {
-            headers: {
-              Authorization:
-                'Bearer ' + accessToken,
-            },
-            cache: 'no-store',
-          }
-        );
-
-        const result =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ||
-              'Recorded job links could not be loaded.'
-          );
-        }
-
-        if (
-          !Array.isArray(result.requests)
-        ) {
-          throw new Error(
-            'The job-link response could not be verified.'
-          );
-        }
-
-        if (active) {
-          setRequests(result.requests);
-        }
-      } catch (loadError) {
-        if (active) {
-          setRequestError(
-            loadError.message ||
-              'Recorded job links could not be loaded.'
-          );
-        }
-      } finally {
-        if (active) {
-          setIsLoadingRequests(false);
-        }
-      }
-    };
-
-    loadRequests();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   if (isLoading) {
     return <LoadingState />;
@@ -539,25 +1405,20 @@ function RecordLinkPage({
         )
       : [];
 
-  const applicantNames =
-    new Map(
-      data.applicants.map(
-        (applicant) => [
-          applicant.id,
-          applicant.fullName,
-        ]
-      )
-    );
-
-  const clientNames =
-    new Map(
-      data.clients.map(
-        (client) => [
-          client.id,
-          client.fullName,
-        ]
-      )
-    );
+  const clearForm = () => {
+    setApplicantId('');
+    setClientId('');
+    setCompany('');
+    setPosition('');
+    setLocation('');
+    setJobType('');
+    setSalaryRange('');
+    setJobLink('');
+    setLinkProvider('');
+    setComment('');
+    setRequestError('');
+    setSuccessMessage('');
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -567,10 +1428,14 @@ function RecordLinkPage({
     if (
       !applicantId ||
       !clientId ||
+      !company.trim() ||
+      !position.trim() ||
+      !location.trim() ||
+      !jobType ||
       !jobLink.trim()
     ) {
       setRequestError(
-        'Select an Applicant and Client, then enter a job link.'
+        'Complete every required field before saving the job link.'
       );
       return;
     }
@@ -594,7 +1459,13 @@ function RecordLinkPage({
           body: JSON.stringify({
             applicantId,
             clientId,
+            company,
+            position,
+            location,
+            jobType,
+            salaryRange,
             jobLink,
+            linkProvider,
             comment,
           }),
         }
@@ -618,19 +1489,18 @@ function RecordLinkPage({
         );
       }
 
-      setRequests((current) => [
-        result.request,
-        ...current.filter(
-          (request) =>
-            request.id !==
-            result.request.id
-        ),
-      ]);
+      setCompany('');
+      setPosition('');
+      setLocation('');
+      setJobType('');
+      setSalaryRange('');
       setJobLink('');
+      setLinkProvider('');
       setComment('');
+
       setSuccessMessage(
         result.message ||
-          'Job link recorded successfully.'
+          'Job link saved successfully.'
       );
     } catch (submitError) {
       setRequestError(
@@ -653,121 +1523,292 @@ function RecordLinkPage({
   }
 
   return (
-    <div className={styles.recordLayout}>
-      <section className={styles.recordCard}>
-        <div className={styles.recordHeading}>
-          <span className={styles.emptyIcon}>
-            <FiExternalLink
-              aria-hidden="true"
-            />
-          </span>
-
-          <div>
-            <h2>Record a verified job link</h2>
-            <p>
-              Choose the intended Applicant first.
-              Only Clients assigned to that Applicant
-              will be available.
-            </p>
-          </div>
+    <div
+      className={styles.figmaRecordPage}
+    >
+      <header
+        className={styles.recordPageHeader}
+      >
+        <span aria-hidden="true">←</span>
+        <div>
+          <h2>Record Job Application</h2>
+          <p>
+            Log a new job application for
+            your assigned clients
+          </p>
         </div>
+      </header>
 
-        <form
-          className={styles.recordForm}
-          onSubmit={handleSubmit}
-        >
-          <label>
-            <span>Applicant</span>
-            <select
-              value={applicantId}
-              onChange={(event) => {
-                setApplicantId(
-                  event.target.value
-                );
-                setClientId('');
-                setRequestError('');
-                setSuccessMessage('');
-              }}
-              disabled={isSubmitting}
-              required
-            >
-              <option value="">
-                Select an Applicant
-              </option>
+      <form
+        className={styles.figmaRecordForm}
+        onSubmit={handleSubmit}
+      >
+        <fieldset>
+          <legend>Select Client</legend>
 
-              {eligibleApplicants.map(
-                (applicant) => (
-                  <option
-                    key={applicant.id}
-                    value={applicant.id}
-                  >
-                    {applicant.fullName}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
-
-          <label>
-            <span>Client</span>
-            <select
-              value={clientId}
-              onChange={(event) => {
-                setClientId(
-                  event.target.value
-                );
-                setRequestError('');
-                setSuccessMessage('');
-              }}
-              disabled={
-                !applicantId ||
-                isSubmitting
+          <div
+            className={
+              styles.recordFieldGrid
+            }
+          >
+            <label
+              className={
+                styles.recordFullField
               }
-              required
             >
-              <option value="">
-                {applicantId
-                  ? 'Select a Client'
-                  : 'Select an Applicant first'}
-              </option>
+              <span>
+                Applicant<sup>*</sup>
+              </span>
 
-              {eligibleClients.map(
-                (client) => (
-                  <option
-                    key={client.id}
-                    value={client.id}
-                  >
-                    {client.fullName}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
+              <select
+                value={applicantId}
+                onChange={(event) => {
+                  setApplicantId(
+                    event.target.value
+                  );
+                  setClientId('');
+                  setRequestError('');
+                  setSuccessMessage('');
+                }}
+                disabled={isSubmitting}
+                required
+              >
+                <option value="">
+                  Select an Applicant
+                </option>
 
-          <label className={styles.fullField}>
-            <span>Employer job link</span>
-            <input
-              type="url"
-              value={jobLink}
-              onChange={(event) => {
-                setJobLink(
-                  event.target.value
-                );
-                setRequestError('');
-                setSuccessMessage('');
-              }}
-              placeholder="https://company.com/jobs/role"
-              maxLength={2000}
-              disabled={isSubmitting}
-              required
-            />
-          </label>
+                {eligibleApplicants.map(
+                  (applicant) => (
+                    <option
+                      key={applicant.id}
+                      value={applicant.id}
+                    >
+                      {applicant.fullName}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
 
-          <label className={styles.fullField}>
-            <span>
-              Comment
-              <small>Optional</small>
-            </span>
+            <label
+              className={
+                styles.recordFullField
+              }
+            >
+              <span>
+                Client<sup>*</sup>
+              </span>
+
+              <select
+                value={clientId}
+                onChange={(event) => {
+                  setClientId(
+                    event.target.value
+                  );
+                  setRequestError('');
+                  setSuccessMessage('');
+                }}
+                disabled={
+                  !applicantId ||
+                  isSubmitting
+                }
+                required
+              >
+                <option value="">
+                  {applicantId
+                    ? 'Select a Client'
+                    : 'Select an Applicant first'}
+                </option>
+
+                {eligibleClients.map(
+                  (client) => (
+                    <option
+                      key={client.id}
+                      value={client.id}
+                    >
+                      {client.fullName}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Job Details</legend>
+
+          <div
+            className={
+              styles.recordFieldGrid
+            }
+          >
+            <label>
+              <span>
+                Company Name<sup>*</sup>
+              </span>
+              <input
+                value={company}
+                onChange={(event) =>
+                  setCompany(
+                    event.target.value
+                  )
+                }
+                placeholder="Remote"
+                maxLength={200}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>
+                Job Position<sup>*</sup>
+              </span>
+              <input
+                value={position}
+                onChange={(event) =>
+                  setPosition(
+                    event.target.value
+                  )
+                }
+                placeholder="Remote"
+                maxLength={200}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>
+                Location<sup>*</sup>
+              </span>
+              <input
+                value={location}
+                onChange={(event) =>
+                  setLocation(
+                    event.target.value
+                  )
+                }
+                placeholder="Remote"
+                maxLength={200}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>
+                Job Type<sup>*</sup>
+              </span>
+              <select
+                value={jobType}
+                onChange={(event) =>
+                  setJobType(
+                    event.target.value
+                  )
+                }
+                disabled={isSubmitting}
+                required
+              >
+                <option value="">
+                  Select Job Type
+                </option>
+                <option value="Full-time">
+                  Full-time
+                </option>
+                <option value="Part-time">
+                  Part-time
+                </option>
+                <option value="Contract">
+                  Contract
+                </option>
+                <option value="Internship">
+                  Internship
+                </option>
+                <option value="Temporary">
+                  Temporary
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span>Salary Range</span>
+              <input
+                value={salaryRange}
+                onChange={(event) =>
+                  setSalaryRange(
+                    event.target.value
+                  )
+                }
+                placeholder="e.g. $130k–$200k"
+                maxLength={200}
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label>
+              <span>
+                Job Posting URL<sup>*</sup>
+              </span>
+              <input
+                type="url"
+                value={jobLink}
+                onChange={(event) =>
+                  setJobLink(
+                    event.target.value
+                  )
+                }
+                placeholder="https://..."
+                maxLength={2000}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>Link Provided By</span>
+              <select
+                value={linkProvider}
+                onChange={(event) =>
+                  setLinkProvider(
+                    event.target.value
+                  )
+                }
+                disabled={isSubmitting}
+              >
+                <option value="">
+                  Select provider
+                </option>
+                <option value="Company website">
+                  Company website
+                </option>
+                <option value="LinkedIn">
+                  LinkedIn
+                </option>
+                <option value="Indeed">
+                  Indeed
+                </option>
+                <option value="Glassdoor">
+                  Glassdoor
+                </option>
+                <option value="Other">
+                  Other
+                </option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Notes &amp; Tags</legend>
+
+          <label
+            className={
+              styles.recordFullField
+            }
+          >
+            <span>Additional Notes</span>
             <textarea
               value={comment}
               onChange={(event) =>
@@ -775,186 +1816,1104 @@ function RecordLinkPage({
                   event.target.value
                 )
               }
-              placeholder="Add a short note for the Applicant."
+              placeholder="Add any additional details about this application."
               maxLength={2000}
-              rows={4}
+              rows={5}
               disabled={isSubmitting}
             />
           </label>
+        </fieldset>
 
-          {requestError && (
-            <p
-              className={styles.formError}
-              role="alert"
-            >
-              {requestError}
-            </p>
-          )}
+        {requestError && (
+          <p
+            className={styles.formError}
+            role="alert"
+          >
+            {requestError}
+          </p>
+        )}
 
-          {successMessage && (
-            <p
-              className={styles.formSuccess}
-              role="status"
-            >
-              {successMessage}
-            </p>
-          )}
+        {successMessage && (
+          <p
+            className={styles.formSuccess}
+            role="status"
+          >
+            {successMessage}
+          </p>
+        )}
+
+        <footer
+          className={styles.recordActions}
+        >
+          <button
+            type="button"
+            className={
+              styles.clearRecordButton
+            }
+            onClick={clearForm}
+            disabled={isSubmitting}
+          >
+            × &nbsp; Clear Form
+          </button>
 
           <button
             type="submit"
-            className={styles.submitButton}
+            className={
+              styles.saveRecordButton
+            }
             disabled={
               isSubmitting ||
               !applicantId ||
               !clientId ||
+              !company.trim() ||
+              !position.trim() ||
+              !location.trim() ||
+              !jobType ||
               !jobLink.trim()
             }
           >
             {isSubmitting
-              ? 'Recording...'
-              : 'Record job link'}
+              ? 'Saving...'
+              : '▣  Save Job Link'}
           </button>
-        </form>
-      </section>
-
-      <section className={styles.requestHistory}>
-        <div className={styles.tableHeading}>
-          <div>
-            <h2>Recorded links</h2>
-            <p>
-              Your latest verified Linker submissions.
-            </p>
-          </div>
-
-          <strong>{requests.length}</strong>
-        </div>
-
-        {isLoadingRequests ? (
-          <div className={styles.historyStatus}>
-            <span className={styles.spinner} />
-            <p>Loading recorded links...</p>
-          </div>
-        ) : requests.length === 0 ? (
-          <div className={styles.historyStatus}>
-            <p>
-              No job links have been recorded yet.
-            </p>
-          </div>
-        ) : (
-          <div className={styles.tableScroll}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Applicant</th>
-                  <th>Client</th>
-                  <th>Job link</th>
-                  <th>Status</th>
-                  <th>Recorded</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map(
-                  (request) => (
-                    <tr key={request.id}>
-                      <td>
-                        {applicantNames.get(
-                          request.applicantId
-                        ) ||
-                          'Previous assignment'}
-                      </td>
-                      <td>
-                        {clientNames.get(
-                          request.clientId
-                        ) ||
-                          'Previous Client'}
-                      </td>
-                      <td>
-                        <a
-                          href={request.jobLink}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Open link
-                          <FiExternalLink
-                            aria-hidden="true"
-                          />
-                        </a>
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            request.status ===
-                            'converted'
-                              ? styles.statusReady
-                              : styles.statusPending
-                          }
-                        >
-                          {request.status.replace(
-                            '_',
-                            ' '
-                          )}
-                        </span>
-                      </td>
-                      <td>
-                        {formatDate(
-                          request.createdAt
-                        )}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+        </footer>
+      </form>
     </div>
   );
 }
 
 function FeedbackPage() {
+  const [conversations, setConversations] =
+    useState([]);
+  const [selectedId, setSelectedId] =
+    useState('');
+  const [activeTab, setActiveTab] =
+    useState('applicant');
+  const [response, setResponse] =
+    useState('');
+  const [isLoading, setIsLoading] =
+    useState(true);
+  const [isSending, setIsSending] =
+    useState(false);
+  const [error, setError] =
+    useState('');
+  const [success, setSuccess] =
+    useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFeedback = async () => {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const accessToken =
+          await getLinkerAccessToken();
+
+        const request = await fetch(
+          '/api/linker/feedback',
+          {
+            headers: {
+              Authorization:
+                'Bearer ' + accessToken,
+            },
+            cache: 'no-store',
+          }
+        );
+
+        const result =
+          await request
+            .json()
+            .catch(() => ({}));
+
+        if (!request.ok) {
+          throw new Error(
+            result.error ||
+              'Feedback could not be loaded.'
+          );
+        }
+
+        if (
+          !Array.isArray(
+            result.conversations
+          )
+        ) {
+          throw new Error(
+            'The feedback response could not be verified.'
+          );
+        }
+
+        if (active) {
+          setConversations(
+            result.conversations
+          );
+
+          setSelectedId((current) =>
+            result.conversations.some(
+              (conversation) =>
+                conversation.id ===
+                current
+            )
+              ? current
+              : result.conversations[0]
+                  ?.id || ''
+          );
+        }
+      } catch (loadError) {
+        if (active) {
+          setError(
+            loadError.message ||
+              'Feedback could not be loaded.'
+          );
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFeedback();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedConversation =
+    conversations.find(
+      (conversation) =>
+        conversation.id === selectedId
+    ) || null;
+
+  const formatMessageDate = (value) => {
+    if (!value) {
+      return 'Date unavailable';
+    }
+
+    const date = new Date(value);
+
+    if (
+      Number.isNaN(date.getTime())
+    ) {
+      return 'Date unavailable';
+    }
+
+    return date.toLocaleString(
+      undefined,
+      {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }
+    );
+  };
+
+  const handleReply = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (
+      !selectedConversation ||
+      !response.trim()
+    ) {
+      setError(
+        'Enter a response before sending.'
+      );
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      const accessToken =
+        await getLinkerAccessToken();
+
+      const request = await fetch(
+        '/api/linker/feedback',
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              'Bearer ' + accessToken,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            applicationId:
+              selectedConversation
+                .applicationId,
+            message: response,
+          }),
+        }
+      );
+
+      const result =
+        await request
+          .json()
+          .catch(() => ({}));
+
+      if (!request.ok) {
+        throw new Error(
+          result.error ||
+            'Your response could not be sent.'
+        );
+      }
+
+      if (!result.message?.id) {
+        throw new Error(
+          'The sent response could not be verified.'
+        );
+      }
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id ===
+          selectedConversation.id
+            ? {
+                ...conversation,
+                status: 'resolved',
+                latestMessage:
+                  result.message.message,
+                latestAt:
+                  result.message.createdAt,
+                messages: [
+                  ...conversation.messages,
+                  result.message,
+                ],
+              }
+            : conversation
+        )
+      );
+
+      setResponse('');
+      setSuccess(
+        'Your response was sent successfully.'
+      );
+    } catch (sendError) {
+      setError(
+        sendError.message ||
+          'Your response could not be sent.'
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (
+    error &&
+    conversations.length === 0
+  ) {
+    return <ErrorState message={error} />;
+  }
+
   return (
-    <EmptyState
-      icon={FiMessageSquare}
-      title="No feedback or messages"
-      description="Assignment-related feedback and messages will appear here."
-    />
+    <div
+      className={
+        styles.figmaFeedback
+      }
+    >
+      <div
+        className={
+          styles.feedbackTabs
+        }
+      >
+        <button
+          type="button"
+          className={
+            activeTab === 'applicant'
+              ? styles.feedbackTabActive
+              : styles.feedbackTab
+          }
+          onClick={() => {
+            setActiveTab('applicant');
+            setError('');
+            setSuccess('');
+          }}
+        >
+          Applicants Feedback
+          ({conversations.length})
+        </button>
+
+        <button
+          type="button"
+          className={
+            activeTab === 'admin'
+              ? styles.feedbackTabActive
+              : styles.feedbackTab
+          }
+          onClick={() => {
+            setActiveTab('admin');
+            setError('');
+            setSuccess('');
+          }}
+        >
+          Admin Feedback
+        </button>
+      </div>
+
+      {activeTab === 'admin' ? (
+        <section
+          className={
+            styles.feedbackEmpty
+          }
+        >
+          <FiMessageSquare
+            aria-hidden="true"
+          />
+          <h2>No Admin feedback</h2>
+          <p>
+            Private administrative notes are
+            not exposed in the Linker
+            workspace.
+          </p>
+        </section>
+      ) : conversations.length === 0 ? (
+        <section
+          className={
+            styles.feedbackEmpty
+          }
+        >
+          <FiMessageSquare
+            aria-hidden="true"
+          />
+          <h2>No Applicant feedback</h2>
+          <p>
+            Client feedback for applications
+            managed through your assigned
+            Applicants will appear here.
+          </p>
+        </section>
+      ) : (
+        <div
+          className={
+            styles.feedbackWorkspace
+          }
+        >
+          <section
+            className={
+              styles.feedbackList
+            }
+          >
+            {conversations.map(
+              (conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  className={
+                    conversation.id ===
+                    selectedId
+                      ? styles
+                          .feedbackCardActive
+                      : styles.feedbackCard
+                  }
+                  onClick={() => {
+                    setSelectedId(
+                      conversation.id
+                    );
+                    setResponse('');
+                    setError('');
+                    setSuccess('');
+                  }}
+                >
+                  <header>
+                    <div>
+                      <strong>
+                        {
+                          conversation
+                            .clientName
+                        }
+                      </strong>
+                      <span>
+                        {
+                          conversation
+                            .position
+                        }
+                      </span>
+                    </div>
+
+                    <small
+                      className={
+                        conversation.status ===
+                        'resolved'
+                          ? styles
+                              .feedbackResolved
+                          : styles
+                              .feedbackPending
+                      }
+                    >
+                      {conversation.status}
+                    </small>
+                  </header>
+
+                  <p>
+                    {
+                      conversation
+                        .latestMessage
+                    }
+                  </p>
+
+                  <time>
+                    {formatMessageDate(
+                      conversation.latestAt
+                    )}
+                  </time>
+                </button>
+              )
+            )}
+          </section>
+
+          {selectedConversation && (
+            <aside
+              className={
+                styles.feedbackDetail
+              }
+            >
+              <h2>Feedback Details</h2>
+
+              <header>
+                <strong>
+                  {
+                    selectedConversation
+                      .clientName
+                  }
+                </strong>
+                <span>
+                  {
+                    selectedConversation
+                      .company
+                  }
+                  {' · '}
+                  {
+                    selectedConversation
+                      .position
+                  }
+                </span>
+                <time>
+                  {formatMessageDate(
+                    selectedConversation
+                      .latestAt
+                  )}
+                </time>
+              </header>
+
+              <div
+                className={
+                  styles.feedbackThread
+                }
+              >
+                {selectedConversation
+                  .messages.map(
+                    (message) => (
+                      <article
+                        key={message.id}
+                        className={
+                          message.sender
+                            .role ===
+                          'linker'
+                            ? styles
+                                .linkerMessage
+                            : styles
+                                .clientMessage
+                        }
+                      >
+                        <strong>
+                          {
+                            message.sender
+                              .name
+                          }
+                        </strong>
+                        <p>
+                          {message.message}
+                        </p>
+                        <time>
+                          {formatMessageDate(
+                            message.createdAt
+                          )}
+                        </time>
+                      </article>
+                    )
+                  )}
+              </div>
+
+              <form
+                onSubmit={handleReply}
+              >
+                <label>
+                  <span>Your Response</span>
+                  <textarea
+                    value={response}
+                    onChange={(event) => {
+                      setResponse(
+                        event.target.value
+                      );
+                      setError('');
+                      setSuccess('');
+                    }}
+                    placeholder="Type your response..."
+                    maxLength={5000}
+                    rows={6}
+                    disabled={isSending}
+                  />
+                </label>
+
+                {error && (
+                  <p
+                    className={
+                      styles.formError
+                    }
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                {success && (
+                  <p
+                    className={
+                      styles.formSuccess
+                    }
+                    role="status"
+                  >
+                    {success}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={
+                    isSending ||
+                    !response.trim()
+                  }
+                >
+                  {isSending
+                    ? 'Sending...'
+                    : '⌁  Send Reply'}
+                </button>
+              </form>
+
+              <div
+                className={
+                  styles.feedbackResolution
+                }
+              >
+                {selectedConversation
+                  .status === 'resolved'
+                  ? '✓ Resolved'
+                  : 'Reply to resolve this feedback'}
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-function PerformancePage() {
+function PerformancePage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} />;
+  }
+
+  const applications =
+    data.applications || [];
+
+  const totalLinks =
+    Number(
+      data.summary?.linksSourced || 0
+    );
+
+  const convertedLinks =
+    data.clients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.completedLinks || 0
+        ),
+      0
+    );
+
+  const totalOffers =
+    applications.filter(
+      (application) =>
+        application.status ===
+        'Offer Received'
+    ).length;
+
+  const averageQuality =
+    data.applicants.length
+      ? (
+          data.applicants.reduce(
+            (total, applicant) =>
+              total +
+              Number(
+                applicant.qualityRating ||
+                  0
+              ),
+            0
+          ) /
+          data.applicants.length
+        ).toFixed(1)
+      : '0.0';
+
+  const conversionRate =
+    totalLinks > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (
+              convertedLinks /
+              totalLinks
+            ) * 100
+          )
+        )
+      : 0;
+
+  const performanceLevel =
+    conversionRate >= 90
+      ? 'Diamond'
+      : conversionRate >= 75
+        ? 'Platinum'
+        : conversionRate >= 50
+          ? 'Gold'
+          : conversionRate >= 25
+            ? 'Silver'
+            : 'Bronze';
+
+  const linkerApplications =
+    applications.filter(
+      (application) =>
+        application.linkSource ===
+        'Linker'
+    );
+
+  const getPeriodStats = (days) => {
+    const cutoff = new Date();
+
+    cutoff.setDate(
+      cutoff.getDate() - days
+    );
+
+    const periodApplications =
+      linkerApplications.filter(
+        (application) => {
+          const date = new Date(
+            application.appliedAt
+          );
+
+          return (
+            !Number.isNaN(
+              date.getTime()
+            ) &&
+            date >= cutoff
+          );
+        }
+      );
+
+    return {
+      total:
+        periodApplications.length,
+      successful:
+        periodApplications.filter(
+          (application) =>
+            [
+              'Interview Scheduled',
+              'Offer Received',
+            ].includes(
+              application.status
+            )
+        ).length,
+      declined:
+        periodApplications.filter(
+          (application) =>
+            application.status ===
+            'Rejected'
+        ).length,
+    };
+  };
+
+  const periods = [
+    ['This Week', getPeriodStats(7)],
+    ['Last 30 Days', getPeriodStats(30)],
+    ['Last 90 Days', getPeriodStats(90)],
+  ];
+
   return (
-    <EmptyState
-      icon={FiTrendingUp}
-      title="No verified performance data"
-      description="Performance results will appear after recorded links are processed."
-    />
+    <div
+      className={
+        styles.figmaPerformance
+      }
+    >
+      <section
+        className={
+          styles.performanceMetrics
+        }
+      >
+        <article>
+          <span>Total Links</span>
+          <strong>{totalLinks}</strong>
+          <small>
+            Verified Linker submissions
+          </small>
+        </article>
+
+        <article>
+          <span>Converted Links</span>
+          <strong>
+            {convertedLinks}
+          </strong>
+          <small>
+            Recorded as applications
+          </small>
+        </article>
+
+        <article>
+          <span>Total Offers</span>
+          <strong>{totalOffers}</strong>
+          <small>
+            Offers from assigned work
+          </small>
+        </article>
+
+        <article>
+          <span>Average Quality</span>
+          <strong>
+            {averageQuality}/5.0
+          </strong>
+          <small>
+            Assigned Applicant rating
+          </small>
+        </article>
+      </section>
+
+      <section
+        className={
+          styles.performanceLevel
+        }
+      >
+        <h2>Performance Level</h2>
+
+        <div
+          className={
+            styles.performanceLevelHeader
+          }
+        >
+          <div>
+            <strong>
+              {performanceLevel}
+            </strong>
+            <span>
+              {conversionRate}% link
+              conversion
+            </span>
+          </div>
+
+          <small>
+            {convertedLinks} converted
+          </small>
+        </div>
+
+        <div
+          className={
+            styles.performanceTrack
+          }
+        >
+          <span
+            style={{
+              width:
+                conversionRate + '%',
+            }}
+          />
+        </div>
+
+        <div
+          className={
+            styles.performanceLabels
+          }
+        >
+          {[
+            'Bronze',
+            'Silver',
+            'Gold',
+            'Platinum',
+            'Diamond',
+          ].map((level) => (
+            <span
+              key={level}
+              className={
+                level ===
+                performanceLevel
+                  ? styles
+                      .performanceCurrent
+                  : undefined
+              }
+            >
+              {level}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.recentPerformance
+        }
+      >
+        <h2>Recent Performance</h2>
+
+        <div>
+          {periods.map(
+            ([label, values]) => (
+              <article key={label}>
+                <strong>{label}</strong>
+
+                <dl>
+                  <div>
+                    <dt>
+                      Links Processed
+                    </dt>
+                    <dd>
+                      {values.total}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>
+                      Successful Outcomes
+                    </dt>
+                    <dd>
+                      {values.successful}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>Declined</dt>
+                    <dd>
+                      {values.declined}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            )
+          )}
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.performanceAchievements
+        }
+      >
+        <h2>Achievements</h2>
+
+        <p>
+          Verified achievements will appear
+          as Linker activity and successful
+          outcomes increase.
+        </p>
+      </section>
+    </div>
   );
 }
 
 function SettingsPage({ user }) {
-  return (
-    <section className={styles.settingsCard}>
-      <h2>Account profile</h2>
-      <p>
-        Your authenticated ApplyLoop profile is shown below.
-      </p>
+  const name =
+    user?.name || 'Not provided';
 
-      <dl>
-        <div>
-          <dt>Name</dt>
-          <dd>{user?.name || 'Not provided'}</dd>
+  const email =
+    user?.email || 'Not provided';
+
+  const initial =
+    name !== 'Not provided'
+      ? name.charAt(0).toUpperCase()
+      : 'L';
+
+  return (
+    <div
+      className={
+        styles.figmaSettings
+      }
+    >
+      <section
+        className={
+          styles.settingsIdentity
+        }
+      >
+        <div
+          className={
+            styles.settingsAvatar
+          }
+          aria-hidden="true"
+        >
+          {initial}
         </div>
+
         <div>
-          <dt>Email</dt>
-          <dd>{user?.email || 'Not provided'}</dd>
+          <strong>{name}</strong>
+          <span>Linker</span>
         </div>
-        <div>
-          <dt>Role</dt>
-          <dd>Linker</dd>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>Personal Information</h2>
+
+        <dl
+          className={
+            styles.settingsGrid
+          }
+        >
+          <div
+            className={
+              styles.settingsFull
+            }
+          >
+            <dt>Full Name</dt>
+            <dd>{name}</dd>
+          </div>
+
+          <div>
+            <dt>Designation</dt>
+            <dd>Linker</dd>
+          </div>
+
+          <div>
+            <dt>Email Address</dt>
+            <dd>{email}</dd>
+          </div>
+
+          <div>
+            <dt>Account Status</dt>
+            <dd>Active</dd>
+          </div>
+
+          <div>
+            <dt>Company</dt>
+            <dd>ApplyLoop</dd>
+          </div>
+        </dl>
+
+        <p
+          className={
+            styles.settingsNotice
+          }
+        >
+          Profile changes are managed by
+          ApplyLoop administrators.
+        </p>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>Security</h2>
+
+        <div
+          className={
+            styles.securityPanel
+          }
+        >
+          <div>
+            <strong>Password</strong>
+            <span>
+              Use the secure reset flow to
+              change your account password.
+            </span>
+          </div>
+
+          <Link href="/auth/forgot-password">
+            Reset Password
+          </Link>
         </div>
-      </dl>
-    </section>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>
+          Notification Preferences
+        </h2>
+
+        <div
+          className={
+            styles.preferenceList
+          }
+        >
+          <div>
+            <div>
+              <strong>
+                Email Notifications
+              </strong>
+              <span>
+                Account and workflow
+                notifications
+              </span>
+            </div>
+            <small>Managed</small>
+          </div>
+
+          <div>
+            <div>
+              <strong>
+                Push Notifications
+              </strong>
+              <span>
+                Browser notification support
+              </span>
+            </div>
+            <small>Unavailable</small>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>Company · ApplyLoop</h2>
+
+        <div
+          className={
+            styles.companySettings
+          }
+        >
+          <div>
+            <strong>Role</strong>
+            <span>Linker</span>
+          </div>
+
+          <div>
+            <strong>
+              Account Management
+            </strong>
+            <span>
+              ApplyLoop Administration
+            </span>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1000,7 +2959,13 @@ function renderPage(
   }
 
   if (section === 'performance') {
-    return <PerformancePage />;
+    return (
+      <PerformancePage
+        data={data}
+        isLoading={isLoading}
+        error={error}
+      />
+    );
   }
 
   if (section === 'settings') {
@@ -1090,7 +3055,8 @@ export default function LinkerPortal() {
 
         if (
           !Array.isArray(result.applicants) ||
-          !Array.isArray(result.clients)
+          !Array.isArray(result.clients) ||
+          !Array.isArray(result.applications)
         ) {
           throw new Error(
             'The assignment response could not be verified.'
@@ -1103,6 +3069,8 @@ export default function LinkerPortal() {
               result.applicants,
             clients:
               result.clients,
+            applications:
+              result.applications,
             summary: {
               assignedApplicants:
                 Number(
@@ -1114,6 +3082,30 @@ export default function LinkerPortal() {
                 Number(
                   result.summary
                     ?.assignedClients ||
+                    0
+                ),
+              linksFoundToday:
+                Number(
+                  result.summary
+                    ?.linksFoundToday ||
+                    0
+                ),
+              activeClients:
+                Number(
+                  result.summary
+                    ?.activeClients ||
+                    0
+                ),
+              linksSourced:
+                Number(
+                  result.summary
+                    ?.linksSourced ||
+                    0
+                ),
+              pendingReview:
+                Number(
+                  result.summary
+                    ?.pendingReview ||
                     0
                 ),
             },

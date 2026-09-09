@@ -92,6 +92,54 @@ function validateComment(value) {
   return normalized || null;
 }
 
+function validateDetail(
+  value,
+  label,
+  {
+    required = false,
+    maxLength = 200,
+  } = {}
+) {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    if (required) {
+      throw new ApiError(
+        400,
+        `${label} is required.`
+      );
+    }
+
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    throw new ApiError(
+      400,
+      `${label} must be text.`
+    );
+  }
+
+  const normalized = value.trim();
+
+  if (required && !normalized) {
+    throw new ApiError(
+      400,
+      `${label} is required.`
+    );
+  }
+
+  if (normalized.length > maxLength) {
+    throw new ApiError(
+      400,
+      `${label} is too long.`
+    );
+  }
+
+  return normalized || null;
+}
+
 function formatRequest(request) {
   return {
     id: request.id,
@@ -100,6 +148,18 @@ function formatRequest(request) {
       request.target_applicant_id,
     jobLink: request.job_url,
     comment: request.comment,
+    company:
+      request.job_company || '',
+    position:
+      request.job_position || '',
+    location:
+      request.job_location || '',
+    jobType:
+      request.job_type || '',
+    salaryRange:
+      request.salary_range || '',
+    linkProvider:
+      request.link_provider || '',
     status: request.status,
     source: 'Linker',
     convertedApplicationId:
@@ -131,6 +191,12 @@ async function listRequests(
         'target_applicant_id',
         'job_url',
         'comment',
+        'job_company',
+        'job_position',
+        'job_location',
+        'job_type',
+        'salary_range',
+        'link_provider',
         'status',
         'converted_application_id',
         'reviewed_at',
@@ -194,11 +260,57 @@ async function createRequest(
     req.body?.comment
   );
 
+  const company = validateDetail(
+    req.body?.company,
+    'Company name',
+    {
+      required: true,
+    }
+  );
+
+  const position = validateDetail(
+    req.body?.position,
+    'Job position',
+    {
+      required: true,
+    }
+  );
+
+  const location = validateDetail(
+    req.body?.location,
+    'Location',
+    {
+      required: true,
+    }
+  );
+
+  const jobType = validateDetail(
+    req.body?.jobType,
+    'Job type',
+    {
+      required: true,
+      maxLength: 100,
+    }
+  );
+
+  const salaryRange = validateDetail(
+    req.body?.salaryRange,
+    'Salary range'
+  );
+
+  const linkProvider = validateDetail(
+    req.body?.linkProvider,
+    'Link provider',
+    {
+      maxLength: 100,
+    }
+  );
+
   const {
     data: requestRows,
     error: requestError,
   } = await supabase.rpc(
-    'create_linker_job_request',
+    'create_linker_job_request_with_details',
     {
       p_linker_user_id:
         profile.id,
@@ -210,6 +322,18 @@ async function createRequest(
         jobUrl,
       p_comment:
         comment,
+      p_job_company:
+        company,
+      p_job_position:
+        position,
+      p_job_location:
+        location,
+      p_job_type:
+        jobType,
+      p_salary_range:
+        salaryRange,
+      p_link_provider:
+        linkProvider,
     }
   );
 
