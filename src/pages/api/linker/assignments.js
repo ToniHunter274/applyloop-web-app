@@ -49,6 +49,60 @@ async function getAssignments(req, res) {
   const assignments =
     assignmentRows || [];
 
+  const {
+    data: linkerRequestRows,
+    error: linkerRequestsError,
+  } = await supabase
+    .from('client_job_requests')
+    .select('status, created_at')
+    .eq(
+      'submitted_by',
+      linkerProfile.id
+    )
+    .eq('request_source', 'linker');
+
+  if (linkerRequestsError) {
+    console.error(
+      'Unable to load Linker request metrics:',
+      linkerRequestsError
+    );
+
+    throw new ApiError(
+      500,
+      'Your Linker activity could not be loaded.'
+    );
+  }
+
+  const linkerRequests =
+    linkerRequestRows || [];
+
+  const todayStart =
+    new Date();
+
+  todayStart.setUTCHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const linksFoundToday =
+    linkerRequests.filter(
+      (request) =>
+        new Date(
+          request.created_at
+        ).getTime() >=
+        todayStart.getTime()
+    ).length;
+
+  const pendingReview =
+    linkerRequests.filter(
+      (request) =>
+        ['new', 'in_review'].includes(
+          request.status
+        )
+    ).length;
+
   const applicantIds =
     unique(
       assignments.map(
@@ -66,9 +120,15 @@ async function getAssignments(req, res) {
     return res.status(200).json({
       applicants: [],
       clients: [],
+      applications: [],
       summary: {
         assignedApplicants: 0,
         assignedClients: 0,
+        linksFoundToday,
+        activeClients: 0,
+        linksSourced:
+          linkerRequests.length,
+        pendingReview,
       },
     });
   }
@@ -258,6 +318,48 @@ async function getAssignments(req, res) {
 
     clientProfiles =
       profileRows || [];
+  }
+
+  let applicationRows = [];
+
+  if (clientIds.length > 0) {
+    const {
+      data: applications,
+      error: applicationsError,
+    } = await supabase
+      .from('applications')
+      .select(
+        [
+          'id',
+          'client_id',
+          'company',
+          'position',
+          'status',
+          'link_source',
+          'applied_at',
+          'job_url',
+        ].join(', ')
+      )
+      .in('client_id', clientIds)
+      .order('applied_at', {
+        ascending: false,
+      })
+      .limit(100);
+
+    if (applicationsError) {
+      console.error(
+        'Unable to load assigned Client applications:',
+        applicationsError
+      );
+
+      throw new ApiError(
+        500,
+        'Assigned Client applications could not be loaded.'
+      );
+    }
+
+    applicationRows =
+      applications || [];
   }
 
   const assignmentsByApplicantId =
@@ -452,6 +554,49 @@ async function getAssignments(req, res) {
       };
     });
 
+  const clientNamesById =
+    new Map(
+      clientResults.map(
+        (client) => [
+          client.id,
+          client.fullName,
+        ]
+      )
+    );
+
+  const applicationResults =
+    applicationRows.map(
+      (application) => ({
+        id: application.id,
+        clientId:
+          application.client_id,
+        clientName:
+          clientNamesById.get(
+            application.client_id
+          ) || 'Unnamed Client',
+        company:
+          application.company,
+        position:
+          application.position,
+        status:
+          application.status,
+        linkSource:
+          application.link_source,
+        appliedAt:
+          application.applied_at,
+        jobLink:
+          application.job_url || '',
+      })
+    );
+
+  const activeClients =
+    clientResults.filter(
+      (client) =>
+        client.status === 'active' &&
+        client.accountStatus ===
+          'active'
+    ).length;
+
   res.setHeader(
     'Cache-Control',
     'no-store'
@@ -460,11 +605,18 @@ async function getAssignments(req, res) {
   return res.status(200).json({
     applicants: applicantResults,
     clients: clientResults,
+    applications:
+      applicationResults,
     summary: {
       assignedApplicants:
         applicantResults.length,
       assignedClients:
         clientResults.length,
+      linksFoundToday,
+      activeClients,
+      linksSourced:
+        linkerRequests.length,
+      pendingReview,
     },
   });
 }
