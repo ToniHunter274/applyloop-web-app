@@ -1444,3 +1444,230 @@
     overflow-x: auto;
   }
 }
+
+
+/* Linker Figma assigned Applicants */
+
+.figmaApplicants {
+  display: grid;
+  gap: 20px;
+}
+
+.applicantMetrics {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.applicantMetrics article {
+  min-height: 86px;
+  border: 1px solid #e7e9ef;
+  background: #ffffff;
+  padding: 17px;
+}
+
+.applicantMetrics span,
+.applicantMetrics strong {
+  display: block;
+}
+
+.applicantMetrics span {
+  color: #727987;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.applicantMetrics strong {
+  margin-top: 11px;
+  color: #171b26;
+  font-size: 20px;
+}
+
+.applicantSearch {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #e4e7ed;
+  background: #fafbfc;
+  padding: 0 12px;
+}
+
+.applicantSearch svg {
+  width: 13px;
+  height: 13px;
+  color: #8a919e;
+}
+
+.applicantSearch input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 10px 0;
+  color: #303644;
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+.applicantTabs {
+  display: flex;
+  gap: 26px;
+  border-bottom: 1px solid #e8eaf0;
+}
+
+.applicantTab,
+.applicantTabActive {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0 0 10px;
+  color: #757d8c;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.applicantTabActive {
+  border-bottom-color: #2457d6;
+  color: #2457d6;
+  font-weight: 700;
+}
+
+.applicantTable {
+  overflow: hidden;
+  border: 1px solid #eaecf1;
+  background: #ffffff;
+}
+
+.applicantTable table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.applicantTable th,
+.applicantTable td {
+  border-bottom: 1px solid #eff1f4;
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.applicantTable th {
+  background: #fafbfc;
+  color: #727987;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.applicantTable td {
+  color: #3e4552;
+  font-size: 10px;
+}
+
+.applicantTable td strong,
+.applicantTable td small {
+  display: block;
+}
+
+.applicantTable td strong {
+  color: #272d39;
+  font-size: 10px;
+}
+
+.applicantTable td small {
+  max-width: 190px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #8a919e;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.applicantAvailable,
+.applicantUnavailable {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 3px;
+  padding: 4px 7px;
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.applicantAvailable {
+  background: #dcf8e8;
+  color: #16804d;
+}
+
+.applicantUnavailable {
+  background: #fff0cc;
+  color: #a96b00;
+}
+
+.completionValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completionValue > span {
+  width: 28px;
+}
+
+.completionValue > div {
+  width: 54px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e8ee;
+}
+
+.completionValue > div span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2457d6;
+}
+
+.applicantAction {
+  display: inline-flex;
+  border: 1px solid #dce4fa;
+  background: #edf2ff;
+  padding: 5px 8px;
+  color: #2457d6;
+  font-size: 8px;
+  text-decoration: none;
+}
+
+.applicantTableEmpty {
+  height: 150px;
+  color: #8b929f !important;
+  text-align: center !important;
+}
+
+.applicantSummary {
+  margin: -8px 0 0;
+  color: #858c99;
+  font-size: 9px;
+  text-align: right;
+}
+
+@media (max-width: 980px) {
+  .applicantMetrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .applicantMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .applicantTabs {
+    gap: 14px;
+    overflow-x: auto;
+  }
+}

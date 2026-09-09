@@ -965,6 +965,11 @@ function ApplicantsPage({
   isLoading,
   error,
 }) {
+  const [search, setSearch] =
+    useState('');
+  const [filter, setFilter] =
+    useState('all');
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -973,87 +978,367 @@ function ApplicantsPage({
     return <ErrorState message={error} />;
   }
 
-  if (data.applicants.length === 0) {
-    return (
-      <EmptyState
-        icon={FiUsers}
-        title="No assigned Applicants"
-        description="Applicants assigned directly to your Linker account will appear here."
-      />
+  const applicants =
+    data.applicants || [];
+
+  const clients =
+    data.clients || [];
+
+  const normalizedSearch =
+    search.trim().toLowerCase();
+
+  const applicantMetrics =
+    applicants.map((applicant) => {
+      const assignedClients =
+        clients.filter((client) =>
+          client.applicantIds.includes(
+            applicant.id
+          )
+        );
+
+      return {
+        ...applicant,
+        assignedClients,
+        activeClients:
+          assignedClients.filter(
+            (client) =>
+              client.status === 'active'
+          ).length,
+        totalLinks:
+          assignedClients.reduce(
+            (total, client) =>
+              total +
+              Number(
+                client.linksSourced || 0
+              ),
+            0
+          ),
+      };
+    });
+
+  const filteredApplicants =
+    applicantMetrics.filter(
+      (applicant) => {
+        const matchesSearch =
+          !normalizedSearch ||
+          [
+            applicant.fullName,
+            applicant.email,
+            applicant.team,
+          ].some((value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(
+                normalizedSearch
+              )
+          );
+
+        const matchesFilter =
+          filter === 'all' ||
+          (
+            filter === 'available' &&
+            applicant.canReceiveLinks
+          ) ||
+          (
+            filter === 'unavailable' &&
+            !applicant.canReceiveLinks
+          );
+
+        return (
+          matchesSearch &&
+          matchesFilter
+        );
+      }
     );
-  }
+
+  const availableApplicants =
+    applicantMetrics.filter(
+      (applicant) =>
+        applicant.canReceiveLinks
+    ).length;
+
+  const activeClientIds =
+    new Set(
+      clients
+        .filter(
+          (client) =>
+            client.status === 'active'
+        )
+        .map(
+          (client) => client.id
+        )
+    );
+
+  const totalLinks =
+    clients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.linksSourced || 0
+        ),
+      0
+    );
+
+  const averageCompletion =
+    applicants.length
+      ? Math.round(
+          applicants.reduce(
+            (total, applicant) =>
+              total +
+              Number(
+                applicant.completionRate ||
+                  0
+              ),
+            0
+          ) /
+            applicants.length
+        )
+      : 0;
 
   return (
-    <section className={styles.tableCard}>
-      <div className={styles.tableHeading}>
-        <div>
-          <h2>Assigned Applicants</h2>
-          <p>
-            Applicants currently supported by your
-            Linker account.
-          </p>
-        </div>
-        <strong>
-          {data.applicants.length}
-        </strong>
+    <div
+      className={
+        styles.figmaApplicants
+      }
+    >
+      <section
+        className={
+          styles.applicantMetrics
+        }
+      >
+        <article>
+          <span>Assigned Applicants</span>
+          <strong>
+            {applicants.length}
+          </strong>
+        </article>
+
+        <article>
+          <span>Available</span>
+          <strong>
+            {availableApplicants}
+          </strong>
+        </article>
+
+        <article>
+          <span>Active Clients</span>
+          <strong>
+            {activeClientIds.size}
+          </strong>
+        </article>
+
+        <article>
+          <span>Links Sourced</span>
+          <strong>{totalLinks}</strong>
+        </article>
+      </section>
+
+      <label
+        className={
+          styles.applicantSearch
+        }
+      >
+        <FiUsers aria-hidden="true" />
+        <input
+          type="search"
+          value={search}
+          onChange={(event) =>
+            setSearch(
+              event.target.value
+            )
+          }
+          placeholder="Search Applicants"
+          aria-label="Search Applicants"
+        />
+      </label>
+
+      <div
+        className={
+          styles.applicantTabs
+        }
+      >
+        {[
+          ['all', 'All Applicants'],
+          ['available', 'Available'],
+          [
+            'unavailable',
+            'Unavailable',
+          ],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={
+              filter === value
+                ? styles.applicantTabActive
+                : styles.applicantTab
+            }
+            onClick={() =>
+              setFilter(value)
+            }
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className={styles.tableScroll}>
-        <table>
-          <thead>
-            <tr>
-              <th>Applicant</th>
-              <th>Team</th>
-              <th>Assigned</th>
-              <th>Active tasks</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.applicants.map(
-              (applicant) => (
-                <tr key={applicant.id}>
-                  <td>
-                    <strong>
-                      {applicant.fullName}
-                    </strong>
-                    <small>
-                      {applicant.email ||
-                        'No email available'}
-                    </small>
-                  </td>
-                  <td>
-                    {applicant.team ||
-                      'Not assigned'}
-                  </td>
-                  <td>
-                    {formatDate(
-                      applicant.assignedAt
-                    )}
-                  </td>
-                  <td>
-                    {applicant.activeTasks}
-                  </td>
-                  <td>
-                    <span
-                      className={
-                        applicant.canReceiveLinks
-                          ? styles.statusReady
-                          : styles.statusUnavailable
-                      }
+      <section
+        className={
+          styles.applicantTable
+        }
+      >
+        <div
+          className={styles.tableScroll}
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Status</th>
+                <th>Active Clients</th>
+                <th>Total Links</th>
+                <th>Quality Rating</th>
+                <th>Completion Rate</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredApplicants.map(
+                (applicant) => {
+                  const completion =
+                    Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        Number(
+                          applicant
+                            .completionRate ||
+                            0
+                        )
+                      )
+                    );
+
+                  return (
+                    <tr
+                      key={applicant.id}
                     >
-                      {applicant.canReceiveLinks
-                        ? 'Available'
-                        : 'Unavailable'}
-                    </span>
+                      <td>
+                        <strong>
+                          {
+                            applicant.fullName
+                          }
+                        </strong>
+                        <small>
+                          {applicant.email ||
+                            'No email available'}
+                        </small>
+                      </td>
+
+                      <td>
+                        <span
+                          className={
+                            applicant
+                              .canReceiveLinks
+                              ? styles
+                                  .applicantAvailable
+                              : styles
+                                  .applicantUnavailable
+                          }
+                        >
+                          {applicant
+                            .canReceiveLinks
+                            ? 'Available'
+                            : 'Unavailable'}
+                        </span>
+                      </td>
+
+                      <td>
+                        {
+                          applicant.activeClients
+                        }
+                      </td>
+
+                      <td>
+                        {applicant.totalLinks}
+                      </td>
+
+                      <td>
+                        {Number(
+                          applicant.qualityRating ||
+                            0
+                        ).toFixed(1)}
+                      </td>
+
+                      <td>
+                        <div
+                          className={
+                            styles
+                              .completionValue
+                          }
+                        >
+                          <span>
+                            {completion}%
+                          </span>
+                          <div>
+                            <span
+                              style={{
+                                width:
+                                  completion +
+                                  '%',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <Link
+                          href="/linker/record-link"
+                          className={
+                            styles
+                              .applicantAction
+                          }
+                        >
+                          + Submit Link
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
+
+              {filteredApplicants.length ===
+                0 && (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className={
+                      styles
+                        .applicantTableEmpty
+                    }
+                  >
+                    No Applicants match
+                    this search.
                   </td>
                 </tr>
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p
+        className={
+          styles.applicantSummary
+        }
+      >
+        Average completion rate:{' '}
+        <strong>
+          {averageCompletion}%
+        </strong>
+      </p>
+    </div>
   );
 }
 
