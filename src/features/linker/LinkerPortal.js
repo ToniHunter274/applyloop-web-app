@@ -391,6 +391,15 @@ function ClientsPage({
   isLoading,
   error,
 }) {
+  const [search, setSearch] =
+    useState('');
+  const [filter, setFilter] =
+    useState('all');
+  const [
+    selectedClientId,
+    setSelectedClientId,
+  ] = useState('');
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -399,15 +408,11 @@ function ClientsPage({
     return <ErrorState message={error} />;
   }
 
-  if (data.clients.length === 0) {
-    return (
-      <EmptyState
-        icon={FiBriefcase}
-        title="No assigned clients"
-        description="Clients belonging to your assigned Applicants will appear here."
-      />
+  const selectedClient =
+    data.clients.find(
+      (client) =>
+        client.id === selectedClientId
     );
-  }
 
   const applicantsById =
     new Map(
@@ -419,34 +424,421 @@ function ClientsPage({
       )
     );
 
-  return (
-    <section className={styles.tableCard}>
-      <div className={styles.tableHeading}>
-        <div>
-          <h2>Assigned clients</h2>
+  if (selectedClient) {
+    const assignedApplicants =
+      selectedClient.applicantIds
+        .map(
+          (id) =>
+            applicantsById.get(id)
+        )
+        .filter(Boolean);
+
+    const progress =
+      selectedClient.applicationLimit > 0
+        ? Math.min(
+            100,
+            Math.round(
+              (
+                selectedClient
+                  .applicationsCompleted /
+                selectedClient
+                  .applicationLimit
+              ) * 100
+            )
+          )
+        : 0;
+
+    return (
+      <div className={styles.clientDetail}>
+        <button
+          type="button"
+          className={styles.backLink}
+          onClick={() =>
+            setSelectedClientId('')
+          }
+        >
+          ← {selectedClient.fullName}
+        </button>
+
+        <p className={styles.detailPlan}>
+          {selectedClient.plan ||
+            'Client plan'}
+        </p>
+
+        <section
+          className={styles.clientDetailMetrics}
+        >
+          <article>
+            <span>Total Applications</span>
+            <strong>
+              {
+                selectedClient
+                  .applicationsCompleted
+              }
+              /
+              {
+                selectedClient
+                  .applicationLimit
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Upcoming Interviews</span>
+            <strong>
+              {
+                selectedClient
+                  .upcomingInterviews
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Total Rejected Jobs</span>
+            <strong>
+              {
+                selectedClient
+                  .rejectedApplications
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Total Accepted Jobs</span>
+            <strong>
+              {
+                selectedClient
+                  .offersReceived
+              }
+            </strong>
+          </article>
+
+          <article>
+            <span>Resumes</span>
+            <strong>—</strong>
+          </article>
+        </section>
+
+        <section className={styles.readinessSection}>
+          <div>
+            <h2>Client Dashboard Readiness</h2>
+            <span
+              className={
+                selectedClient.canReceiveLinks
+                  ? styles.statusReady
+                  : styles.statusUnavailable
+              }
+            >
+              {selectedClient.canReceiveLinks
+                ? 'Setup complete'
+                : 'Setup required'}
+            </span>
+          </div>
+
+          <div className={styles.readinessGrid}>
+            <article>
+              <strong>Email</strong>
+              <span>
+                {selectedClient.email
+                  ? 'Available'
+                  : 'Missing'}
+              </span>
+            </article>
+
+            <article>
+              <strong>Tracker</strong>
+              <span>
+                {selectedClient.linksSourced}
+                {' links sourced'}
+              </span>
+            </article>
+
+            <article
+              className={
+                selectedClient.canReceiveLinks
+                  ? ''
+                  : styles.readinessWarning
+              }
+            >
+              <strong>
+                Request Available
+              </strong>
+              <span>
+                {selectedClient.canReceiveLinks
+                  ? 'Ready to receive links'
+                  : 'Client or Applicant unavailable'}
+              </span>
+            </article>
+          </div>
+        </section>
+
+        <section className={styles.clientInformation}>
+          <h2>Personal Information</h2>
+
+          <dl>
+            <div>
+              <dt>Full Name</dt>
+              <dd>
+                {selectedClient.fullName}
+              </dd>
+            </div>
+            <div>
+              <dt>Plan</dt>
+              <dd>
+                {selectedClient.plan ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Email Address</dt>
+              <dd>
+                {selectedClient.email ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Country</dt>
+              <dd>
+                {selectedClient.country ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>State/Province</dt>
+              <dd>
+                {selectedClient.state ||
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Application Progress</dt>
+              <dd>{progress}%</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className={styles.clientInformation}>
+          <h2>Work Availability</h2>
+
+          <dl>
+            <div>
+              <dt>Client Status</dt>
+              <dd>
+                {selectedClient.status}
+              </dd>
+            </div>
+            <div>
+              <dt>Assigned Applicants</dt>
+              <dd>
+                {assignedApplicants
+                  .map(
+                    (applicant) =>
+                      applicant.fullName
+                  )
+                  .join(', ') ||
+                  'Not assigned'}
+              </dd>
+            </div>
+            <div>
+              <dt>Last Activity</dt>
+              <dd>
+                {formatDate(
+                  selectedClient.lastActivity
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Links Sourced</dt>
+              <dd>
+                {selectedClient.linksSourced}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className={styles.adminNotes}>
+          <h2>Notes from Admin</h2>
           <p>
-            Derived from your current Applicant
-            assignments.
+            Private administrative notes are not
+            exposed in the Linker workspace.
           </p>
-        </div>
-        <strong>
-          {data.clients.length}
-        </strong>
+        </section>
+      </div>
+    );
+  }
+
+  const term =
+    search.trim().toLowerCase();
+
+  const filteredClients =
+    data.clients.filter((client) => {
+      const matchesSearch =
+        !term ||
+        [
+          client.fullName,
+          client.email,
+          client.plan,
+          client.country,
+        ].some((value) =>
+          String(value || '')
+            .toLowerCase()
+            .includes(term)
+        );
+
+      const isActive =
+        client.status === 'active' &&
+        client.accountStatus === 'active';
+
+      const matchesFilter =
+        filter === 'all' ||
+        (
+          filter === 'active' &&
+          isActive
+        ) ||
+        (
+          filter === 'inactive' &&
+          !isActive
+        );
+
+      return (
+        matchesSearch &&
+        matchesFilter
+      );
+    });
+
+  const totals = {
+    clients: data.clients.length,
+    links: data.clients.reduce(
+      (sum, client) =>
+        sum + client.linksSourced,
+      0
+    ),
+    completed: data.clients.reduce(
+      (sum, client) =>
+        sum + client.completedLinks,
+      0
+    ),
+    interviews: data.clients.reduce(
+      (sum, client) =>
+        sum +
+        client.upcomingInterviews,
+      0
+    ),
+  };
+
+  const activeCount =
+    data.clients.filter(
+      (client) =>
+        client.status === 'active' &&
+        client.accountStatus === 'active'
+    ).length;
+
+  if (data.clients.length === 0) {
+    return (
+      <EmptyState
+        icon={FiBriefcase}
+        title="No assigned clients"
+        description="Clients belonging to your assigned Applicants will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className={styles.figmaClients}>
+      <section className={styles.clientMetrics}>
+        <article>
+          <span>Total Clients</span>
+          <strong>{totals.clients}</strong>
+        </article>
+        <article>
+          <span>Total Links</span>
+          <strong>{totals.links}</strong>
+        </article>
+        <article>
+          <span>Completed Links</span>
+          <strong>{totals.completed}</strong>
+        </article>
+        <article>
+          <span>Total Interviews</span>
+          <strong>{totals.interviews}</strong>
+        </article>
+      </section>
+
+      <label className={styles.clientSearch}>
+        <span className="sr-only">
+          Search Clients
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) =>
+            setSearch(event.target.value)
+          }
+          placeholder="Search Clients"
+        />
+      </label>
+
+      <div className={styles.clientTabs}>
+        {[
+          [
+            'all',
+            'All Clients',
+            data.clients.length,
+          ],
+          [
+            'active',
+            'Active Clients',
+            activeCount,
+          ],
+          [
+            'inactive',
+            'Inactive Clients',
+            data.clients.length -
+              activeCount,
+          ],
+        ].map(
+          ([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                filter === value
+                  ? styles.clientTabActive
+                  : styles.clientTab
+              }
+              onClick={() =>
+                setFilter(value)
+              }
+            >
+              {label} ({count})
+            </button>
+          )
+        )}
       </div>
 
-      <div className={styles.tableScroll}>
-        <table>
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th>Applicant</th>
-              <th>Plan</th>
-              <th>Progress</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.clients.map((client) => {
+      {filteredClients.length === 0 ? (
+        <div className={styles.clientEmpty}>
+          No Clients match this view.
+        </div>
+      ) : (
+        <section className={styles.clientCardGrid}>
+          {filteredClients.map(
+            (client) => {
+              const progress =
+                client.applicationLimit > 0
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        (
+                          client
+                            .applicationsCompleted /
+                          client
+                            .applicationLimit
+                        ) * 100
+                      )
+                    )
+                  : 0;
+
               const applicantNames =
                 client.applicantIds
                   .map(
@@ -456,27 +848,23 @@ function ClientsPage({
                   )
                   .filter(Boolean)
                   .join(', ') ||
-                'Not available';
+                'Not assigned';
 
               return (
-                <tr key={client.id}>
-                  <td>
-                    <strong>
-                      {client.fullName}
-                    </strong>
-                    <small>
-                      {client.email ||
-                        'No email available'}
-                    </small>
-                  </td>
-                  <td>{applicantNames}</td>
-                  <td>{client.plan}</td>
-                  <td>
-                    {client.applicationsCompleted}
-                    {' / '}
-                    {client.applicationLimit}
-                  </td>
-                  <td>
+                <article
+                  key={client.id}
+                  className={styles.clientCard}
+                >
+                  <header>
+                    <div>
+                      <h2>
+                        {client.fullName}
+                      </h2>
+                      <p>
+                        {client.plan ||
+                          'Client plan'}
+                      </p>
+                    </div>
                     <span
                       className={
                         client.canReceiveLinks
@@ -485,17 +873,90 @@ function ClientsPage({
                       }
                     >
                       {client.canReceiveLinks
-                        ? 'Ready'
-                        : 'Unavailable'}
+                        ? 'Active'
+                        : 'Inactive'}
                     </span>
-                  </td>
-                </tr>
+                  </header>
+
+                  <div
+                    className={
+                      styles.progressLabel
+                    }
+                  >
+                    <span>Links Progress</span>
+                    <strong>
+                      {
+                        client
+                          .applicationsCompleted
+                      }
+                      /
+                      {
+                        client
+                          .applicationLimit
+                      }
+                    </strong>
+                  </div>
+
+                  <div
+                    className={
+                      styles.clientProgress
+                    }
+                  >
+                    <span
+                      style={{
+                        width:
+                          progress + '%',
+                      }}
+                    />
+                  </div>
+
+                  <dl>
+                    <div>
+                      <dt>Total Links</dt>
+                      <dd>
+                        {client.linksSourced}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Upcoming Interviews</dt>
+                      <dd>
+                        {
+                          client
+                            .upcomingInterviews
+                        }
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Target Countries</dt>
+                      <dd>
+                        {client.country ||
+                          'Not provided'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <footer>
+                    <span>
+                      Applicant: {applicantNames}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedClientId(
+                          client.id
+                        )
+                      }
+                    >
+                      View Details →
+                    </button>
+                  </footer>
+                </article>
               );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
+            }
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 

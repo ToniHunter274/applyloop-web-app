@@ -1128,3 +1128,319 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Linker Figma assigned Clients */
+
+.figmaClients {
+  display: grid;
+  gap: 20px;
+}
+
+.clientMetrics,
+.clientDetailMetrics {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.clientMetrics article,
+.clientDetailMetrics article {
+  min-height: 86px;
+  border: 1px solid #e7e9ef;
+  background: #ffffff;
+  padding: 17px;
+}
+
+.clientMetrics span,
+.clientMetrics strong,
+.clientDetailMetrics span,
+.clientDetailMetrics strong {
+  display: block;
+}
+
+.clientMetrics span,
+.clientDetailMetrics span {
+  color: #727987;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.clientMetrics strong,
+.clientDetailMetrics strong {
+  margin-top: 11px;
+  font-size: 20px;
+}
+
+.clientSearch input {
+  width: 100%;
+  border: 1px solid #e4e7ed;
+  background: #fafbfc;
+  padding: 10px 13px;
+  color: #303644;
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+.clientTabs {
+  display: flex;
+  gap: 26px;
+  border-bottom: 1px solid #e8eaf0;
+}
+
+.clientTab,
+.clientTabActive {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0 0 10px;
+  color: #757d8c;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.clientTabActive {
+  border-bottom-color: #2457d6;
+  color: #2457d6;
+  font-weight: 700;
+}
+
+.clientCardGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.clientCard {
+  border: 1px solid #e4e7ed;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.clientCard header,
+.clientCard footer,
+.progressLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.clientCard h2 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.clientCard header p {
+  margin: 4px 0 0;
+  color: #838a97;
+  font-size: 9px;
+}
+
+.progressLabel {
+  margin-top: 18px;
+  color: #4f5665;
+  font-size: 9px;
+}
+
+.clientProgress {
+  height: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+  background: #e8ebf1;
+}
+
+.clientProgress span {
+  display: block;
+  height: 100%;
+  background: #2457d6;
+}
+
+.clientCard dl {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 17px 0;
+}
+
+.clientCard dt,
+.clientCard dd {
+  margin: 0;
+  font-size: 9px;
+}
+
+.clientCard dt {
+  color: #8b929f;
+}
+
+.clientCard dd {
+  margin-top: 4px;
+  color: #303644;
+}
+
+.clientCard footer {
+  border-top: 1px solid #eef0f4;
+  padding-top: 12px;
+  color: #646c7a;
+  font-size: 9px;
+}
+
+.clientCard footer button,
+.backLink {
+  border: 0;
+  background: transparent;
+  color: #424a58;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.clientEmpty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: #8b929f;
+  font-size: 12px;
+}
+
+.clientDetail {
+  display: grid;
+  gap: 28px;
+}
+
+.backLink {
+  width: fit-content;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.detailPlan {
+  margin: -23px 0 0 22px;
+  color: #8a919e;
+  font-size: 9px;
+}
+
+.clientDetailMetrics {
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr));
+}
+
+.readinessSection,
+.clientInformation,
+.adminNotes {
+  border-top: 1px solid #eceef2;
+  padding-top: 20px;
+}
+
+.readinessSection > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.readinessSection h2,
+.clientInformation h2,
+.adminNotes h2 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.readinessGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.readinessGrid article {
+  min-height: 58px;
+  border: 1px solid #e5e8ee;
+  background: #fafbfc;
+  padding: 12px;
+}
+
+.readinessGrid strong,
+.readinessGrid span {
+  display: block;
+  font-size: 9px;
+}
+
+.readinessGrid span {
+  margin-top: 5px;
+  color: #777f8d;
+}
+
+.readinessWarning {
+  border-color: #f0a1a6 !important;
+  background: #fff1f2 !important;
+}
+
+.clientInformation dl {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 15px 22px;
+  margin: 17px 0 0;
+}
+
+.clientInformation dl div {
+  border: 1px solid #e5e8ee;
+  padding: 11px 12px;
+}
+
+.clientInformation dt,
+.clientInformation dd {
+  margin: 0;
+  font-size: 9px;
+}
+
+.clientInformation dt {
+  color: #838b98;
+}
+
+.clientInformation dd {
+  margin-top: 5px;
+  color: #272d39;
+}
+
+.adminNotes p {
+  margin: 12px 0 0;
+  color: #838b98;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .clientMetrics,
+  .clientDetailMetrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .clientCardGrid,
+  .readinessGrid,
+  .clientInformation dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .clientMetrics,
+  .clientDetailMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .clientTabs {
+    gap: 14px;
+    overflow-x: auto;
+  }
+}
