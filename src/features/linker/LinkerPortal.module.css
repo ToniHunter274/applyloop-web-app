@@ -809,3 +809,134 @@
     width: 100%;
   }
 }
+
+
+/* Linker Figma shell alignment */
+
+.workspace {
+  background: #f7f8fb;
+  color: #171b26;
+}
+
+.sidebar,
+.sidebarOpen {
+  width: 220px;
+  border-right: 1px solid #e5e8ef;
+  background: #f7f9ff;
+  padding: 30px 12px 22px;
+}
+
+.brandRow {
+  margin-bottom: 28px;
+  padding: 0 10px;
+}
+
+.brand {
+  gap: 8px;
+  color: #171b26;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.brand img {
+  width: 23px;
+  height: 23px;
+}
+
+.sidebar nav,
+.sidebarOpen nav {
+  gap: 4px;
+}
+
+.navItem,
+.navActive {
+  min-height: 38px;
+  gap: 10px;
+  border-radius: 5px;
+  padding: 0 11px;
+  color: #666d7b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.navActive {
+  background: #e8eeff;
+  color: #2457d6;
+}
+
+.navItem svg,
+.navActive svg {
+  width: 15px;
+  height: 15px;
+}
+
+.account {
+  grid-template-columns:
+    30px minmax(0, 1fr) 28px;
+  gap: 8px;
+  border-top: 0;
+  padding: 18px 7px 0;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+}
+
+.accountText strong {
+  font-size: 11px;
+}
+
+.accountText small {
+  font-size: 9px;
+}
+
+.account button {
+  width: 28px;
+  height: 28px;
+}
+
+.main {
+  margin-left: 220px;
+  background: #ffffff;
+}
+
+.content {
+  width: 100%;
+  max-width: 1440px;
+  padding: 34px 32px 56px;
+}
+
+.pageHeader {
+  margin-bottom: 26px;
+}
+
+.pageHeader h1 {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.pageHeader p {
+  margin-top: 5px;
+  color: #8a909d;
+  font-size: 11px;
+}
+
+@media (max-width: 860px) {
+  .main {
+    margin-left: 0;
+  }
+
+  .content {
+    padding: 28px 20px 48px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sidebar,
+  .sidebarOpen {
+    width: min(86vw, 300px);
+  }
+}
