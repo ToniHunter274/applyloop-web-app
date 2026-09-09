@@ -2415,39 +2415,505 @@ function FeedbackPage() {
   );
 }
 
-function PerformancePage() {
+function PerformancePage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} />;
+  }
+
+  const applications =
+    data.applications || [];
+
+  const totalLinks =
+    Number(
+      data.summary?.linksSourced || 0
+    );
+
+  const convertedLinks =
+    data.clients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.completedLinks || 0
+        ),
+      0
+    );
+
+  const totalOffers =
+    applications.filter(
+      (application) =>
+        application.status ===
+        'Offer Received'
+    ).length;
+
+  const averageQuality =
+    data.applicants.length
+      ? (
+          data.applicants.reduce(
+            (total, applicant) =>
+              total +
+              Number(
+                applicant.qualityRating ||
+                  0
+              ),
+            0
+          ) /
+          data.applicants.length
+        ).toFixed(1)
+      : '0.0';
+
+  const conversionRate =
+    totalLinks > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (
+              convertedLinks /
+              totalLinks
+            ) * 100
+          )
+        )
+      : 0;
+
+  const performanceLevel =
+    conversionRate >= 90
+      ? 'Diamond'
+      : conversionRate >= 75
+        ? 'Platinum'
+        : conversionRate >= 50
+          ? 'Gold'
+          : conversionRate >= 25
+            ? 'Silver'
+            : 'Bronze';
+
+  const linkerApplications =
+    applications.filter(
+      (application) =>
+        application.linkSource ===
+        'Linker'
+    );
+
+  const getPeriodStats = (days) => {
+    const cutoff = new Date();
+
+    cutoff.setDate(
+      cutoff.getDate() - days
+    );
+
+    const periodApplications =
+      linkerApplications.filter(
+        (application) => {
+          const date = new Date(
+            application.appliedAt
+          );
+
+          return (
+            !Number.isNaN(
+              date.getTime()
+            ) &&
+            date >= cutoff
+          );
+        }
+      );
+
+    return {
+      total:
+        periodApplications.length,
+      successful:
+        periodApplications.filter(
+          (application) =>
+            [
+              'Interview Scheduled',
+              'Offer Received',
+            ].includes(
+              application.status
+            )
+        ).length,
+      declined:
+        periodApplications.filter(
+          (application) =>
+            application.status ===
+            'Rejected'
+        ).length,
+    };
+  };
+
+  const periods = [
+    ['This Week', getPeriodStats(7)],
+    ['Last 30 Days', getPeriodStats(30)],
+    ['Last 90 Days', getPeriodStats(90)],
+  ];
+
   return (
-    <EmptyState
-      icon={FiTrendingUp}
-      title="No verified performance data"
-      description="Performance results will appear after recorded links are processed."
-    />
+    <div
+      className={
+        styles.figmaPerformance
+      }
+    >
+      <section
+        className={
+          styles.performanceMetrics
+        }
+      >
+        <article>
+          <span>Total Links</span>
+          <strong>{totalLinks}</strong>
+          <small>
+            Verified Linker submissions
+          </small>
+        </article>
+
+        <article>
+          <span>Converted Links</span>
+          <strong>
+            {convertedLinks}
+          </strong>
+          <small>
+            Recorded as applications
+          </small>
+        </article>
+
+        <article>
+          <span>Total Offers</span>
+          <strong>{totalOffers}</strong>
+          <small>
+            Offers from assigned work
+          </small>
+        </article>
+
+        <article>
+          <span>Average Quality</span>
+          <strong>
+            {averageQuality}/5.0
+          </strong>
+          <small>
+            Assigned Applicant rating
+          </small>
+        </article>
+      </section>
+
+      <section
+        className={
+          styles.performanceLevel
+        }
+      >
+        <h2>Performance Level</h2>
+
+        <div
+          className={
+            styles.performanceLevelHeader
+          }
+        >
+          <div>
+            <strong>
+              {performanceLevel}
+            </strong>
+            <span>
+              {conversionRate}% link
+              conversion
+            </span>
+          </div>
+
+          <small>
+            {convertedLinks} converted
+          </small>
+        </div>
+
+        <div
+          className={
+            styles.performanceTrack
+          }
+        >
+          <span
+            style={{
+              width:
+                conversionRate + '%',
+            }}
+          />
+        </div>
+
+        <div
+          className={
+            styles.performanceLabels
+          }
+        >
+          {[
+            'Bronze',
+            'Silver',
+            'Gold',
+            'Platinum',
+            'Diamond',
+          ].map((level) => (
+            <span
+              key={level}
+              className={
+                level ===
+                performanceLevel
+                  ? styles
+                      .performanceCurrent
+                  : undefined
+              }
+            >
+              {level}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.recentPerformance
+        }
+      >
+        <h2>Recent Performance</h2>
+
+        <div>
+          {periods.map(
+            ([label, values]) => (
+              <article key={label}>
+                <strong>{label}</strong>
+
+                <dl>
+                  <div>
+                    <dt>
+                      Links Processed
+                    </dt>
+                    <dd>
+                      {values.total}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>
+                      Successful Outcomes
+                    </dt>
+                    <dd>
+                      {values.successful}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>Declined</dt>
+                    <dd>
+                      {values.declined}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            )
+          )}
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.performanceAchievements
+        }
+      >
+        <h2>Achievements</h2>
+
+        <p>
+          Verified achievements will appear
+          as Linker activity and successful
+          outcomes increase.
+        </p>
+      </section>
+    </div>
   );
 }
 
 function SettingsPage({ user }) {
-  return (
-    <section className={styles.settingsCard}>
-      <h2>Account profile</h2>
-      <p>
-        Your authenticated ApplyLoop profile is shown below.
-      </p>
+  const name =
+    user?.name || 'Not provided';
 
-      <dl>
-        <div>
-          <dt>Name</dt>
-          <dd>{user?.name || 'Not provided'}</dd>
+  const email =
+    user?.email || 'Not provided';
+
+  const initial =
+    name !== 'Not provided'
+      ? name.charAt(0).toUpperCase()
+      : 'L';
+
+  return (
+    <div
+      className={
+        styles.figmaSettings
+      }
+    >
+      <section
+        className={
+          styles.settingsIdentity
+        }
+      >
+        <div
+          className={
+            styles.settingsAvatar
+          }
+          aria-hidden="true"
+        >
+          {initial}
         </div>
+
         <div>
-          <dt>Email</dt>
-          <dd>{user?.email || 'Not provided'}</dd>
+          <strong>{name}</strong>
+          <span>Linker</span>
         </div>
-        <div>
-          <dt>Role</dt>
-          <dd>Linker</dd>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>Personal Information</h2>
+
+        <dl
+          className={
+            styles.settingsGrid
+          }
+        >
+          <div
+            className={
+              styles.settingsFull
+            }
+          >
+            <dt>Full Name</dt>
+            <dd>{name}</dd>
+          </div>
+
+          <div>
+            <dt>Designation</dt>
+            <dd>Linker</dd>
+          </div>
+
+          <div>
+            <dt>Email Address</dt>
+            <dd>{email}</dd>
+          </div>
+
+          <div>
+            <dt>Account Status</dt>
+            <dd>Active</dd>
+          </div>
+
+          <div>
+            <dt>Company</dt>
+            <dd>ApplyLoop</dd>
+          </div>
+        </dl>
+
+        <p
+          className={
+            styles.settingsNotice
+          }
+        >
+          Profile changes are managed by
+          ApplyLoop administrators.
+        </p>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>Security</h2>
+
+        <div
+          className={
+            styles.securityPanel
+          }
+        >
+          <div>
+            <strong>Password</strong>
+            <span>
+              Use the secure reset flow to
+              change your account password.
+            </span>
+          </div>
+
+          <Link href="/auth/forgot-password">
+            Reset Password
+          </Link>
         </div>
-      </dl>
-    </section>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>
+          Notification Preferences
+        </h2>
+
+        <div
+          className={
+            styles.preferenceList
+          }
+        >
+          <div>
+            <div>
+              <strong>
+                Email Notifications
+              </strong>
+              <span>
+                Account and workflow
+                notifications
+              </span>
+            </div>
+            <small>Managed</small>
+          </div>
+
+          <div>
+            <div>
+              <strong>
+                Push Notifications
+              </strong>
+              <span>
+                Browser notification support
+              </span>
+            </div>
+            <small>Unavailable</small>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.settingsSection
+        }
+      >
+        <h2>Company · ApplyLoop</h2>
+
+        <div
+          className={
+            styles.companySettings
+          }
+        >
+          <div>
+            <strong>Role</strong>
+            <span>Linker</span>
+          </div>
+
+          <div>
+            <strong>
+              Account Management
+            </strong>
+            <span>
+              ApplyLoop Administration
+            </span>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -2493,7 +2959,13 @@ function renderPage(
   }
 
   if (section === 'performance') {
-    return <PerformancePage />;
+    return (
+      <PerformancePage
+        data={data}
+        isLoading={isLoading}
+        error={error}
+      />
+    );
   }
 
   if (section === 'settings') {

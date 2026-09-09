@@ -2141,3 +2141,338 @@
     position: static;
   }
 }
+
+
+/* Linker Figma Performance and Settings */
+
+.figmaPerformance,
+.figmaSettings {
+  display: grid;
+  gap: 22px;
+}
+
+.performanceMetrics {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.performanceMetrics article {
+  min-height: 94px;
+  border: 1px solid #e6e9ef;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.performanceMetrics span,
+.performanceMetrics strong,
+.performanceMetrics small {
+  display: block;
+}
+
+.performanceMetrics span {
+  color: #737b89;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.performanceMetrics strong {
+  margin-top: 12px;
+  color: #171b26;
+  font-size: 19px;
+}
+
+.performanceMetrics small {
+  margin-top: 7px;
+  color: #5f9c6f;
+  font-size: 7px;
+}
+
+.performanceLevel,
+.recentPerformance,
+.performanceAchievements {
+  border-top: 1px solid #eceef2;
+  padding-top: 18px;
+}
+
+.performanceLevel h2,
+.recentPerformance h2,
+.performanceAchievements h2,
+.settingsSection h2 {
+  margin: 0;
+  color: #282e3a;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.performanceLevelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.performanceLevelHeader strong,
+.performanceLevelHeader span {
+  display: block;
+}
+
+.performanceLevelHeader strong {
+  font-size: 13px;
+}
+
+.performanceLevelHeader span,
+.performanceLevelHeader small {
+  margin-top: 3px;
+  color: #7f8794;
+  font-size: 8px;
+}
+
+.performanceTrack {
+  height: 4px;
+  margin-top: 14px;
+  background: #e5e8ee;
+}
+
+.performanceTrack span {
+  display: block;
+  height: 100%;
+  background: #2457d6;
+}
+
+.performanceLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+}
+
+.performanceLabels span {
+  color: #858c99;
+  font-size: 7px;
+}
+
+.performanceLabels .performanceCurrent {
+  color: #d89500;
+  font-weight: 700;
+}
+
+.recentPerformance > div {
+  margin-top: 15px;
+  border: 1px solid #e6e9ef;
+  padding: 14px;
+}
+
+.recentPerformance article {
+  padding: 9px 0;
+}
+
+.recentPerformance article +
+article {
+  border-top: 1px solid #eef0f4;
+}
+
+.recentPerformance article > strong {
+  font-size: 9px;
+}
+
+.recentPerformance dl {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 9px 0 0;
+}
+
+.recentPerformance dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recentPerformance dt,
+.recentPerformance dd {
+  margin: 0;
+  font-size: 8px;
+}
+
+.recentPerformance dt {
+  color: #727987;
+}
+
+.recentPerformance dd {
+  color: #2457d6;
+  font-weight: 650;
+}
+
+.performanceAchievements p {
+  margin: 14px 0 0;
+  border: 1px solid #e6e9ef;
+  padding: 18px;
+  color: #818895;
+  font-size: 9px;
+}
+
+.settingsIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settingsAvatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 10px;
+  background: #dfe7fb;
+  color: #2457d6;
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.settingsIdentity strong,
+.settingsIdentity span {
+  display: block;
+}
+
+.settingsIdentity strong {
+  font-size: 12px;
+}
+
+.settingsIdentity span {
+  margin-top: 4px;
+  color: #858c99;
+  font-size: 8px;
+}
+
+.settingsSection {
+  border-top: 1px solid #eceef2;
+  padding-top: 18px;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  margin: 15px 0 0;
+}
+
+.settingsGrid div {
+  border: 1px solid #e4e7ed;
+  padding: 10px;
+}
+
+.settingsFull {
+  grid-column: 1 / -1;
+}
+
+.settingsGrid dt,
+.settingsGrid dd {
+  margin: 0;
+  font-size: 8px;
+}
+
+.settingsGrid dt {
+  color: #777f8d;
+}
+
+.settingsGrid dd {
+  margin-top: 6px;
+  color: #303644;
+}
+
+.settingsNotice {
+  margin: 10px 0 0;
+  color: #888f9c;
+  font-size: 8px;
+}
+
+.securityPanel,
+.preferenceList > div,
+.companySettings > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.securityPanel {
+  margin-top: 14px;
+  border: 1px solid #e4e7ed;
+  padding: 13px;
+}
+
+.securityPanel strong,
+.securityPanel span,
+.preferenceList strong,
+.preferenceList span,
+.companySettings strong,
+.companySettings span {
+  display: block;
+}
+
+.securityPanel strong,
+.preferenceList strong,
+.companySettings strong {
+  font-size: 9px;
+}
+
+.securityPanel span,
+.preferenceList span,
+.companySettings span {
+  margin-top: 4px;
+  color: #818895;
+  font-size: 8px;
+}
+
+.securityPanel a {
+  border: 1px solid #dce4fa;
+  background: #edf2ff;
+  padding: 7px 10px;
+  color: #2457d6;
+  font-size: 8px;
+  text-decoration: none;
+}
+
+.preferenceList,
+.companySettings {
+  display: grid;
+  margin-top: 12px;
+}
+
+.preferenceList > div,
+.companySettings > div {
+  border-bottom: 1px solid #eceef2;
+  padding: 12px 0;
+}
+
+.preferenceList small {
+  color: #737b89;
+  font-size: 8px;
+}
+
+@media (max-width: 900px) {
+  .performanceMetrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .performanceMetrics,
+  .settingsGrid,
+  .recentPerformance dl {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsFull {
+    grid-column: auto;
+  }
+
+  .securityPanel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
