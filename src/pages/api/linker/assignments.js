@@ -54,7 +54,9 @@ async function getAssignments(req, res) {
     error: linkerRequestsError,
   } = await supabase
     .from('client_job_requests')
-    .select('status, created_at')
+    .select(
+      'client_id, status, created_at'
+    )
     .eq(
       'submitted_by',
       linkerProfile.id
@@ -497,6 +499,44 @@ async function getAssignments(req, res) {
     }
   );
 
+  const requestsByClientId =
+    new Map();
+
+  linkerRequests.forEach(
+    (request) => {
+      const current =
+        requestsByClientId.get(
+          request.client_id
+        ) || [];
+
+      current.push(request);
+
+      requestsByClientId.set(
+        request.client_id,
+        current
+      );
+    }
+  );
+
+  const applicationsByClientId =
+    new Map();
+
+  applicationRows.forEach(
+    (application) => {
+      const current =
+        applicationsByClientId.get(
+          application.client_id
+        ) || [];
+
+      current.push(application);
+
+      applicationsByClientId.set(
+        application.client_id,
+        current
+      );
+    }
+  );
+
   const clientResults =
     clientRows.map((client) => {
       const profile =
@@ -508,6 +548,39 @@ async function getAssignments(req, res) {
         applicantIdsByClientId.get(
           client.id
         ) || [];
+
+      const clientRequests =
+        requestsByClientId.get(
+          client.id
+        ) || [];
+
+      const clientApplications =
+        applicationsByClientId.get(
+          client.id
+        ) || [];
+
+      const countStatus =
+        (status) =>
+          clientApplications.filter(
+            (application) =>
+              application.status ===
+              status
+          ).length;
+
+      const latestActivity =
+        [
+          ...clientRequests.map(
+            (request) =>
+              request.created_at
+          ),
+          ...clientApplications.map(
+            (application) =>
+              application.applied_at
+          ),
+        ]
+          .filter(Boolean)
+          .sort()
+          .reverse()[0] || null;
 
       return {
         id: client.id,
@@ -536,6 +609,26 @@ async function getAssignments(req, res) {
             client.applications_completed ||
               0
           ),
+        linksSourced:
+          clientRequests.length,
+        completedLinks:
+          clientRequests.filter(
+            (request) =>
+              request.status ===
+              'converted'
+          ).length,
+        upcomingInterviews:
+          countStatus(
+            'Interview Scheduled'
+          ),
+        offersReceived:
+          countStatus(
+            'Offer Received'
+          ),
+        rejectedApplications:
+          countStatus('Rejected'),
+        lastActivity:
+          latestActivity,
         applicantIds:
           assignedApplicantIds,
         canReceiveLinks:
