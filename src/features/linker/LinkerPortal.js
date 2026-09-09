@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fi';
 
 import { useAuth } from '../../shared/context/AuthContext';
+import { createClient } from '../../lib/supabase/client';
 import {
   getRoleHome,
   ROLE_NAVIGATION,
@@ -32,6 +33,62 @@ const validSections = new Set([
   'performance',
   'settings',
 ]);
+
+const emptyAssignmentData = {
+  applicants: [],
+  clients: [],
+  summary: {
+    assignedApplicants: 0,
+    assignedClients: 0,
+  },
+};
+
+async function getLinkerAccessToken() {
+  const supabase = createClient();
+
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (
+    error ||
+    !session?.access_token
+  ) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
+
+function formatDate(value) {
+  if (!value) {
+    return 'Not available';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Not available';
+  }
+
+  return date.toLocaleDateString(
+    'en-US',
+    {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }
+  );
+}
 
 function getRequestedSection(router) {
   const value = router.query?.section;
@@ -60,7 +117,46 @@ function EmptyState({
   );
 }
 
-function DashboardPage() {
+function LoadingState() {
+  return (
+    <section
+      className={styles.statusPanel}
+      aria-live="polite"
+    >
+      <span className={styles.spinner} />
+      <p>Loading Linker assignments...</p>
+    </section>
+  );
+}
+
+function ErrorState({ message }) {
+  return (
+    <section
+      className={styles.errorPanel}
+      role="alert"
+    >
+      <h2>Assignments could not be loaded</h2>
+      <p>{message}</p>
+    </section>
+  );
+}
+
+function DashboardPage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} />;
+  }
+
+  const hasAssignments =
+    data.applicants.length > 0;
+
   return (
     <div className={styles.pageGrid}>
       <section className={styles.welcomeCard}>
@@ -68,42 +164,256 @@ function DashboardPage() {
           <span className={styles.eyebrow}>
             Linker workspace
           </span>
-          <h2>Your assignment queue is ready</h2>
+          <h2>
+            {hasAssignments
+              ? 'Your assignment queue'
+              : 'No assignments yet'}
+          </h2>
           <p>
-            Assigned clients, applicants and verified job-link
-            activity will appear here when assignment services
-            are connected.
+            Applicant and client access is derived
+            from your current verified assignments.
           </p>
         </div>
         <FiLink aria-hidden="true" />
       </section>
 
-      <EmptyState
-        icon={FiBriefcase}
-        title="No assignments available"
-        description="You do not currently have any Linker assignments."
-      />
+      <section
+        className={styles.summaryGrid}
+        aria-label="Assignment summary"
+      >
+        <article>
+          <span>Assigned Applicants</span>
+          <strong>
+            {data.summary.assignedApplicants}
+          </strong>
+        </article>
+
+        <article>
+          <span>Assigned Clients</span>
+          <strong>
+            {data.summary.assignedClients}
+          </strong>
+        </article>
+      </section>
+
+      {!hasAssignments && (
+        <EmptyState
+          icon={FiBriefcase}
+          title="No assignments available"
+          description="Admin or Operations has not assigned an Applicant to your Linker account."
+        />
+      )}
     </div>
   );
 }
 
-function ClientsPage() {
+function ClientsPage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} />;
+  }
+
+  if (data.clients.length === 0) {
+    return (
+      <EmptyState
+        icon={FiBriefcase}
+        title="No assigned clients"
+        description="Clients belonging to your assigned Applicants will appear here."
+      />
+    );
+  }
+
+  const applicantsById =
+    new Map(
+      data.applicants.map(
+        (applicant) => [
+          applicant.id,
+          applicant,
+        ]
+      )
+    );
+
   return (
-    <EmptyState
-      icon={FiBriefcase}
-      title="No assigned clients"
-      description="Clients assigned to you will appear here."
-    />
+    <section className={styles.tableCard}>
+      <div className={styles.tableHeading}>
+        <div>
+          <h2>Assigned clients</h2>
+          <p>
+            Derived from your current Applicant
+            assignments.
+          </p>
+        </div>
+        <strong>
+          {data.clients.length}
+        </strong>
+      </div>
+
+      <div className={styles.tableScroll}>
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Applicant</th>
+              <th>Plan</th>
+              <th>Progress</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.clients.map((client) => {
+              const applicantNames =
+                client.applicantIds
+                  .map(
+                    (id) =>
+                      applicantsById.get(id)
+                        ?.fullName
+                  )
+                  .filter(Boolean)
+                  .join(', ') ||
+                'Not available';
+
+              return (
+                <tr key={client.id}>
+                  <td>
+                    <strong>
+                      {client.fullName}
+                    </strong>
+                    <small>
+                      {client.email ||
+                        'No email available'}
+                    </small>
+                  </td>
+                  <td>{applicantNames}</td>
+                  <td>{client.plan}</td>
+                  <td>
+                    {client.applicationsCompleted}
+                    {' / '}
+                    {client.applicationLimit}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        client.canReceiveLinks
+                          ? styles.statusReady
+                          : styles.statusUnavailable
+                      }
+                    >
+                      {client.canReceiveLinks
+                        ? 'Ready'
+                        : 'Unavailable'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
-function ApplicantsPage() {
+function ApplicantsPage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} />;
+  }
+
+  if (data.applicants.length === 0) {
+    return (
+      <EmptyState
+        icon={FiUsers}
+        title="No assigned Applicants"
+        description="Applicants assigned directly to your Linker account will appear here."
+      />
+    );
+  }
+
   return (
-    <EmptyState
-      icon={FiUsers}
-      title="No assigned applicants"
-      description="Applicants connected to your assignments will appear here."
-    />
+    <section className={styles.tableCard}>
+      <div className={styles.tableHeading}>
+        <div>
+          <h2>Assigned Applicants</h2>
+          <p>
+            Applicants currently supported by your
+            Linker account.
+          </p>
+        </div>
+        <strong>
+          {data.applicants.length}
+        </strong>
+      </div>
+
+      <div className={styles.tableScroll}>
+        <table>
+          <thead>
+            <tr>
+              <th>Applicant</th>
+              <th>Team</th>
+              <th>Assigned</th>
+              <th>Active tasks</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.applicants.map(
+              (applicant) => (
+                <tr key={applicant.id}>
+                  <td>
+                    <strong>
+                      {applicant.fullName}
+                    </strong>
+                    <small>
+                      {applicant.email ||
+                        'No email available'}
+                    </small>
+                  </td>
+                  <td>
+                    {applicant.team ||
+                      'Not assigned'}
+                  </td>
+                  <td>
+                    {formatDate(
+                      applicant.assignedAt
+                    )}
+                  </td>
+                  <td>
+                    {applicant.activeTasks}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        applicant.canReceiveLinks
+                          ? styles.statusReady
+                          : styles.statusUnavailable
+                      }
+                    >
+                      {applicant.canReceiveLinks
+                        ? 'Available'
+                        : 'Unavailable'}
+                    </span>
+                  </td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -172,13 +482,31 @@ function SettingsPage({ user }) {
   );
 }
 
-function renderPage(section, user) {
+function renderPage(
+  section,
+  user,
+  data,
+  isLoading,
+  error
+) {
   if (section === 'clients') {
-    return <ClientsPage />;
+    return (
+      <ClientsPage
+        data={data}
+        isLoading={isLoading}
+        error={error}
+      />
+    );
   }
 
   if (section === 'applicants') {
-    return <ApplicantsPage />;
+    return (
+      <ApplicantsPage
+        data={data}
+        isLoading={isLoading}
+        error={error}
+      />
+    );
   }
 
   if (section === 'record-link') {
@@ -197,13 +525,31 @@ function renderPage(section, user) {
     return <SettingsPage user={user} />;
   }
 
-  return <DashboardPage />;
+  return (
+    <DashboardPage
+      data={data}
+      isLoading={isLoading}
+      error={error}
+    />
+  );
 }
 
 export default function LinkerPortal() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [
+    assignmentData,
+    setAssignmentData,
+  ] = useState(emptyAssignmentData);
+  const [
+    isLoadingAssignments,
+    setIsLoadingAssignments,
+  ] = useState(true);
+  const [
+    assignmentsError,
+    setAssignmentsError,
+  ] = useState('');
 
   const requestedSection =
     getRequestedSection(router);
@@ -218,6 +564,105 @@ export default function LinkerPortal() {
 
   const navigation =
     ROLE_NAVIGATION[USER_ROLES.LINKER];
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      user?.role !== USER_ROLES.LINKER
+    ) {
+      return undefined;
+    }
+
+    let active = true;
+
+    const loadAssignments = async () => {
+      setIsLoadingAssignments(true);
+      setAssignmentsError('');
+
+      try {
+        const accessToken =
+          await getLinkerAccessToken();
+
+        const response = await fetch(
+          '/api/linker/assignments',
+          {
+            headers: {
+              Authorization:
+                'Bearer ' + accessToken,
+            },
+            cache: 'no-store',
+          }
+        );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Your Linker assignments could not be loaded.'
+          );
+        }
+
+        if (
+          !Array.isArray(result.applicants) ||
+          !Array.isArray(result.clients)
+        ) {
+          throw new Error(
+            'The assignment response could not be verified.'
+          );
+        }
+
+        if (active) {
+          setAssignmentData({
+            applicants:
+              result.applicants,
+            clients:
+              result.clients,
+            summary: {
+              assignedApplicants:
+                Number(
+                  result.summary
+                    ?.assignedApplicants ||
+                    0
+                ),
+              assignedClients:
+                Number(
+                  result.summary
+                    ?.assignedClients ||
+                    0
+                ),
+            },
+          });
+        }
+      } catch (error) {
+        if (active) {
+          setAssignmentData(
+            emptyAssignmentData
+          );
+          setAssignmentsError(
+            error.message ||
+              'Your Linker assignments could not be loaded.'
+          );
+        }
+      } finally {
+        if (active) {
+          setIsLoadingAssignments(false);
+        }
+      }
+    };
+
+    loadAssignments();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    router.isReady,
+    user?.role,
+  ]);
 
   useEffect(() => {
     if (
@@ -380,7 +825,13 @@ export default function LinkerPortal() {
               </div>
             </header>
 
-            {renderPage(section, user)}
+            {renderPage(
+              section,
+              user,
+              assignmentData,
+              isLoadingAssignments,
+              assignmentsError
+            )}
           </div>
         </main>
       </div>
