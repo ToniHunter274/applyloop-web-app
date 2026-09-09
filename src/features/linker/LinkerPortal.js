@@ -1883,12 +1883,535 @@ function RecordLinkPage({
 }
 
 function FeedbackPage() {
+  const [conversations, setConversations] =
+    useState([]);
+  const [selectedId, setSelectedId] =
+    useState('');
+  const [activeTab, setActiveTab] =
+    useState('applicant');
+  const [response, setResponse] =
+    useState('');
+  const [isLoading, setIsLoading] =
+    useState(true);
+  const [isSending, setIsSending] =
+    useState(false);
+  const [error, setError] =
+    useState('');
+  const [success, setSuccess] =
+    useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFeedback = async () => {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const accessToken =
+          await getLinkerAccessToken();
+
+        const request = await fetch(
+          '/api/linker/feedback',
+          {
+            headers: {
+              Authorization:
+                'Bearer ' + accessToken,
+            },
+            cache: 'no-store',
+          }
+        );
+
+        const result =
+          await request
+            .json()
+            .catch(() => ({}));
+
+        if (!request.ok) {
+          throw new Error(
+            result.error ||
+              'Feedback could not be loaded.'
+          );
+        }
+
+        if (
+          !Array.isArray(
+            result.conversations
+          )
+        ) {
+          throw new Error(
+            'The feedback response could not be verified.'
+          );
+        }
+
+        if (active) {
+          setConversations(
+            result.conversations
+          );
+
+          setSelectedId((current) =>
+            result.conversations.some(
+              (conversation) =>
+                conversation.id ===
+                current
+            )
+              ? current
+              : result.conversations[0]
+                  ?.id || ''
+          );
+        }
+      } catch (loadError) {
+        if (active) {
+          setError(
+            loadError.message ||
+              'Feedback could not be loaded.'
+          );
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFeedback();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedConversation =
+    conversations.find(
+      (conversation) =>
+        conversation.id === selectedId
+    ) || null;
+
+  const formatMessageDate = (value) => {
+    if (!value) {
+      return 'Date unavailable';
+    }
+
+    const date = new Date(value);
+
+    if (
+      Number.isNaN(date.getTime())
+    ) {
+      return 'Date unavailable';
+    }
+
+    return date.toLocaleString(
+      undefined,
+      {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }
+    );
+  };
+
+  const handleReply = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (
+      !selectedConversation ||
+      !response.trim()
+    ) {
+      setError(
+        'Enter a response before sending.'
+      );
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      const accessToken =
+        await getLinkerAccessToken();
+
+      const request = await fetch(
+        '/api/linker/feedback',
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              'Bearer ' + accessToken,
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            applicationId:
+              selectedConversation
+                .applicationId,
+            message: response,
+          }),
+        }
+      );
+
+      const result =
+        await request
+          .json()
+          .catch(() => ({}));
+
+      if (!request.ok) {
+        throw new Error(
+          result.error ||
+            'Your response could not be sent.'
+        );
+      }
+
+      if (!result.message?.id) {
+        throw new Error(
+          'The sent response could not be verified.'
+        );
+      }
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id ===
+          selectedConversation.id
+            ? {
+                ...conversation,
+                status: 'resolved',
+                latestMessage:
+                  result.message.message,
+                latestAt:
+                  result.message.createdAt,
+                messages: [
+                  ...conversation.messages,
+                  result.message,
+                ],
+              }
+            : conversation
+        )
+      );
+
+      setResponse('');
+      setSuccess(
+        'Your response was sent successfully.'
+      );
+    } catch (sendError) {
+      setError(
+        sendError.message ||
+          'Your response could not be sent.'
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (
+    error &&
+    conversations.length === 0
+  ) {
+    return <ErrorState message={error} />;
+  }
+
   return (
-    <EmptyState
-      icon={FiMessageSquare}
-      title="No feedback or messages"
-      description="Assignment-related feedback and messages will appear here."
-    />
+    <div
+      className={
+        styles.figmaFeedback
+      }
+    >
+      <div
+        className={
+          styles.feedbackTabs
+        }
+      >
+        <button
+          type="button"
+          className={
+            activeTab === 'applicant'
+              ? styles.feedbackTabActive
+              : styles.feedbackTab
+          }
+          onClick={() => {
+            setActiveTab('applicant');
+            setError('');
+            setSuccess('');
+          }}
+        >
+          Applicants Feedback
+          ({conversations.length})
+        </button>
+
+        <button
+          type="button"
+          className={
+            activeTab === 'admin'
+              ? styles.feedbackTabActive
+              : styles.feedbackTab
+          }
+          onClick={() => {
+            setActiveTab('admin');
+            setError('');
+            setSuccess('');
+          }}
+        >
+          Admin Feedback
+        </button>
+      </div>
+
+      {activeTab === 'admin' ? (
+        <section
+          className={
+            styles.feedbackEmpty
+          }
+        >
+          <FiMessageSquare
+            aria-hidden="true"
+          />
+          <h2>No Admin feedback</h2>
+          <p>
+            Private administrative notes are
+            not exposed in the Linker
+            workspace.
+          </p>
+        </section>
+      ) : conversations.length === 0 ? (
+        <section
+          className={
+            styles.feedbackEmpty
+          }
+        >
+          <FiMessageSquare
+            aria-hidden="true"
+          />
+          <h2>No Applicant feedback</h2>
+          <p>
+            Client feedback for applications
+            managed through your assigned
+            Applicants will appear here.
+          </p>
+        </section>
+      ) : (
+        <div
+          className={
+            styles.feedbackWorkspace
+          }
+        >
+          <section
+            className={
+              styles.feedbackList
+            }
+          >
+            {conversations.map(
+              (conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  className={
+                    conversation.id ===
+                    selectedId
+                      ? styles
+                          .feedbackCardActive
+                      : styles.feedbackCard
+                  }
+                  onClick={() => {
+                    setSelectedId(
+                      conversation.id
+                    );
+                    setResponse('');
+                    setError('');
+                    setSuccess('');
+                  }}
+                >
+                  <header>
+                    <div>
+                      <strong>
+                        {
+                          conversation
+                            .clientName
+                        }
+                      </strong>
+                      <span>
+                        {
+                          conversation
+                            .position
+                        }
+                      </span>
+                    </div>
+
+                    <small
+                      className={
+                        conversation.status ===
+                        'resolved'
+                          ? styles
+                              .feedbackResolved
+                          : styles
+                              .feedbackPending
+                      }
+                    >
+                      {conversation.status}
+                    </small>
+                  </header>
+
+                  <p>
+                    {
+                      conversation
+                        .latestMessage
+                    }
+                  </p>
+
+                  <time>
+                    {formatMessageDate(
+                      conversation.latestAt
+                    )}
+                  </time>
+                </button>
+              )
+            )}
+          </section>
+
+          {selectedConversation && (
+            <aside
+              className={
+                styles.feedbackDetail
+              }
+            >
+              <h2>Feedback Details</h2>
+
+              <header>
+                <strong>
+                  {
+                    selectedConversation
+                      .clientName
+                  }
+                </strong>
+                <span>
+                  {
+                    selectedConversation
+                      .company
+                  }
+                  {' · '}
+                  {
+                    selectedConversation
+                      .position
+                  }
+                </span>
+                <time>
+                  {formatMessageDate(
+                    selectedConversation
+                      .latestAt
+                  )}
+                </time>
+              </header>
+
+              <div
+                className={
+                  styles.feedbackThread
+                }
+              >
+                {selectedConversation
+                  .messages.map(
+                    (message) => (
+                      <article
+                        key={message.id}
+                        className={
+                          message.sender
+                            .role ===
+                          'linker'
+                            ? styles
+                                .linkerMessage
+                            : styles
+                                .clientMessage
+                        }
+                      >
+                        <strong>
+                          {
+                            message.sender
+                              .name
+                          }
+                        </strong>
+                        <p>
+                          {message.message}
+                        </p>
+                        <time>
+                          {formatMessageDate(
+                            message.createdAt
+                          )}
+                        </time>
+                      </article>
+                    )
+                  )}
+              </div>
+
+              <form
+                onSubmit={handleReply}
+              >
+                <label>
+                  <span>Your Response</span>
+                  <textarea
+                    value={response}
+                    onChange={(event) => {
+                      setResponse(
+                        event.target.value
+                      );
+                      setError('');
+                      setSuccess('');
+                    }}
+                    placeholder="Type your response..."
+                    maxLength={5000}
+                    rows={6}
+                    disabled={isSending}
+                  />
+                </label>
+
+                {error && (
+                  <p
+                    className={
+                      styles.formError
+                    }
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                {success && (
+                  <p
+                    className={
+                      styles.formSuccess
+                    }
+                    role="status"
+                  >
+                    {success}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={
+                    isSending ||
+                    !response.trim()
+                  }
+                >
+                  {isSending
+                    ? 'Sending...'
+                    : '⌁  Send Reply'}
+                </button>
+              </form>
+
+              <div
+                className={
+                  styles.feedbackResolution
+                }
+              >
+                {selectedConversation
+                  .status === 'resolved'
+                  ? '✓ Resolved'
+                  : 'Reply to resolve this feedback'}
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
