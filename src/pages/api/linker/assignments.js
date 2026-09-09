@@ -343,6 +343,10 @@ async function getAssignments(req, res) {
         ].join(', ')
       )
       .in('client_id', clientIds)
+      .in(
+        'created_by',
+        applicantUserIds
+      )
       .order('applied_at', {
         ascending: false,
       })
