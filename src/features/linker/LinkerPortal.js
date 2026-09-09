@@ -37,9 +37,14 @@ const validSections = new Set([
 const emptyAssignmentData = {
   applicants: [],
   clients: [],
+  applications: [],
   summary: {
     assignedApplicants: 0,
     assignedClients: 0,
+    linksFoundToday: 0,
+    activeClients: 0,
+    linksSourced: 0,
+    pendingReview: 0,
   },
 };
 
@@ -146,6 +151,13 @@ function DashboardPage({
   isLoading,
   error,
 }) {
+  const [search, setSearch] =
+    useState('');
+  const [
+    selectedClient,
+    setSelectedClient,
+  ] = useState('');
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -154,55 +166,222 @@ function DashboardPage({
     return <ErrorState message={error} />;
   }
 
-  const hasAssignments =
-    data.applicants.length > 0;
+  const term =
+    search.trim().toLowerCase();
+
+  const applications =
+    data.applications.filter(
+      (application) =>
+        (
+          !selectedClient ||
+          application.clientId ===
+            selectedClient
+        ) &&
+               (
+          !term ||
+          [
+            application.company,
+            application.position,
+            application.clientName,
+            application.jobLink,
+          ].some((value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(term)
+          )
+        )
+    );
+
+  const metrics = [
+    [
+      'Links Found Today',
+      data.summary.linksFoundToday,
+      'Verified today',
+    ],
+    [
+      'Active Clients',
+      data.summary.activeClients,
+      'Ready for links',
+    ],
+    [
+      'Links Sourced',
+      data.summary.linksSourced,
+      'All Linker submissions',
+    ],
+    [
+      'Pending Review',
+      data.summary.pendingReview,
+      'Awaiting Applicant action',
+    ],
+  ];
 
   return (
-    <div className={styles.pageGrid}>
-      <section className={styles.welcomeCard}>
-        <div>
-          <span className={styles.eyebrow}>
-            Linker workspace
-          </span>
-          <h2>
-            {hasAssignments
-              ? 'Your assignment queue'
-              : 'No assignments yet'}
-          </h2>
-          <p>
-            Applicant and client access is derived
-            from your current verified assignments.
-          </p>
-        </div>
-        <FiLink aria-hidden="true" />
+    <div className={styles.figmaDashboard}>
+      <label
+        className={styles.dashboardSearch}
+      >
+        <span className="sr-only">
+          Search job links
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) =>
+            setSearch(event.target.value)
+          }
+          placeholder="Search Job Links"
+        />
+      </label>
+
+      <section
+        className={styles.figmaMetrics}
+        aria-label="Linker activity summary"
+      >
+        {metrics.map(
+          ([label, value, note]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{note}</small>
+            </article>
+          )
+        )}
       </section>
 
       <section
-        className={styles.summaryGrid}
-        aria-label="Assignment summary"
+        className={styles.figmaDashboardTable}
       >
-        <article>
-          <span>Assigned Applicants</span>
-          <strong>
-            {data.summary.assignedApplicants}
-          </strong>
-        </article>
+        <header>
+          <h2>All Assigned Clients</h2>
 
-        <article>
-          <span>Assigned Clients</span>
-          <strong>
-            {data.summary.assignedClients}
-          </strong>
-        </article>
+          <select
+            value={selectedClient}
+            onChange={(event) =>
+              setSelectedClient(
+                event.target.value
+              )
+            }
+            aria-label="Select Client"
+          >
+            <option value="">
+              Select Client
+            </option>
+
+            {data.clients.map(
+              (client) => (
+                <option
+                  key={client.id}
+                  value={client.id}
+                >
+                  {client.fullName}
+                </option>
+              )
+            )}
+          </select>
+        </header>
+
+        <div className={styles.tableScroll}>
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Position</th>
+                <th>Client</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Links</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {applications.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className={
+                      styles.figmaTableEmpty
+                    }
+                  >
+                    No assigned Client
+                    applications match this
+                    view.
+                  </td>
+                </tr>
+              ) : (
+                applications.map(
+                  (application) => (
+                    <tr key={application.id}>
+                      <td>
+                        {application.company}
+                      </td>
+                      <td>
+                        {application.position}
+                      </td>
+                      <td>
+                        {application.clientName}
+                      </td>
+                      <td>
+                        {formatDate(
+                          application.appliedAt
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            application.status ===
+                            'Rejected'
+                              ? styles.figmaRejected
+                              : application.status ===
+                                  'Offer Received'
+                                ? styles.statusReady
+                                : styles.figmaInfo
+                          }
+                        >
+                          {application.status}
+                        </span>
+                      </td>
+                      <td>
+                        {application.jobLink ? (
+                          <a
+                            href={
+                              application.jobLink
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {
+                              application.linkSource
+                            }
+                          </a>
+                        ) : (
+                          application.linkSource
+                        )}
+                      </td>
+                      <td>
+                        {application.jobLink ? (
+                          <a
+                            href={
+                              application.jobLink
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Open job link"
+                          >
+                            <FiExternalLink />
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  )
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
-
-      {!hasAssignments && (
-        <EmptyState
-          icon={FiBriefcase}
-          title="No assignments available"
-          description="Admin or Operations has not assigned an Applicant to your Linker account."
-        />
-      )}
     </div>
   );
 }
@@ -1090,7 +1269,8 @@ export default function LinkerPortal() {
 
         if (
           !Array.isArray(result.applicants) ||
-          !Array.isArray(result.clients)
+          !Array.isArray(result.clients) ||
+          !Array.isArray(result.applications)
         ) {
           throw new Error(
             'The assignment response could not be verified.'
@@ -1103,6 +1283,8 @@ export default function LinkerPortal() {
               result.applicants,
             clients:
               result.clients,
+            applications:
+              result.applications,
             summary: {
               assignedApplicants:
                 Number(
@@ -1114,6 +1296,30 @@ export default function LinkerPortal() {
                 Number(
                   result.summary
                     ?.assignedClients ||
+                    0
+                ),
+              linksFoundToday:
+                Number(
+                  result.summary
+                    ?.linksFoundToday ||
+                    0
+                ),
+              activeClients:
+                Number(
+                  result.summary
+                    ?.activeClients ||
+                    0
+                ),
+              linksSourced:
+                Number(
+                  result.summary
+                    ?.linksSourced ||
+                    0
+                ),
+              pendingReview:
+                Number(
+                  result.summary
+                    ?.pendingReview ||
                     0
                 ),
             },

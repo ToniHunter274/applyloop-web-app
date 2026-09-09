@@ -940,3 +940,191 @@
     width: min(86vw, 300px);
   }
 }
+
+
+/* Linker Figma dashboard alignment */
+
+.figmaDashboard {
+  position: relative;
+  display: grid;
+  gap: 28px;
+  padding-top: 38px;
+}
+
+.dashboardSearch {
+  position: absolute;
+  top: -60px;
+  right: 0;
+}
+
+.dashboardSearch input {
+  width: 220px;
+  border: 1px solid #e1e5ed;
+  border-radius: 0;
+  background: #f0f3fb;
+  padding: 9px 13px;
+  color: #303644;
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+.dashboardSearch input:focus {
+  border-color: #2457d6;
+}
+
+.figmaMetrics {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.figmaMetrics article {
+  min-height: 110px;
+  border: 1px solid #e5e8ef;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 19px 17px;
+}
+
+.figmaMetrics span,
+.figmaMetrics strong,
+.figmaMetrics small {
+  display: block;
+}
+
+.figmaMetrics span {
+  color: #646b79;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.figmaMetrics strong {
+  margin-top: 13px;
+  color: #111522;
+  font-size: 23px;
+  line-height: 1;
+}
+
+.figmaMetrics small {
+  margin-top: 13px;
+  color: #9aa1ae;
+  font-size: 9px;
+}
+
+.figmaDashboardTable {
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.figmaDashboardTable > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 13px;
+}
+
+.figmaDashboardTable h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.figmaDashboardTable select {
+  border: 0;
+  background: transparent;
+  color: #555d6d;
+  font: inherit;
+  font-size: 10px;
+  outline: none;
+}
+
+.figmaDashboardTable table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+.figmaDashboardTable th,
+.figmaDashboardTable td {
+  border-bottom: 1px solid #f0f1f4;
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.figmaDashboardTable th {
+  background: #fafbfc;
+  color: #767d89;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.figmaDashboardTable td {
+  color: #3e4552;
+  font-size: 10px;
+}
+
+.figmaDashboardTable a {
+  display: inline-flex;
+  color: #2457d6;
+  text-decoration: none;
+}
+
+.figmaDashboardTable a svg {
+  width: 13px;
+  height: 13px;
+}
+
+.figmaRejected,
+.figmaInfo {
+  display: inline-flex;
+  border-radius: 3px;
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.figmaRejected {
+  background: #ffe7e8;
+  color: #df3341;
+}
+
+.figmaInfo {
+  background: #e8efff;
+  color: #3164d8;
+}
+
+.figmaTableEmpty {
+  height: 150px;
+  color: #8c93a0 !important;
+  text-align: center !important;
+}
+
+@media (max-width: 980px) {
+  .figmaMetrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .figmaDashboard {
+    padding-top: 0;
+  }
+
+  .dashboardSearch {
+    position: static;
+  }
+
+  .dashboardSearch input {
+    width: 100%;
+  }
+
+  .figmaMetrics {
+    grid-template-columns: 1fr;
+  }
+}
