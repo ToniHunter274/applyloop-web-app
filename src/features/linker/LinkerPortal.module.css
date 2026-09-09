@@ -1671,3 +1671,176 @@
     overflow-x: auto;
   }
 }
+
+
+/* Linker Figma Record Job Application */
+
+.figmaRecordPage {
+  display: grid;
+  gap: 24px;
+}
+
+.recordPageHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.recordPageHeader > span {
+  color: #687080;
+  font-size: 13px;
+}
+
+.recordPageHeader h2 {
+  margin: 0;
+  color: #171b26;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.recordPageHeader p {
+  margin: 4px 0 0;
+  color: #8a919e;
+  font-size: 9px;
+}
+
+.figmaRecordForm {
+  display: grid;
+  gap: 18px;
+}
+
+.figmaRecordForm fieldset {
+  margin: 0;
+  border: 1px solid #e6e9ef;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.figmaRecordForm legend {
+  padding: 0 6px;
+  color: #272d39;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.recordFieldGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 13px 18px;
+}
+
+.recordFieldGrid label,
+.recordFullField {
+  display: grid;
+  gap: 6px;
+}
+
+.recordFullField {
+  grid-column: 1 / -1;
+}
+
+.figmaRecordForm label > span {
+  color: #353c49;
+  font-size: 8px;
+  font-weight: 550;
+}
+
+.figmaRecordForm sup {
+  margin-left: 2px;
+  color: #df3341;
+}
+
+.figmaRecordForm input,
+.figmaRecordForm select,
+.figmaRecordForm textarea {
+  width: 100%;
+  border: 1px solid #e3e6ec;
+  border-radius: 1px;
+  background: #ffffff;
+  padding: 9px 10px;
+  color: #303644;
+  font: inherit;
+  font-size: 9px;
+  outline: none;
+}
+
+.figmaRecordForm input,
+.figmaRecordForm select {
+  height: 34px;
+}
+
+.figmaRecordForm textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.figmaRecordForm input:focus,
+.figmaRecordForm select:focus,
+.figmaRecordForm textarea:focus {
+  border-color: #2457d6;
+  box-shadow:
+    0 0 0 2px rgba(36, 87, 214, 0.09);
+}
+
+.figmaRecordForm input:disabled,
+.figmaRecordForm select:disabled,
+.figmaRecordForm textarea:disabled {
+  background: #f5f6f8;
+  cursor: not-allowed;
+}
+
+.recordActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.clearRecordButton,
+.saveRecordButton {
+  min-height: 34px;
+  border-radius: 2px;
+  padding: 0 17px;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.clearRecordButton {
+  border: 1px solid #e3e6ec;
+  background: #ffffff;
+  color: #626a78;
+}
+
+.saveRecordButton {
+  border: 1px solid #2457d6;
+  background: #2457d6;
+  color: #ffffff;
+}
+
+.clearRecordButton:disabled,
+.saveRecordButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 680px) {
+  .recordFieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recordFullField {
+    grid-column: auto;
+  }
+
+  .recordActions {
+    flex-direction: column-reverse;
+  }
+
+  .clearRecordButton,
+  .saveRecordButton {
+    width: 100%;
+  }
+}

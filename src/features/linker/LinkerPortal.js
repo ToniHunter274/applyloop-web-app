@@ -1351,16 +1351,22 @@ function RecordLinkPage({
     useState('');
   const [clientId, setClientId] =
     useState('');
+  const [company, setCompany] =
+    useState('');
+  const [position, setPosition] =
+    useState('');
+  const [location, setLocation] =
+    useState('');
+  const [jobType, setJobType] =
+    useState('');
+  const [salaryRange, setSalaryRange] =
+    useState('');
   const [jobLink, setJobLink] =
+    useState('');
+  const [linkProvider, setLinkProvider] =
     useState('');
   const [comment, setComment] =
     useState('');
-  const [requests, setRequests] =
-    useState([]);
-  const [
-    isLoadingRequests,
-    setIsLoadingRequests,
-  ] = useState(true);
   const [
     isSubmitting,
     setIsSubmitting,
@@ -1373,71 +1379,6 @@ function RecordLinkPage({
     successMessage,
     setSuccessMessage,
   ] = useState('');
-
-  useEffect(() => {
-    let active = true;
-
-    const loadRequests = async () => {
-      setIsLoadingRequests(true);
-
-      try {
-        const accessToken =
-          await getLinkerAccessToken();
-
-        const response = await fetch(
-          '/api/linker/job-requests',
-          {
-            headers: {
-              Authorization:
-                'Bearer ' + accessToken,
-            },
-            cache: 'no-store',
-          }
-        );
-
-        const result =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ||
-              'Recorded job links could not be loaded.'
-          );
-        }
-
-        if (
-          !Array.isArray(result.requests)
-        ) {
-          throw new Error(
-            'The job-link response could not be verified.'
-          );
-        }
-
-        if (active) {
-          setRequests(result.requests);
-        }
-      } catch (loadError) {
-        if (active) {
-          setRequestError(
-            loadError.message ||
-              'Recorded job links could not be loaded.'
-          );
-        }
-      } finally {
-        if (active) {
-          setIsLoadingRequests(false);
-        }
-      }
-    };
-
-    loadRequests();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   if (isLoading) {
     return <LoadingState />;
@@ -1464,25 +1405,20 @@ function RecordLinkPage({
         )
       : [];
 
-  const applicantNames =
-    new Map(
-      data.applicants.map(
-        (applicant) => [
-          applicant.id,
-          applicant.fullName,
-        ]
-      )
-    );
-
-  const clientNames =
-    new Map(
-      data.clients.map(
-        (client) => [
-          client.id,
-          client.fullName,
-        ]
-      )
-    );
+  const clearForm = () => {
+    setApplicantId('');
+    setClientId('');
+    setCompany('');
+    setPosition('');
+    setLocation('');
+    setJobType('');
+    setSalaryRange('');
+    setJobLink('');
+    setLinkProvider('');
+    setComment('');
+    setRequestError('');
+    setSuccessMessage('');
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -1492,10 +1428,14 @@ function RecordLinkPage({
     if (
       !applicantId ||
       !clientId ||
+      !company.trim() ||
+      !position.trim() ||
+      !location.trim() ||
+      !jobType ||
       !jobLink.trim()
     ) {
       setRequestError(
-        'Select an Applicant and Client, then enter a job link.'
+        'Complete every required field before saving the job link.'
       );
       return;
     }
@@ -1519,7 +1459,13 @@ function RecordLinkPage({
           body: JSON.stringify({
             applicantId,
             clientId,
+            company,
+            position,
+            location,
+            jobType,
+            salaryRange,
             jobLink,
+            linkProvider,
             comment,
           }),
         }
@@ -1543,19 +1489,18 @@ function RecordLinkPage({
         );
       }
 
-      setRequests((current) => [
-        result.request,
-        ...current.filter(
-          (request) =>
-            request.id !==
-            result.request.id
-        ),
-      ]);
+      setCompany('');
+      setPosition('');
+      setLocation('');
+      setJobType('');
+      setSalaryRange('');
       setJobLink('');
+      setLinkProvider('');
       setComment('');
+
       setSuccessMessage(
         result.message ||
-          'Job link recorded successfully.'
+          'Job link saved successfully.'
       );
     } catch (submitError) {
       setRequestError(
@@ -1578,121 +1523,292 @@ function RecordLinkPage({
   }
 
   return (
-    <div className={styles.recordLayout}>
-      <section className={styles.recordCard}>
-        <div className={styles.recordHeading}>
-          <span className={styles.emptyIcon}>
-            <FiExternalLink
-              aria-hidden="true"
-            />
-          </span>
-
-          <div>
-            <h2>Record a verified job link</h2>
-            <p>
-              Choose the intended Applicant first.
-              Only Clients assigned to that Applicant
-              will be available.
-            </p>
-          </div>
+    <div
+      className={styles.figmaRecordPage}
+    >
+      <header
+        className={styles.recordPageHeader}
+      >
+        <span aria-hidden="true">←</span>
+        <div>
+          <h2>Record Job Application</h2>
+          <p>
+            Log a new job application for
+            your assigned clients
+          </p>
         </div>
+      </header>
 
-        <form
-          className={styles.recordForm}
-          onSubmit={handleSubmit}
-        >
-          <label>
-            <span>Applicant</span>
-            <select
-              value={applicantId}
-              onChange={(event) => {
-                setApplicantId(
-                  event.target.value
-                );
-                setClientId('');
-                setRequestError('');
-                setSuccessMessage('');
-              }}
-              disabled={isSubmitting}
-              required
-            >
-              <option value="">
-                Select an Applicant
-              </option>
+      <form
+        className={styles.figmaRecordForm}
+        onSubmit={handleSubmit}
+      >
+        <fieldset>
+          <legend>Select Client</legend>
 
-              {eligibleApplicants.map(
-                (applicant) => (
-                  <option
-                    key={applicant.id}
-                    value={applicant.id}
-                  >
-                    {applicant.fullName}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
-
-          <label>
-            <span>Client</span>
-            <select
-              value={clientId}
-              onChange={(event) => {
-                setClientId(
-                  event.target.value
-                );
-                setRequestError('');
-                setSuccessMessage('');
-              }}
-              disabled={
-                !applicantId ||
-                isSubmitting
+          <div
+            className={
+              styles.recordFieldGrid
+            }
+          >
+            <label
+              className={
+                styles.recordFullField
               }
-              required
             >
-              <option value="">
-                {applicantId
-                  ? 'Select a Client'
-                  : 'Select an Applicant first'}
-              </option>
+              <span>
+                Applicant<sup>*</sup>
+              </span>
 
-              {eligibleClients.map(
-                (client) => (
-                  <option
-                    key={client.id}
-                    value={client.id}
-                  >
-                    {client.fullName}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
+              <select
+                value={applicantId}
+                onChange={(event) => {
+                  setApplicantId(
+                    event.target.value
+                  );
+                  setClientId('');
+                  setRequestError('');
+                  setSuccessMessage('');
+                }}
+                disabled={isSubmitting}
+                required
+              >
+                <option value="">
+                  Select an Applicant
+                </option>
 
-          <label className={styles.fullField}>
-            <span>Employer job link</span>
-            <input
-              type="url"
-              value={jobLink}
-              onChange={(event) => {
-                setJobLink(
-                  event.target.value
-                );
-                setRequestError('');
-                setSuccessMessage('');
-              }}
-              placeholder="https://company.com/jobs/role"
-              maxLength={2000}
-              disabled={isSubmitting}
-              required
-            />
-          </label>
+                {eligibleApplicants.map(
+                  (applicant) => (
+                    <option
+                      key={applicant.id}
+                      value={applicant.id}
+                    >
+                      {applicant.fullName}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
 
-          <label className={styles.fullField}>
-            <span>
-              Comment
-              <small>Optional</small>
-            </span>
+            <label
+              className={
+                styles.recordFullField
+              }
+            >
+              <span>
+                Client<sup>*</sup>
+              </span>
+
+              <select
+                value={clientId}
+                onChange={(event) => {
+                  setClientId(
+                    event.target.value
+                  );
+                  setRequestError('');
+                  setSuccessMessage('');
+                }}
+                disabled={
+                  !applicantId ||
+                  isSubmitting
+                }
+                required
+              >
+                <option value="">
+                  {applicantId
+                    ? 'Select a Client'
+                    : 'Select an Applicant first'}
+                </option>
+
+                {eligibleClients.map(
+                  (client) => (
+                    <option
+                      key={client.id}
+                      value={client.id}
+                    >
+                      {client.fullName}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Job Details</legend>
+
+          <div
+            className={
+              styles.recordFieldGrid
+            }
+          >
+            <label>
+              <span>
+                Company Name<sup>*</sup>
+              </span>
+              <input
+                value={company}
+                onChange={(event) =>
+                  setCompany(
+                    event.target.value
+                  )
+                }
+                placeholder="Remote"
+                maxLength={200}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>
+                Job Position<sup>*</sup>
+              </span>
+              <input
+                value={position}
+                onChange={(event) =>
+                  setPosition(
+                    event.target.value
+                  )
+                }
+                placeholder="Remote"
+                maxLength={200}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>
+                Location<sup>*</sup>
+              </span>
+              <input
+                value={location}
+                onChange={(event) =>
+                  setLocation(
+                    event.target.value
+                  )
+                }
+                placeholder="Remote"
+                maxLength={200}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>
+                Job Type<sup>*</sup>
+              </span>
+              <select
+                value={jobType}
+                onChange={(event) =>
+                  setJobType(
+                    event.target.value
+                  )
+                }
+                disabled={isSubmitting}
+                required
+              >
+                <option value="">
+                  Select Job Type
+                </option>
+                <option value="Full-time">
+                  Full-time
+                </option>
+                <option value="Part-time">
+                  Part-time
+                </option>
+                <option value="Contract">
+                  Contract
+                </option>
+                <option value="Internship">
+                  Internship
+                </option>
+                <option value="Temporary">
+                  Temporary
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span>Salary Range</span>
+              <input
+                value={salaryRange}
+                onChange={(event) =>
+                  setSalaryRange(
+                    event.target.value
+                  )
+                }
+                placeholder="e.g. $130k–$200k"
+                maxLength={200}
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label>
+              <span>
+                Job Posting URL<sup>*</sup>
+              </span>
+              <input
+                type="url"
+                value={jobLink}
+                onChange={(event) =>
+                  setJobLink(
+                    event.target.value
+                  )
+                }
+                placeholder="https://..."
+                maxLength={2000}
+                disabled={isSubmitting}
+                required
+              />
+            </label>
+
+            <label>
+              <span>Link Provided By</span>
+              <select
+                value={linkProvider}
+                onChange={(event) =>
+                  setLinkProvider(
+                    event.target.value
+                  )
+                }
+                disabled={isSubmitting}
+              >
+                <option value="">
+                  Select provider
+                </option>
+                <option value="Company website">
+                  Company website
+                </option>
+                <option value="LinkedIn">
+                  LinkedIn
+                </option>
+                <option value="Indeed">
+                  Indeed
+                </option>
+                <option value="Glassdoor">
+                  Glassdoor
+                </option>
+                <option value="Other">
+                  Other
+                </option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Notes &amp; Tags</legend>
+
+          <label
+            className={
+              styles.recordFullField
+            }
+          >
+            <span>Additional Notes</span>
             <textarea
               value={comment}
               onChange={(event) =>
@@ -1700,139 +1816,68 @@ function RecordLinkPage({
                   event.target.value
                 )
               }
-              placeholder="Add a short note for the Applicant."
+              placeholder="Add any additional details about this application."
               maxLength={2000}
-              rows={4}
+              rows={5}
               disabled={isSubmitting}
             />
           </label>
+        </fieldset>
 
-          {requestError && (
-            <p
-              className={styles.formError}
-              role="alert"
-            >
-              {requestError}
-            </p>
-          )}
+        {requestError && (
+          <p
+            className={styles.formError}
+            role="alert"
+          >
+            {requestError}
+          </p>
+        )}
 
-          {successMessage && (
-            <p
-              className={styles.formSuccess}
-              role="status"
-            >
-              {successMessage}
-            </p>
-          )}
+        {successMessage && (
+          <p
+            className={styles.formSuccess}
+            role="status"
+          >
+            {successMessage}
+          </p>
+        )}
+
+        <footer
+          className={styles.recordActions}
+        >
+          <button
+            type="button"
+            className={
+              styles.clearRecordButton
+            }
+            onClick={clearForm}
+            disabled={isSubmitting}
+          >
+            × &nbsp; Clear Form
+          </button>
 
           <button
             type="submit"
-            className={styles.submitButton}
+            className={
+              styles.saveRecordButton
+            }
             disabled={
               isSubmitting ||
               !applicantId ||
               !clientId ||
+              !company.trim() ||
+              !position.trim() ||
+              !location.trim() ||
+              !jobType ||
               !jobLink.trim()
             }
           >
             {isSubmitting
-              ? 'Recording...'
-              : 'Record job link'}
+              ? 'Saving...'
+              : '▣  Save Job Link'}
           </button>
-        </form>
-      </section>
-
-      <section className={styles.requestHistory}>
-        <div className={styles.tableHeading}>
-          <div>
-            <h2>Recorded links</h2>
-            <p>
-              Your latest verified Linker submissions.
-            </p>
-          </div>
-
-          <strong>{requests.length}</strong>
-        </div>
-
-        {isLoadingRequests ? (
-          <div className={styles.historyStatus}>
-            <span className={styles.spinner} />
-            <p>Loading recorded links...</p>
-          </div>
-        ) : requests.length === 0 ? (
-          <div className={styles.historyStatus}>
-            <p>
-              No job links have been recorded yet.
-            </p>
-          </div>
-        ) : (
-          <div className={styles.tableScroll}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Applicant</th>
-                  <th>Client</th>
-                  <th>Job link</th>
-                  <th>Status</th>
-                  <th>Recorded</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map(
-                  (request) => (
-                    <tr key={request.id}>
-                      <td>
-                        {applicantNames.get(
-                          request.applicantId
-                        ) ||
-                          'Previous assignment'}
-                      </td>
-                      <td>
-                        {clientNames.get(
-                          request.clientId
-                        ) ||
-                          'Previous Client'}
-                      </td>
-                      <td>
-                        <a
-                          href={request.jobLink}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Open link
-                          <FiExternalLink
-                            aria-hidden="true"
-                          />
-                        </a>
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            request.status ===
-                            'converted'
-                              ? styles.statusReady
-                              : styles.statusPending
-                          }
-                        >
-                          {request.status.replace(
-                            '_',
-                            ' '
-                          )}
-                        </span>
-                      </td>
-                      <td>
-                        {formatDate(
-                          request.createdAt
-                        )}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+        </footer>
+      </form>
     </div>
   );
 }
