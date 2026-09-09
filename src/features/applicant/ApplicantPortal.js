@@ -40,7 +40,6 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  LINK_SOURCE_OPTIONS,
   PERFORMANCE_PERIODS,
   STATUS_OPTIONS,
 } from '../../data/applicantData';
@@ -171,12 +170,19 @@ const normalizeAssignedClient = (
   currentLocation:
     client.currentLocation ||
     'Not provided',
+  targetMarkets:
+    Array.isArray(client.targetMarkets)
+      ? client.targetMarkets
+      : [],
   targetRoles:
     Array.isArray(client.targetRoles)
       ? client.targetRoles
       : [],
   targetIndustries:
     client.targetIndustries ||
+    'Not provided',
+  specialization:
+    client.specialization ||
     'Not provided',
   employmentType:
     client.employmentType ||
@@ -203,6 +209,10 @@ const normalizeAssignedClient = (
   additionalPreferences:
     client.additionalPreferences ||
     'Not provided',
+  jobRequests:
+    Array.isArray(client.jobRequests)
+      ? client.jobRequests
+      : [],
   hasResume:
     Boolean(client.hasResume),
   onboardingStatus:
@@ -498,16 +508,9 @@ function ApplicationTable({
                 </td>
                 <td>
                   <div className={styles.sourceCell}>
-                    <select
-                      aria-label={`Link source for ${record.company}`}
-                      value={record.linkSource}
-                      disabled={readOnly}
-                      className={styles.sourceSelect}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={(event) => onChangeRecord(record.id, { linkSource: event.target.value })}
-                    >
-                      {LINK_SOURCE_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-                    </select>
+                    <span title="Automatically recorded from the original link provider">
+                      {record.linkSource || 'Not recorded'}
+                    </span>
                     <button type="button" className={styles.rowLinkButton} aria-label={`Open ${record.company} application`} onClick={(event) => { event.stopPropagation(); onOpen(record); }}>
                       <FiExternalLink />
                     </button>
@@ -851,6 +854,14 @@ function ClientDetail({
             value={client.currentLocation}
           />
           <ReadonlyField
+            label="Target Markets"
+            value={
+              client.targetMarkets.length > 0
+                ? client.targetMarkets.join(', ')
+                : 'Not provided'
+            }
+          />
+          <ReadonlyField
             label="Target Roles"
             value={
               client.targetRoles.length > 0
@@ -861,6 +872,10 @@ function ClientDetail({
           <ReadonlyField
             label="Target Industries"
             value={client.targetIndustries}
+          />
+          <ReadonlyField
+            label="Specialization"
+            value={client.specialization}
           />
           <ReadonlyField
             label="Salary Expectation"
@@ -1107,6 +1122,7 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
 function WorkshopPage({
   clients,
   onRecordApplication,
+  onUpdateJobRequest,
   isPreview = false,
   isRecordingApplication = false,
 }) {
@@ -1126,6 +1142,18 @@ function WorkshopPage({
     useState('');
   const [isOpeningResume, setIsOpeningResume] =
     useState(false);
+  const [
+    activeJobRequestId,
+    setActiveJobRequestId,
+  ] = useState('');
+  const [
+    jobRequestActionId,
+    setJobRequestActionId,
+  ] = useState('');
+  const [
+    jobRequestActionError,
+    setJobRequestActionError,
+  ] = useState('');
 
   const activeClients =
     clients.filter(
@@ -1155,6 +1183,11 @@ function WorkshopPage({
       ? selectedClient.targetRoles.join(', ')
       : 'Not provided';
 
+  const targetMarkets =
+    selectedClient?.targetMarkets?.length
+      ? selectedClient.targetMarkets.join(', ')
+      : 'Not provided';
+
   const preferredLocations =
     selectedClient?.locations?.length
       ? selectedClient.locations.join(', ')
@@ -1168,6 +1201,9 @@ function WorkshopPage({
     setJobUrl('');
     setJobDescription('');
     setResumeStatus('');
+    setActiveJobRequestId('');
+    setJobRequestActionId('');
+    setJobRequestActionError('');
   };
 
   const openClientResume = async () => {
@@ -1254,6 +1290,71 @@ function WorkshopPage({
     }
   };
 
+  const jobSelectionInFlight = useRef(false);
+
+  const handleUseJobRequest = async (request) => {
+    if (
+      isPreview ||
+      isRecordingApplication ||
+      jobSelectionInFlight.current ||
+      !onUpdateJobRequest ||
+      !request ||
+      !['new', 'in_review'].includes(request.status)
+    ) {
+      return;
+    }
+
+    let destination;
+    try {
+      destination = new URL(request.jobLink);
+      if (!['http:', 'https:'].includes(destination.protocol)) {
+        throw new Error('Unsupported URL.');
+      }
+    } catch {
+      setJobRequestActionError('This job link is invalid.');
+      return;
+    }
+
+    jobSelectionInFlight.current = true;
+    setJobRequestActionId(request.id);
+    setJobRequestActionError('');
+
+    let jobWindow = null;
+
+    try {
+      // Open during the click to avoid blocking a later asynchronous popup.
+      jobWindow = window.open('about:blank', '_blank');
+      if (jobWindow) jobWindow.opener = null;
+
+      const updated = await onUpdateJobRequest(request.id, 'in_review');
+
+      destination = new URL(updated?.jobLink || request.jobLink);
+      if (!['http:', 'https:'].includes(destination.protocol)) {
+        throw new Error('The returned job link is invalid.');
+      }
+
+      setActiveJobRequestId(request.id);
+      setJobUrl(destination.href);
+
+      if (jobWindow && !jobWindow.closed) {
+        jobWindow.location.replace(destination.href);
+      } else {
+        setJobRequestActionError(
+          'Job selected. Your browser blocked the new tab. Click Open Job, apply on the employer website, then return here to mark it as applied.'
+        );
+      }
+    } catch (error) {
+      if (jobWindow && !jobWindow.closed) jobWindow.close();
+      setJobRequestActionError(
+        error?.message || 'This job request could not be selected.'
+      );
+    } finally {
+      jobSelectionInFlight.current = false;
+      setJobRequestActionId('');
+    }
+  };
+
+
   return (
     <>
       <PageHeader
@@ -1269,16 +1370,30 @@ function WorkshopPage({
                 isRecordingApplication ||
                 isQuotaReached
               }
-              onClick={() =>
-                onRecordApplication(
-                  selectedClient,
-                  companyName,
-                  position,
-                  jobLocation,
-                  jobUrl,
-                  jobDescription
-                )
-              }
+              onClick={async () => {
+                const recorded =
+                  await onRecordApplication(
+                    selectedClient,
+                    companyName,
+                    position,
+                    jobLocation,
+                    jobUrl,
+                    jobDescription,
+                    activeJobRequestId
+                  );
+
+                if (
+                  recorded &&
+                  activeJobRequestId
+                ) {
+                  setActiveJobRequestId('');
+                  setCompanyName('');
+                  setPosition('');
+                  setJobLocation('');
+                  setJobUrl('');
+                  setJobDescription('');
+                }
+              }}
             >
               <FiSave />
 
@@ -1286,7 +1401,9 @@ function WorkshopPage({
                 ? 'Application Limit Reached'
                 : isRecordingApplication
                   ? 'Recording...'
-                  : 'Record Application'}
+                  : activeJobRequestId
+                    ? 'Mark as Applied'
+                    : 'Record Application'}
             </button>
           ) : null
         }
@@ -1307,6 +1424,7 @@ function WorkshopPage({
           <select
             value={selectedClientId}
             onChange={handleClientChange}
+            disabled={Boolean(jobRequestActionId) || isRecordingApplication}
           >
             <option value="">
               Select a client
@@ -1358,10 +1476,21 @@ function WorkshopPage({
               </p>
 
               <p>
+                Target Markets:{' '}
+                {targetMarkets} |
                 Industries:{' '}
                 {selectedClient.targetIndustries} |
+                Specialization:{' '}
+                {selectedClient.specialization}
+              </p>
+
+              <p>
                 Preferred Locations:{' '}
                 {preferredLocations} |
+                Work Authorization:{' '}
+                {selectedClient.workAuthorization} |
+                Sponsorship:{' '}
+                {selectedClient.sponsorship} |
                 Experience:{' '}
                 {selectedClient.yearsExperience}
               </p>
@@ -1388,6 +1517,134 @@ function WorkshopPage({
                   ? "Client's Resume"
                   : 'Resume Unavailable'}
             </button>
+          </div>
+        )}
+
+        {selectedClient && (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Client Job Requests
+                </h3>
+
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Job opportunities submitted directly by this client.
+                </p>
+              </div>
+
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1E50C3] dark:bg-blue-900/30">
+                {selectedClient.jobRequests.length}
+              </span>
+            </div>
+
+            {jobRequestActionError && (
+              <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400">
+                {jobRequestActionError}
+              </div>
+            )}
+
+            {selectedClient.jobRequests.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {selectedClient.jobRequests.map(
+                  (request) => (
+                    <div
+                      key={request.id}
+                      className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold capitalize text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                              {String(
+                                request.status ||
+                                  'new'
+                              ).replace(
+                                /_/g,
+                                ' '
+                              )}
+                            </span>
+
+                            {request.createdAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(
+                                  request.createdAt
+                                ).toLocaleDateString(
+                                  'en-US',
+                                  {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  }
+                                )}
+                              </span>
+                            )}
+                          </div>
+
+                          {request.comment && (
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                              {request.comment}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <a
+                            href={request.jobLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                          >
+                            Open Job
+                            <FiExternalLink />
+                          </a>
+
+                          {!isPreview &&
+                            ![
+                              'converted',
+                              'dismissed',
+                              'withdrawn',
+                            ].includes(
+                              request.status
+                            ) && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={
+                                    Boolean(
+                                      jobRequestActionId
+                                    )
+                                  }
+                                  onClick={() =>
+                                    handleUseJobRequest(
+                                      request
+                                    )
+                                  }
+                                  className="rounded-xl bg-[#1E50C3] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {jobRequestActionId ===
+                                  request.id
+                                    ? 'Updating...'
+                                    : activeJobRequestId ===
+                                        request.id
+                                      ? 'Selected'
+                                      : 'Open Job & Start Application'}
+                                </button>
+
+
+                              </>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                This client has not submitted any job links.
+              </p>
+            )}
           </div>
         )}
 
@@ -2882,6 +3139,101 @@ export default function ApplicantPortal() {
   const selectedClient = assignedClients.find((client) => client.id === clientId);
   const selectedApplication = visibleApplications.find((application) => application.id === applicationId);
 
+  const updateJobRequestStatus =
+    async (
+      requestId,
+      status
+    ) => {
+      const accessToken =
+        await getApplicantAccessToken();
+
+      const response =
+        await fetch(
+          `/api/applicant/job-requests/${encodeURIComponent(
+            requestId
+          )}`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              status,
+            }),
+          }
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(() => ({}));
+
+      if (!response.ok) {
+        let message =
+          result.error ||
+          'The Client job request could not be updated.';
+
+        if (response.status === 409) {
+          try {
+            const refreshResponse = await fetch('/api/applicant/clients', {
+              cache: 'no-store',
+              headers: {
+                Authorization: 'Bearer ' + accessToken,
+              },
+            });
+
+            const refreshed = await refreshResponse.json();
+
+            if (!refreshResponse.ok || !Array.isArray(refreshed.clients)) {
+              throw new Error('Refresh failed.');
+            }
+
+            setAssignedClients(
+              refreshed.clients.map(normalizeAssignedClient)
+            );
+          } catch {
+            message += ' Refresh the page to see the latest job-link status.';
+          }
+        }
+
+        throw new Error(message);
+      }
+
+      const updated =
+        result.request;
+
+      if (updated) {
+        setAssignedClients(
+          (current) =>
+            current.map(
+              (client) => ({
+                ...client,
+                jobRequests:
+                  Array.isArray(
+                    client.jobRequests
+                  )
+                    ? client.jobRequests.map(
+                        (request) =>
+                          request.id ===
+                          updated.id
+                            ? {
+                                ...request,
+                                ...updated,
+                              }
+                            : request
+                      )
+                    : [],
+              })
+            )
+        );
+      }
+
+      return updated;
+    };
+
   const recordApplication =
     async (
       client,
@@ -2889,7 +3241,8 @@ export default function ApplicantPortal() {
       positionName,
       jobLocation,
       jobUrl,
-      jobDescription
+      jobDescription,
+      jobRequestId = ''
     ) => {
       const company =
         String(
@@ -3025,8 +3378,9 @@ export default function ApplicantPortal() {
                 location,
                 status:
                   'Submitted',
-                linkSource:
-                  'Applicant',
+                jobRequestId:
+                  jobRequestId ||
+                  undefined,
                 role:
                   position,
                 preferences:
@@ -3124,6 +3478,30 @@ export default function ApplicantPortal() {
                     ...item,
                     applications,
                     progress,
+                    jobRequests:
+                      jobRequestId &&
+                      Array.isArray(
+                        item.jobRequests
+                      )
+                        ? item.jobRequests.map(
+                            (request) =>
+                              request.id ===
+                              jobRequestId
+                                ? {
+                                    ...request,
+                                    status:
+                                      'converted',
+                                    convertedApplicationId:
+                                      result
+                                        .application
+                                        .id,
+                                    reviewedAt:
+                                      new Date()
+                                        .toISOString(),
+                                  }
+                                : request
+                          )
+                        : item.jobRequests,
                   };
                 }
               )
@@ -3133,11 +3511,15 @@ export default function ApplicantPortal() {
         setToast(
           'Application recorded in the client database.'
         );
+
+        return true;
       } catch (error) {
         setToast(
           error?.message ||
             'The Application could not be recorded.'
         );
+
+        return false;
       } finally {
         recordApplicationInFlight
           .current = false;
@@ -3175,6 +3557,9 @@ export default function ApplicantPortal() {
         clients={assignedClients}
         onRecordApplication={
           recordApplication
+        }
+        onUpdateJobRequest={
+          updateJobRequestStatus
         }
         onPreview={setPreviewType}
         isPreview={

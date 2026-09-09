@@ -2,19 +2,18 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { 
-  FiFileText, 
-  FiMail, 
-  FiUserX, 
-  FiCalendar, 
-  FiMessageSquare, 
-  FiChevronLeft, 
+import {
+  FiFileText,
+  FiMail,
+  FiUserX,
+  FiCalendar,
+  FiMessageSquare,
+  FiChevronLeft,
   FiChevronRight,
   FiPlus,
   FiCheck,
   FiFile,
   FiTrash2,
-  FiStar
 } from 'react-icons/fi';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
 
@@ -84,31 +83,90 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const [jobRequests, setJobRequests] = useState([]);
+  const [withdrawingRequestId, setWithdrawingRequestId] = useState('');
+
+  async function handleWithdrawJobRequest(request) {
+    if (
+      previewClientId ||
+      withdrawingRequestId ||
+      !['new', 'in_review'].includes(request.status)
+    ) {
+      return;
+    }
+
+    if (!window.confirm(
+      'Withdraw this job link? The applicant will no longer be able to record an application from this request.'
+    )) {
+      return;
+    }
+
+    setWithdrawingRequestId(request.id);
+    setJobRequestsError('');
+    setJobRequestMessage('');
+
+    try {
+      const accessToken = await getAccessToken();
+
+      const response = await fetch('/api/client/job-requests', {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requestId: request.id,
+          action: 'withdraw',
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || 'The job link could not be withdrawn.');
+      }
+
+      if (
+        result.request?.id !== request.id ||
+        result.request?.status !== 'withdrawn'
+      ) {
+        throw new Error('Withdrawal response could not be verified. Refresh to check the current status.');
+      }
+
+      setJobRequests((previous) =>
+        previous.map((item) =>
+          item.id === request.id
+            ? { ...item, ...result.request }
+            : item
+        )
+      );
+
+      setJobRequestMessage('Job link withdrawn successfully.');
+    } catch (error) {
+      setJobRequestsError(
+        error.message || 'Unable to withdraw this link. Refresh to check its current status.'
+      );
+    } finally {
+      setWithdrawingRequestId('');
+    }
+  }
+  const [
+    isLoadingJobRequests,
+    setIsLoadingJobRequests,
+  ] = useState(false);
+  const [
+    jobRequestsError,
+    setJobRequestsError,
+  ] = useState('');
+  const [
+    jobRequestMessage,
+    setJobRequestMessage,
+  ] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [updateSlideIndex, setUpdateSlideIndex] = useState(0);
   const [announcements, setAnnouncements] = useState([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
   const [announcementsError, setAnnouncementsError] = useState('');
-  const [
-    applicantRatings,
-    setApplicantRatings,
-  ] = useState([]);
-  const [
-    isLoadingApplicantRatings,
-    setIsLoadingApplicantRatings,
-  ] = useState(false);
-  const [
-    applicantRatingsError,
-    setApplicantRatingsError,
-  ] = useState('');
-  const [
-    applicantRatingMessage,
-    setApplicantRatingMessage,
-  ] = useState('');
-  const [
-    savingApplicantRatingId,
-    setSavingApplicantRatingId,
-  ] = useState('');
 
   useEffect(() => {
     if (!router.isReady) {
@@ -254,6 +312,82 @@ export default function Dashboard() {
   ]);
 
   useEffect(() => {
+    if (!router.isReady) {
+      return undefined;
+    }
+
+    if (previewClientId) {
+      setJobRequests([]);
+      setJobRequestsError('');
+      setJobRequestMessage('');
+      setIsLoadingJobRequests(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadJobRequests = async () => {
+      setIsLoadingJobRequests(true);
+      setJobRequestsError('');
+
+      try {
+        const accessToken =
+          await getAccessToken();
+
+        const response = await fetch(
+          '/api/client/job-requests',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const data = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              'Unable to load your submitted job links.'
+          );
+        }
+
+        if (!cancelled) {
+          setJobRequests(
+            Array.isArray(data.requests)
+              ? data.requests
+              : []
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setJobRequests([]);
+          setJobRequestsError(
+            error.message ||
+              'Unable to load your submitted job links.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingJobRequests(false);
+        }
+      }
+    };
+
+    loadJobRequests();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewClientId,
+    router.isReady,
+  ]);
+
+  useEffect(() => {
     if (previewClientId) {
       setAnnouncements([]);
       setAnnouncementsError('');
@@ -317,213 +451,6 @@ export default function Dashboard() {
     };
   }, [previewClientId]);
 
-  useEffect(() => {
-    if (!router.isReady) {
-      return undefined;
-    }
-
-    if (previewClientId) {
-      setApplicantRatings([]);
-      setApplicantRatingsError('');
-      setApplicantRatingMessage('');
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    const loadApplicantRatings =
-      async () => {
-        setIsLoadingApplicantRatings(
-          true
-        );
-        setApplicantRatingsError('');
-
-        try {
-          const supabase =
-            createClient();
-
-          if (!supabase) {
-            throw new Error(
-              'The Supabase connection is unavailable.'
-            );
-          }
-
-          const {
-            data: { session },
-            error: sessionError,
-          } =
-            await supabase.auth.getSession();
-
-          if (
-            sessionError ||
-            !session?.access_token
-          ) {
-            throw new Error(
-              'Your session has expired. Please sign in again.'
-            );
-          }
-
-          const response = await fetch(
-            '/api/client/applicant-ratings',
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${session.access_token}`,
-              },
-            }
-          );
-
-          const result =
-            await response
-              .json()
-              .catch(() => ({}));
-
-          if (!response.ok) {
-            throw new Error(
-              result.error ||
-                'Applicant ratings could not be loaded.'
-            );
-          }
-
-          if (!cancelled) {
-            setApplicantRatings(
-              result.applicants || []
-            );
-          }
-        } catch (error) {
-          if (!cancelled) {
-            setApplicantRatings([]);
-            setApplicantRatingsError(
-              error?.message ||
-                'Applicant ratings could not be loaded.'
-            );
-          }
-        } finally {
-          if (!cancelled) {
-            setIsLoadingApplicantRatings(
-              false
-            );
-          }
-        }
-      };
-
-    loadApplicantRatings();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    previewClientId,
-    router.isReady,
-  ]);
-
-  const saveApplicantRating =
-    async (
-      applicantId,
-      rating
-    ) => {
-      if (
-        savingApplicantRatingId
-      ) {
-        return;
-      }
-
-      setSavingApplicantRatingId(
-        applicantId
-      );
-      setApplicantRatingsError('');
-      setApplicantRatingMessage('');
-
-      try {
-        const supabase =
-          createClient();
-
-        if (!supabase) {
-          throw new Error(
-            'The Supabase connection is unavailable.'
-          );
-        }
-
-        const {
-          data: { session },
-          error: sessionError,
-        } =
-          await supabase.auth.getSession();
-
-        if (
-          sessionError ||
-          !session?.access_token
-        ) {
-          throw new Error(
-            'Your session has expired. Please sign in again.'
-          );
-        }
-
-        const response = await fetch(
-          '/api/client/applicant-ratings',
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type':
-                'application/json',
-              Authorization:
-                `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              applicantId,
-              rating,
-            }),
-          }
-        );
-
-        const result =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ||
-              'Your rating could not be saved.'
-          );
-        }
-
-        setApplicantRatings(
-          (current) =>
-            current.map(
-              (applicant) =>
-                applicant.id ===
-                applicantId
-                  ? {
-                      ...applicant,
-                      rating:
-                        result.rating
-                          ?.rating ||
-                        rating,
-                      ratingUpdatedAt:
-                        result.rating
-                          ?.updatedAt ||
-                        new Date()
-                          .toISOString(),
-                    }
-                  : applicant
-            )
-        );
-
-        setApplicantRatingMessage(
-          'Thank you. Your Applicant rating has been saved.'
-        );
-      } catch (error) {
-        setApplicantRatingsError(
-          error?.message ||
-            'Your rating could not be saved.'
-        );
-      } finally {
-        setSavingApplicantRatingId(
-          ''
-        );
-      }
-    };
 
   // Status Badge styles helper
   const getStatusBadge = (status) => {
@@ -656,12 +583,12 @@ export default function Dashboard() {
           const isActive = activeFilter === stat.filterKey;
 
           return (
-            <div 
+            <div
               key={i}
               onClick={() => { setActiveFilter(stat.filterKey); setCurrentPage(1); }}
               className={`p-1 sm:p-6 bg-white dark:bg-gray-800 border rounded-xl sm:rounded-2xl cursor-pointer hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden ${
-                isActive 
-                  ? 'border-primary ring-2 ring-primary/10' 
+                isActive
+                  ? 'border-primary ring-2 ring-primary/10'
                   : 'border-gray-100 dark:border-gray-700'
               }`}
             >
@@ -680,137 +607,6 @@ export default function Dashboard() {
           );
         })}
       </div>
-
-      {!previewClientId && (
-        <section className="mb-8 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:p-8">
-          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-            <div>
-              <h2 className="text-lg font-bold text-gray-950 dark:text-white">
-                Rate Your Applicant
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Share your experience with the Applicant working on your account.
-              </p>
-            </div>
-
-            <span className="text-xs font-semibold text-gray-400">
-              1–5 stars
-            </span>
-          </div>
-
-          {applicantRatingsError && (
-            <div
-              role="alert"
-              className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
-            >
-              {applicantRatingsError}
-            </div>
-          )}
-
-          {applicantRatingMessage && (
-            <div
-              role="status"
-              className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
-            >
-              {applicantRatingMessage}
-            </div>
-          )}
-
-          {isLoadingApplicantRatings ? (
-            <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50 px-5 py-6 text-sm font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
-              Loading your assigned Applicant...
-            </div>
-          ) : applicantRatings.length ===
-            0 ? (
-            <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50 px-5 py-6 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
-              No Applicant is currently assigned to your account.
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {applicantRatings.map(
-                (applicant) => (
-                  <div
-                    key={applicant.id}
-                    className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 dark:border-gray-700 dark:bg-gray-900/20"
-                  >
-                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                      <div>
-                        <p className="text-sm font-bold text-gray-950 dark:text-white">
-                          {applicant.fullName}
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {applicant.rating
-                            ? `Your rating: ${applicant.rating}.0 / 5`
-                            : 'Not rated yet'}
-                        </p>
-                      </div>
-
-                      <div
-                        className="flex items-center gap-1"
-                        aria-label={`Rate ${applicant.fullName}`}
-                      >
-                        {[1, 2, 3, 4, 5].map(
-                          (star) => {
-                            const selected =
-                              star <=
-                              Number(
-                                applicant.rating ||
-                                  0
-                              );
-
-                            const saving =
-                              savingApplicantRatingId ===
-                              applicant.id;
-
-                            return (
-                              <button
-                                key={star}
-                                type="button"
-                                disabled={
-                                  Boolean(
-                                    savingApplicantRatingId
-                                  )
-                                }
-                                aria-label={`${star} star${star === 1 ? '' : 's'} for ${applicant.fullName}`}
-                                title={`Rate ${star} star${star === 1 ? '' : 's'}`}
-                                onClick={() =>
-                                  saveApplicantRating(
-                                    applicant.id,
-                                    star
-                                  )
-                                }
-                                className="rounded-lg p-1 text-amber-400 transition hover:scale-110 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <FiStar
-                                  className="h-7 w-7"
-                                  fill={
-                                    selected
-                                      ? 'currentColor'
-                                      : 'none'
-                                  }
-                                />
-                              </button>
-                            );
-                          }
-                        )}
-                      </div>
-                    </div>
-
-                    {savingApplicantRatingId ===
-                      applicant.id && (
-                      <p className="mt-3 text-xs font-medium text-blue-600">
-                        Saving your rating...
-                      </p>
-                    )}
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* Important Updates */}
       <div className="bg-white dark:bg-gray-800 border border-[#1E50C3] rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
@@ -912,14 +708,118 @@ export default function Dashboard() {
 
       {/* Interactive Updates / Action Bar */}
       <div className="mb-4 flex items-center">
-        <button 
-          onClick={() => setIsAddJobModalOpen(true)}
+        <button
+          onClick={() => {
+            setJobRequestMessage('');
+            setIsAddJobModalOpen(true);
+          }}
           className="flex items-center gap-2 text-[#1E50C3] hover:text-[#1A45A7] font-semibold text-sm transition-colors"
         >
           <FiPlus className="text-lg" />
           <span>Add Job Link</span>
         </button>
       </div>
+
+      {!previewClientId && (
+        <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                Submitted Job Links
+              </h3>
+
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Job opportunities you have sent to the ApplyLoop team.
+              </p>
+            </div>
+
+            {jobRequests.length > 0 && (
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1E50C3] dark:bg-blue-900/30">
+                {jobRequests.length}
+              </span>
+            )}
+          </div>
+
+          {jobRequestMessage && (
+            <div className="mt-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-400">
+              {jobRequestMessage}
+            </div>
+          )}
+
+          {jobRequestsError && (
+            <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400">
+              {jobRequestsError}
+            </div>
+          )}
+
+          {isLoadingJobRequests ? (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              Loading submitted job links...
+            </p>
+          ) : jobRequests.length > 0 ? (
+            <div className="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
+              {jobRequests
+                .slice(0, 5)
+                .map((request) => (
+                  <div
+                    key={request.id}
+                    className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <a
+                        href={request.jobLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-sm font-semibold text-[#1E50C3] hover:underline"
+                      >
+                        {request.jobLink}
+                      </a>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span>
+                          {formatApplicationDate(
+                            request.createdAt
+                          )}
+                        </span>
+
+                        <span>•</span>
+
+                        <span className="capitalize">
+                          {String(
+                            request.status || 'new'
+                          ).replace(/_/g, ' ')}
+                        </span>
+                      </div>
+
+                      {request.comment && (
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                          {request.comment}
+                        </p>
+                      )}
+                    </div>
+
+                    {['new', 'in_review'].includes(request.status) && (
+                      <button
+                        type="button"
+                        onClick={() => handleWithdrawJobRequest(request)}
+                        disabled={Boolean(withdrawingRequestId)}
+                        className="shrink-0 rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {withdrawingRequestId === request.id
+                          ? 'Withdrawing...'
+                          : 'Withdraw Link'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              You have not submitted any job links yet.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Applications Table */}
       <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
@@ -967,7 +867,7 @@ export default function Dashboard() {
                 </tr>
               ) : paginatedApps.length > 0 ? (
                 paginatedApps.map((app) => (
-                  <tr 
+                  <tr
                     key={app.id}
                     className="hover:bg-gray-50/40 dark:hover:bg-gray-700/20 transition-colors text-xs sm:text-sm text-gray-700 dark:text-gray-300"
                   >
@@ -1113,6 +1013,23 @@ export default function Dashboard() {
                 'Unable to submit your job link.'
             );
           }
+
+          if (data.request) {
+            setJobRequests((current) => [
+              data.request,
+              ...current.filter(
+                (request) =>
+                  request.id !==
+                  data.request.id
+              ),
+            ]);
+          }
+
+          setJobRequestsError('');
+          setJobRequestMessage(
+            data.message ||
+              'Job link submitted successfully.'
+          );
         }}
       />
     </DashboardLayout>

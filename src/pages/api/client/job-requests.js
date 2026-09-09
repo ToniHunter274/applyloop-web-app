@@ -63,8 +63,13 @@ function validateComment(value) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+  if (
+    !['GET', 'POST', 'PATCH'].includes(req.method)
+  ) {
+    res.setHeader(
+      'Allow',
+      'GET, POST, PATCH'
+    );
 
     return res.status(405).json({
       error: 'Method not allowed.',
@@ -76,14 +81,6 @@ export default async function handler(req, res) {
       profile,
       supabase,
     } = await requireClient(req);
-
-    const jobUrl = validateJobUrl(
-      req.body?.jobLink
-    );
-
-    const comment = validateComment(
-      req.body?.comment
-    );
 
     const {
       data: client,
@@ -101,6 +98,114 @@ export default async function handler(req, res) {
       );
     }
 
+    if (req.method === 'PATCH') {
+      const requestId =
+        typeof req.body?.requestId === 'string'
+          ? req.body.requestId.trim()
+          : '';
+
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)
+        || req.body?.action !== 'withdraw'
+      ) {
+        throw new ApiError(400, 'A valid job request and withdrawal action are required.');
+      }
+
+      const { data: withdrawn, error: withdrawalError } = await supabase
+        .from('client_job_requests')
+        .update({
+          status: 'withdrawn',
+          withdrawn_at: new Date().toISOString(),
+          withdrawn_by: profile.id,
+        })
+        .eq('id', requestId)
+        .eq('client_id', client.id)
+        .eq('submitted_by', profile.id)
+        .eq('request_source', 'client')
+        .in('status', ['new', 'in_review'])
+        .is('converted_application_id', null)
+        .select('id, status, withdrawn_at')
+        .maybeSingle();
+
+      if (withdrawalError) {
+        throw new ApiError(500, 'The job link could not be withdrawn.');
+      }
+
+      if (!withdrawn) {
+        throw new ApiError(
+          409,
+          'This link is unavailable for withdrawal. It may already be withdrawn or recorded as an application.'
+        );
+      }
+
+      return res.status(200).json({
+        message: 'Job link withdrawn successfully.',
+        request: {
+          id: withdrawn.id,
+          status: withdrawn.status,
+          withdrawnAt: withdrawn.withdrawn_at,
+        },
+      });
+    }
+
+    if (req.method === 'GET') {
+      const {
+        data: requestRows,
+        error: requestsError,
+      } = await supabase
+        .from('client_job_requests')
+        .select(`
+          id,
+          job_url,
+          comment,
+          status,
+          converted_application_id,
+          reviewed_at,
+          created_at,
+          updated_at
+        `)
+        .eq('client_id', client.id)
+        .eq('request_source', 'client')
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(20);
+
+      if (requestsError) {
+        throw new ApiError(
+          500,
+          'Your submitted job links could not be loaded.'
+        );
+      }
+
+      return res.status(200).json({
+        requests: (requestRows || []).map(
+          (request) => ({
+            id: request.id,
+            jobLink: request.job_url,
+            comment: request.comment,
+            status: request.status,
+            convertedApplicationId:
+              request.converted_application_id,
+            reviewedAt:
+              request.reviewed_at,
+            createdAt:
+              request.created_at,
+            updatedAt:
+              request.updated_at,
+          })
+        ),
+      });
+    }
+
+    const jobUrl = validateJobUrl(
+      req.body?.jobLink
+    );
+
+    const comment = validateComment(
+      req.body?.comment
+    );
+
     const {
       data: request,
       error: requestError,
@@ -112,6 +217,7 @@ export default async function handler(req, res) {
         job_url: jobUrl,
         comment,
         status: 'new',
+        request_source: 'client',
       })
       .select(`
         id,
@@ -155,7 +261,11 @@ export default async function handler(req, res) {
     return res.status(statusCode).json({
       error:
         statusCode >= 500
-          ? 'Unable to submit your job link right now.'
+          ? req.method === 'GET'
+            ? 'Unable to load your submitted job links right now.'
+            : req.method === 'PATCH'
+              ? 'Unable to withdraw your job link right now.'
+              : 'Unable to submit your job link right now.'
           : error.message,
     });
   }

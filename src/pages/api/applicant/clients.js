@@ -380,6 +380,89 @@ async function getClients(req, res) {
       applicationMessageRows || [];
   }
 
+  const {
+    data: jobRequestRows,
+    error: jobRequestsError,
+  } = await supabase
+    .from('client_job_requests')
+    .select(`
+      id,
+      client_id,
+      job_url,
+      comment,
+      status,
+      request_source,
+      target_applicant_id,
+      converted_application_id,
+      reviewed_at,
+      created_at,
+      updated_at
+    `)
+    .in('client_id', clientIds)
+    .order('created_at', {
+      ascending: false,
+    });
+
+  if (jobRequestsError) {
+    console.error(
+      'Unable to load Client job requests:',
+      jobRequestsError
+    );
+
+    throw new ApiError(
+      500,
+      'Client job requests could not be loaded.'
+    );
+  }
+
+  const jobRequestsByClientId =
+    new Map();
+
+  (jobRequestRows || [])
+    .filter(
+      (request) =>
+        request.request_source ===
+          'client' ||
+        request.target_applicant_id ===
+          applicant.id
+    )
+    .forEach(
+      (request) => {
+      const requests =
+        jobRequestsByClientId.get(
+          request.client_id
+        ) || [];
+
+      requests.push({
+        id: request.id,
+        jobLink: request.job_url,
+        comment: request.comment,
+        status: request.status,
+        source:
+          request.request_source ===
+          'linker'
+            ? 'Linker'
+            : 'Client',
+        targetApplicantId:
+          request.target_applicant_id ||
+          null,
+        convertedApplicationId:
+          request.converted_application_id,
+        reviewedAt:
+          request.reviewed_at,
+        createdAt:
+          request.created_at,
+        updatedAt:
+          request.updated_at,
+      });
+
+      jobRequestsByClientId.set(
+        request.client_id,
+        requests
+      );
+    }
+  );
+
   const profilesById = new Map(
     profiles.map((profile) => [
       profile.id,
@@ -511,6 +594,17 @@ async function getClients(req, res) {
               answers.preferredLocations
           );
 
+        const targetMarkets =
+          Array.isArray(
+            answers.targetMarkets
+          )
+            ? answers.targetMarkets
+                .map((market) =>
+                  String(market || '').trim()
+                )
+                .filter(Boolean)
+            : [];
+
         const applicationLimit =
           Number(
             client.application_limit ||
@@ -568,10 +662,15 @@ async function getClients(req, res) {
             answers.currentLocation ||
             client.address ||
             'Not provided',
+          targetMarkets,
           targetRoles,
           targetIndustries:
             answers.settingsIndustry ??
             answers.targetIndustries ??
+            'Not provided',
+          specialization:
+            answers.settingsSpecialization ??
+            answers.specialization ??
             'Not provided',
           workType:
             answers.settingsWorkType ??
@@ -589,9 +688,11 @@ async function getClients(req, res) {
           locations:
             preferredLocations,
           targetCountries:
-            preferredLocations.length > 0
-              ? preferredLocations.join(', ')
-              : 'Not provided',
+            targetMarkets.length > 0
+              ? targetMarkets.join(', ')
+              : preferredLocations.length > 0
+                ? preferredLocations.join(', ')
+                : 'Not provided',
           salaryExpectation:
             answers.salaryExpectation ||
             'Not provided',
@@ -617,6 +718,10 @@ async function getClients(req, res) {
           additionalPreferences:
             answers.additionalPreferences ||
             'Not provided',
+          jobRequests:
+            jobRequestsByClientId.get(
+              client.id
+            ) || [],
           hasResume:
             Boolean(client.resume_path),
           onboardingStatus:

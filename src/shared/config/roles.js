@@ -8,6 +8,7 @@ import {
   FiSettings,
   FiDollarSign,
   FiLayers,
+  FiLink,
   FiAlertTriangle,
   FiBriefcase,
   FiCreditCard,
@@ -24,6 +25,7 @@ export const USER_ROLES = {
   CHIEF_AUDITOR: 'chief_auditor',
   OWNER: 'owner',
   OPERATIONS: 'operations',
+  LINKER: 'linker',
   ADMIN: 'admin',
 };
 
@@ -36,6 +38,7 @@ export const ROLE_LABELS = {
   [USER_ROLES.CHIEF_AUDITOR]: 'Chief Auditor',
   [USER_ROLES.OWNER]: 'Owner',
   [USER_ROLES.OPERATIONS]: 'Operations',
+  [USER_ROLES.LINKER]: 'Linker',
   [USER_ROLES.ADMIN]: 'Administrator',
 };
 
@@ -47,6 +50,7 @@ export const ROLE_SLUGS = {
   [USER_ROLES.CHIEF_AUDITOR]: 'chief-auditor',
   [USER_ROLES.OWNER]: 'owner',
   [USER_ROLES.OPERATIONS]: 'operations',
+  [USER_ROLES.LINKER]: 'linker',
   [USER_ROLES.ADMIN]: 'admin',
 };
 
@@ -121,6 +125,15 @@ export const ROLE_NAVIGATION = {
     { label: 'Audit & Quality', href: 'quality', icon: FiCheckSquare },
     { label: 'Reports', href: 'reports', icon: FiFileText },
     { label: 'Settings', href: 'settings', icon: FiSettings },
+  ]),
+  [USER_ROLES.LINKER]: withBase('linker', [
+    { label: 'Dashboard', href: '', icon: FiHome },
+    { label: 'Assigned Clients', href: 'clients', icon: FiBriefcase },
+    { label: 'Assigned Applicants', href: 'applicants', icon: FiUsers },
+    { label: 'Record Link', href: 'record-link', icon: FiLink },
+    { label: 'Feedback & Messages', href: 'feedback', icon: FiMessageSquare },
+    { label: 'Performance', href: 'performance', icon: FiBarChart2 },
+    { label: 'Profile & Settings', href: 'settings', icon: FiSettings },
   ]),
   [USER_ROLES.OPERATIONS]: withBase('operations', [
     { label: 'Client Management', href: 'client-management', icon: FiUsers },
@@ -234,6 +247,15 @@ export const ROLE_PAGE_META = {
     quality: ['Audit & Quality', 'Track review quality, defects, and escalations.'],
     reports: ['Reports', 'Generate operational and commercial reports.'],
     settings: ['Platform Settings', 'Manage global preferences and service rules.'],
+  },
+  [USER_ROLES.LINKER]: {
+    dashboard: ['Dashboard', 'Review assigned work and recorded job links.'],
+    clients: ['Assigned Clients', 'Review clients assigned to your Linker workspace.'],
+    applicants: ['Assigned Applicants', 'Review applicants connected to your assignments.'],
+    'record-link': ['Record Link', 'Record a verified employer job link for an assigned client.'],
+    feedback: ['Feedback & Messages', 'Review feedback and workspace messages.'],
+    performance: ['Performance', 'Review verified Linker activity and outcomes.'],
+    settings: ['Profile & Settings', 'Manage your profile and account preferences.'],
   },
   [USER_ROLES.OPERATIONS]: {
     'client-management': ['Client Management', 'Manage client accounts, statuses, plans, and assignments.'],

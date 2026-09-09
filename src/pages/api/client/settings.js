@@ -1,5 +1,8 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
+import {
+  CLIENT_TARGET_MARKETS,
+} from '../../../shared/config/clientOnboardingQuestions';
 
 function optionalText(value, field, maxLength = 500) {
   if (value === undefined) return undefined;
@@ -28,6 +31,52 @@ function optionalStringArray(value, field) {
     .map((item) => String(item || '').trim())
     .filter(Boolean)
     .slice(0, 50);
+}
+
+function optionalTargetMarkets(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new ApiError(
+      400,
+      'Target markets must be a list.'
+    );
+  }
+
+  const markets = [
+    ...new Set(
+      value
+        .map((market) =>
+          String(market || '').trim()
+        )
+        .filter(Boolean)
+    ),
+  ];
+
+  if (markets.length === 0) {
+    throw new ApiError(
+      400,
+      'Select at least one target market.'
+    );
+  }
+
+  const invalidMarket = markets.find(
+    (market) =>
+      !CLIENT_TARGET_MARKETS.includes(
+        market
+      )
+  );
+
+  if (invalidMarket) {
+    throw new ApiError(
+      400,
+      'One or more selected target markets are invalid.'
+    );
+  }
+
+  return markets;
 }
 
 function parseList(value) {
@@ -101,7 +150,7 @@ function createJobs(answers) {
     Array.isArray(answers.settingsJobs) &&
     answers.settingsJobs.length
   ) {
-    return answers.settingsJobs;
+    return answers.settingsJobs.slice(0, 10);
   }
 
   const roles = parseList(
@@ -134,7 +183,7 @@ async function getSettings(
     supabase
       .from('clients')
       .select(
-        'gender, portfolio_url, linkedin_url, address, state_province, disability, veteran'
+        'gender, portfolio_url, linkedin_url, address, state_province, disability, veteran, plan, application_limit'
       )
       .eq('user_id', profile.id)
       .single(),
@@ -223,6 +272,10 @@ async function getSettings(
       client.portfolio_url || '',
     linkedinUrl:
       client.linkedin_url || '',
+    plan:
+      client.plan || '',
+    applicationLimit:
+      Number(client.application_limit) || 0,
 
     workPreferences: {
       jobs: createJobs(answers),
@@ -232,6 +285,7 @@ async function getSettings(
         '',
       specialization:
         answers.settingsSpecialization ??
+        answers.specialization ??
         '',
       workType:
         answers.settingsWorkType ??
@@ -252,6 +306,15 @@ async function getSettings(
     },
 
     workAuthorization: {
+      targetMarkets:
+        Array.isArray(answers.targetMarkets)
+          ? answers.targetMarkets.filter(
+              (market) =>
+                CLIENT_TARGET_MARKETS.includes(
+                  market
+                )
+            )
+          : [],
       requireSponsorship:
         answers.settingsRequireSponsorship ??
         answers.sponsorship ??
@@ -287,8 +350,14 @@ function validateJobs(value) {
     );
   }
 
-  return value
-    .slice(0, 20)
+  if (value.length > 10) {
+    throw new ApiError(
+      400,
+      'You can add a maximum of 10 target roles.'
+    );
+  }
+
+  const jobs = value
     .map((job) => {
       if (
         !job ||
@@ -322,6 +391,24 @@ function validateJobs(value) {
       };
     })
     .filter((job) => job.title);
+
+  const totalSpread = jobs.reduce(
+    (total, job) =>
+      total + (parseInt(job.spread, 10) || 0),
+    0
+  );
+
+  if (
+    jobs.length > 0 &&
+    totalSpread !== 100
+  ) {
+    throw new ApiError(
+      400,
+      `Application spread must total 100%. Currently: ${totalSpread}%`
+    );
+  }
+
+  return jobs;
 }
 
 export default async function handler(
@@ -571,6 +658,9 @@ export default async function handler(
       ) {
         answerChanges.settingsSpecialization =
           specialization;
+
+        answerChanges.specialization =
+          specialization;
       }
 
       if (workType !== undefined) {
@@ -621,6 +711,11 @@ export default async function handler(
         );
       }
 
+      const targetMarkets =
+        optionalTargetMarkets(
+          workAuthorization.targetMarkets
+        );
+
       const requireSponsorship =
         optionalText(
           workAuthorization.requireSponsorship,
@@ -646,6 +741,11 @@ export default async function handler(
           workAuthorization.priorityCompanies,
           'Priority companies'
         );
+
+      if (targetMarkets !== undefined) {
+        answerChanges.targetMarkets =
+          targetMarkets;
+      }
 
       if (
         requireSponsorship !== undefined

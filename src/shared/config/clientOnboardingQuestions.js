@@ -1,3 +1,9 @@
+export const CLIENT_TARGET_MARKETS = [
+  'United States',
+  'Canada',
+  'United Kingdom',
+];
+
 export const CLIENT_ONBOARDING_QUESTIONS = [
   {
     id: 'fullName',
@@ -24,11 +30,20 @@ export const CLIENT_ONBOARDING_QUESTIONS = [
     required: true,
   },
   {
+    id: 'targetMarkets',
+    title: 'Which job markets should we apply in for you?',
+    description: 'Select every country where you want ApplyLoop to search for opportunities.',
+    type: 'multi-select',
+    options: CLIENT_TARGET_MARKETS,
+    required: true,
+  },
+  {
     id: 'targetRoles',
     title: 'What roles are you targeting?',
-    description: 'You can enter multiple job titles separated by commas.',
+    description: 'Enter up to 10 job titles separated by commas.',
     type: 'textarea',
     placeholder: 'Financial Analyst, FP&A Analyst, Budget Analyst',
+    maxItems: 10,
     required: true,
   },
   {
@@ -40,11 +55,19 @@ export const CLIENT_ONBOARDING_QUESTIONS = [
     required: true,
   },
   {
+    id: 'specialization',
+    title: 'What is your specialization?',
+    description: 'Enter the area or areas you want ApplyLoop to prioritize.',
+    type: 'text',
+    placeholder: 'FinTech, Machine Learning, Healthcare Analytics',
+    required: false,
+  },
+  {
     id: 'preferredLocations',
     title: 'Where would you like to work?',
-    description: 'List your preferred cities, states, countries, or indicate that you are open.',
+    description: 'List your preferred cities, states, provinces, regions, or indicate that you are open.',
     type: 'textarea',
-    placeholder: 'New York, Texas, Remote, Open to relocation',
+    placeholder: 'New York, Texas, Ontario, London, Open to relocation',
     required: true,
   },
   {
@@ -90,9 +113,9 @@ export const CLIENT_ONBOARDING_QUESTIONS = [
   {
     id: 'workAuthorization',
     title: 'What is your current work authorization status?',
-    description: 'Tell us where you are currently authorized to work.',
+    description: 'Describe your work authorization for the markets you selected.',
     type: 'textarea',
-    placeholder: 'Authorized to work in the United States without restriction',
+    placeholder: 'United States: authorized without restriction; Canada: sponsorship required',
     required: true,
   },
   {

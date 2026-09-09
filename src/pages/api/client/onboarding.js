@@ -1,5 +1,9 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
+import {
+  CLIENT_ONBOARDING_TOTAL,
+  CLIENT_TARGET_MARKETS,
+} from '../../../shared/config/clientOnboardingQuestions';
 
 const FORM_FIELDS = `
   id,
@@ -32,6 +36,70 @@ function validateAnswers(value) {
     );
   }
 
+  if (value.targetMarkets !== undefined) {
+    if (!Array.isArray(value.targetMarkets)) {
+      throw new ApiError(
+        400,
+        'Target markets must be a list.'
+      );
+    }
+
+    const targetMarkets = [
+      ...new Set(
+        value.targetMarkets
+          .map((market) =>
+            String(market || '').trim()
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    const invalidMarket =
+      targetMarkets.find(
+        (market) =>
+          !CLIENT_TARGET_MARKETS.includes(
+            market
+          )
+      );
+
+    if (invalidMarket) {
+      throw new ApiError(
+        400,
+        'One or more selected target markets are invalid.'
+      );
+    }
+
+    value.targetMarkets =
+      targetMarkets;
+  }
+
+  if (value.targetRoles !== undefined) {
+    const roles = String(
+      value.targetRoles || ''
+    )
+      .split(/[\n,]/)
+      .map((role) => role.trim())
+      .filter(Boolean);
+
+    if (roles.length > 10) {
+      throw new ApiError(
+        400,
+        'You can add a maximum of 10 target roles.'
+      );
+    }
+  }
+
+  if (
+    value.specialization !== undefined &&
+    String(value.specialization).trim()
+      .length > 200
+  ) {
+    throw new ApiError(
+      400,
+      'Specialization must be 200 characters or fewer.'
+    );
+  }
+
   return value;
 }
 
@@ -45,11 +113,11 @@ function validateQuestion(value) {
   if (
     !Number.isInteger(question) ||
     question < 1 ||
-    question > 15
+    question > CLIENT_ONBOARDING_TOTAL
   ) {
     throw new ApiError(
       400,
-      'The current question must be between 1 and 15.'
+      `The current question must be between 1 and ${CLIENT_ONBOARDING_TOTAL}.`
     );
   }
 
@@ -316,7 +384,7 @@ export default async function handler(req, res) {
       .from('client_onboarding_forms')
       .update({
         answers: finalAnswers,
-        current_question: 15,
+        current_question: CLIENT_ONBOARDING_TOTAL,
         status: 'submitted',
         started_at:
           form.started_at || now,
