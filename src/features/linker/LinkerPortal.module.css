@@ -593,3 +593,219 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.recordLayout {
+  display: grid;
+  gap: 22px;
+}
+
+.recordCard {
+  padding: 28px;
+  text-align: left;
+}
+
+.recordHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.recordHeading .emptyIcon {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.recordHeading h2 {
+  margin: 2px 0 0;
+}
+
+.recordHeading p {
+  margin: 7px 0 0;
+}
+
+.recordForm {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.recordForm label {
+  display: grid;
+  gap: 8px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recordForm label > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recordForm label small {
+  color: #8992a3;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.recordForm input,
+.recordForm select,
+.recordForm textarea {
+  width: 100%;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px 13px;
+  color: #172033;
+  font: inherit;
+  font-weight: 500;
+  outline: none;
+}
+
+.recordForm textarea {
+  resize: vertical;
+}
+
+.recordForm input:focus,
+.recordForm select:focus,
+.recordForm textarea:focus {
+  border-color: #2f5bea;
+  box-shadow:
+    0 0 0 3px rgba(47, 91, 234, 0.12);
+}
+
+.recordForm input:disabled,
+.recordForm select:disabled,
+.recordForm textarea:disabled {
+  background: #f4f6f9;
+  color: #8a93a5;
+}
+
+.fullField,
+.formError,
+.formSuccess,
+.recordForm .submitButton {
+  grid-column: 1 / -1;
+}
+
+.formError,
+.formSuccess {
+  margin: 0;
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.formError {
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.formSuccess {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.recordCard .submitButton {
+  width: fit-content;
+  margin: 0;
+  background: #2f5bea;
+  padding: 12px 20px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.recordCard .submitButton:disabled {
+  background: #dfe4ee;
+  color: #8a93a5;
+  cursor: not-allowed;
+}
+
+.requestHistory {
+  overflow: hidden;
+  border: 1px solid #e2e7f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 8px 28px rgba(37, 52, 84, 0.04);
+}
+
+.requestHistory table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.requestHistory th,
+.requestHistory td {
+  border-top: 1px solid #e8ecf3;
+  padding: 15px 18px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.requestHistory th {
+  background: #f8f9fc;
+  color: #768096;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.requestHistory td {
+  color: #3e485b;
+  font-size: 13px;
+}
+
+.requestHistory a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2f5bea;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.statusPending {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #fff4e5;
+  padding: 5px 9px;
+  color: #9a5b13;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.historyStatus {
+  display: flex;
+  min-height: 140px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-top: 1px solid #e8ecf3;
+  color: #738096;
+}
+
+@media (max-width: 680px) {
+  .recordForm {
+    grid-template-columns: 1fr;
+  }
+
+  .recordHeading {
+    align-items: center;
+  }
+
+  .recordCard {
+    padding: 22px 18px;
+  }
+
+  .recordCard .submitButton {
+    width: 100%;
+  }
+}
