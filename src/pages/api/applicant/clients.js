@@ -391,6 +391,8 @@ async function getClients(req, res) {
       job_url,
       comment,
       status,
+      request_source,
+      target_applicant_id,
       converted_application_id,
       reviewed_at,
       created_at,
@@ -416,8 +418,16 @@ async function getClients(req, res) {
   const jobRequestsByClientId =
     new Map();
 
-  (jobRequestRows || []).forEach(
-    (request) => {
+  (jobRequestRows || [])
+    .filter(
+      (request) =>
+        request.request_source ===
+          'client' ||
+        request.target_applicant_id ===
+          applicant.id
+    )
+    .forEach(
+      (request) => {
       const requests =
         jobRequestsByClientId.get(
           request.client_id
@@ -428,6 +438,14 @@ async function getClients(req, res) {
         jobLink: request.job_url,
         comment: request.comment,
         status: request.status,
+        source:
+          request.request_source ===
+          'linker'
+            ? 'Linker'
+            : 'Client',
+        targetApplicantId:
+          request.target_applicant_id ||
+          null,
         convertedApplicationId:
           request.converted_application_id,
         reviewedAt:

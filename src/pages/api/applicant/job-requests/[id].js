@@ -16,6 +16,14 @@ function formatRequest(request) {
       request.comment,
     status:
       request.status,
+    source:
+      request.request_source ===
+      'linker'
+        ? 'Linker'
+        : 'Client',
+    targetApplicantId:
+      request.target_applicant_id ||
+      null,
     convertedApplicationId:
       request.converted_application_id,
     reviewedAt:
@@ -127,6 +135,8 @@ export default async function handler(
         job_url,
         comment,
         status,
+        request_source,
+        target_applicant_id,
         converted_application_id,
         reviewed_at,
         created_at,
@@ -142,6 +152,18 @@ export default async function handler(
       throw new PortalApiError(
         404,
         'The Client job request could not be found.'
+      );
+    }
+
+    if (
+      jobRequest.request_source ===
+        'linker' &&
+      jobRequest.target_applicant_id !==
+        applicant.id
+    ) {
+      throw new PortalApiError(
+        403,
+        'This Linker job request is assigned to another Applicant.'
       );
     }
 
@@ -219,6 +241,8 @@ export default async function handler(
         job_url,
         comment,
         status,
+        request_source,
+        target_applicant_id,
         converted_application_id,
         reviewed_at,
         created_at,

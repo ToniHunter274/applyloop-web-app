@@ -121,6 +121,7 @@ export default async function handler(req, res) {
         .eq('id', requestId)
         .eq('client_id', client.id)
         .eq('submitted_by', profile.id)
+        .eq('request_source', 'client')
         .in('status', ['new', 'in_review'])
         .is('converted_application_id', null)
         .select('id, status, withdrawn_at')
@@ -164,6 +165,7 @@ export default async function handler(req, res) {
           updated_at
         `)
         .eq('client_id', client.id)
+        .eq('request_source', 'client')
         .order('created_at', {
           ascending: false,
         })
@@ -215,6 +217,7 @@ export default async function handler(req, res) {
         job_url: jobUrl,
         comment,
         status: 'new',
+        request_source: 'client',
       })
       .select(`
         id,
