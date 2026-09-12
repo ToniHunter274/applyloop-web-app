@@ -1350,7 +1350,6 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
 function WorkshopPage({
   clients,
   onRecordApplication,
-  onUpdateJobRequest,
   isPreview = false,
   isRecordingApplication = false,
 }) {
@@ -1371,21 +1370,25 @@ function WorkshopPage({
   const [isOpeningResume, setIsOpeningResume] =
     useState(false);
   const [
+    isGeneratingTailoredResume,
+    setIsGeneratingTailoredResume,
+  ] = useState(false);
+  const [
+    tailoredResume,
+    setTailoredResume,
+  ] = useState('');
+  const [
+    tailoredResumeFingerprint,
+    setTailoredResumeFingerprint,
+  ] = useState('');
+  const [
+    resumeGenerationError,
+    setResumeGenerationError,
+  ] = useState('');
+  const [
     activeJobRequestId,
     setActiveJobRequestId,
   ] = useState('');
-  const [
-    jobRequestActionId,
-    setJobRequestActionId,
-  ] = useState('');
-  const [
-    jobRequestActionError,
-    setJobRequestActionError,
-  ] = useState('');
-  const [
-    jobRequestView,
-    setJobRequestView,
-  ] = useState('active');
 
   const activeClients =
     clients.filter(
@@ -1401,6 +1404,7 @@ function WorkshopPage({
 
   const selectedClientJobRequests =
     selectedClient?.jobRequests || [];
+
   const activeJobRequests =
     selectedClientJobRequests.filter(
       (request) =>
@@ -1408,25 +1412,6 @@ function WorkshopPage({
           request.status
         )
     );
-  const withdrawnJobRequests =
-    selectedClientJobRequests.filter(
-      (request) =>
-        request.status === 'withdrawn'
-    );
-  const completedJobRequests =
-    selectedClientJobRequests.filter(
-      (request) =>
-        ['converted', 'dismissed'].includes(
-          request.status
-        )
-    );
-  const jobRequestsByView = {
-    active: activeJobRequests,
-    withdrawn: withdrawnJobRequests,
-    completed: completedJobRequests,
-  };
-  const visibleJobRequests =
-    jobRequestsByView[jobRequestView] || [];
 
   const isQuotaReached =
     Boolean(
@@ -1437,6 +1422,33 @@ function WorkshopPage({
           Number(
             selectedClient.applicationLimit || 0
           )
+    );
+
+  const resumeFingerprint =
+    JSON.stringify([
+      selectedClientId,
+      companyName.trim(),
+      position.trim(),
+      jobLocation.trim(),
+      jobUrl.trim(),
+      jobDescription.trim(),
+    ]);
+
+  const canGenerateTailoredResume =
+    Boolean(
+      selectedClient?.hasResume &&
+      companyName.trim() &&
+      position.trim() &&
+      jobDescription.trim().length >= 80 &&
+      !isPreview &&
+      !isGeneratingTailoredResume
+    );
+
+  const tailoredResumeIsCurrent =
+    Boolean(
+      tailoredResume &&
+      tailoredResumeFingerprint ===
+        resumeFingerprint
     );
 
   const targetRoles =
@@ -1462,10 +1474,10 @@ function WorkshopPage({
     setJobUrl('');
     setJobDescription('');
     setResumeStatus('');
+    setTailoredResume('');
+    setTailoredResumeFingerprint('');
+    setResumeGenerationError('');
     setActiveJobRequestId('');
-    setJobRequestActionId('');
-    setJobRequestActionError('');
-    setJobRequestView('active');
   };
 
   const openClientResume = async () => {
@@ -1552,69 +1564,141 @@ function WorkshopPage({
     }
   };
 
-  const jobSelectionInFlight = useRef(false);
 
-  const handleUseJobRequest = async (request) => {
-    if (
-      isPreview ||
-      isRecordingApplication ||
-      jobSelectionInFlight.current ||
-      !onUpdateJobRequest ||
-      !request ||
-      !['new', 'in_review'].includes(request.status)
-    ) {
-      return;
-    }
-
-    let destination;
-    try {
-      destination = new URL(request.jobLink);
-      if (!['http:', 'https:'].includes(destination.protocol)) {
-        throw new Error('Unsupported URL.');
-      }
-    } catch {
-      setJobRequestActionError('This job link is invalid.');
-      return;
-    }
-
-    jobSelectionInFlight.current = true;
-    setJobRequestActionId(request.id);
-    setJobRequestActionError('');
-
-    let jobWindow = null;
-
-    try {
-      // Open during the click to avoid blocking a later asynchronous popup.
-      jobWindow = window.open('about:blank', '_blank');
-      if (jobWindow) jobWindow.opener = null;
-
-      const updated = await onUpdateJobRequest(request.id, 'in_review');
-
-      destination = new URL(updated?.jobLink || request.jobLink);
-      if (!['http:', 'https:'].includes(destination.protocol)) {
-        throw new Error('The returned job link is invalid.');
+  const generateTailoredResume =
+    async () => {
+      if (!selectedClient) {
+        setResumeGenerationError(
+          'Select a Client first.'
+        );
+        return;
       }
 
-      setActiveJobRequestId(request.id);
-      setJobUrl(destination.href);
+      if (!selectedClient.hasResume) {
+        setResumeGenerationError(
+          'This Client does not have a resume on file.'
+        );
+        return;
+      }
 
-      if (jobWindow && !jobWindow.closed) {
-        jobWindow.location.replace(destination.href);
-      } else {
-        setJobRequestActionError(
-          'Job selected. Your browser blocked the new tab. Click Open Job, apply on the employer website, then return here to mark it as applied.'
+      if (!companyName.trim()) {
+        setResumeGenerationError(
+          'Enter the company name first.'
+        );
+        return;
+      }
+
+      if (!position.trim()) {
+        setResumeGenerationError(
+          'Enter the position first.'
+        );
+        return;
+      }
+
+      if (
+        jobDescription.trim().length < 80
+      ) {
+        setResumeGenerationError(
+          'Paste a fuller job description before generating the resume.'
+        );
+        return;
+      }
+
+      if (
+        isGeneratingTailoredResume ||
+        isPreview
+      ) {
+        return;
+      }
+
+      setIsGeneratingTailoredResume(true);
+      setResumeGenerationError('');
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response = await fetch(
+          '/api/applicant/tailored-resume',
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              'Content-Type':
+                'application/json',
+            },
+            body: JSON.stringify({
+              clientId:
+                selectedClient.id,
+              company:
+                companyName.trim(),
+              position:
+                position.trim(),
+              location:
+                jobLocation.trim(),
+              jobUrl:
+                jobUrl.trim(),
+              jobDescription:
+                jobDescription.trim(),
+            }),
+          }
+        );
+
+        const result = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The tailored resume could not be generated.'
+          );
+        }
+
+        if (!result.resumeText) {
+          throw new Error(
+            'The resume generator returned an empty result.'
+          );
+        }
+
+        setTailoredResume(
+          result.resumeText
+        );
+
+        setTailoredResumeFingerprint(
+          resumeFingerprint
+        );
+      } catch (error) {
+        setResumeGenerationError(
+          error?.message ||
+            'The tailored resume could not be generated.'
+        );
+      } finally {
+        setIsGeneratingTailoredResume(
+          false
         );
       }
-    } catch (error) {
-      if (jobWindow && !jobWindow.closed) jobWindow.close();
-      setJobRequestActionError(
-        error?.message || 'This job request could not be selected.'
-      );
-    } finally {
-      jobSelectionInFlight.current = false;
-      setJobRequestActionId('');
-    }
-  };
+    };
+
+  const copyTailoredResume =
+    async () => {
+      if (!tailoredResume) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(
+          tailoredResume
+        );
+
+        setResumeGenerationError('');
+      } catch {
+        setResumeGenerationError(
+          'The resume could not be copied automatically.'
+        );
+      }
+    };
 
 
   return (
@@ -1686,7 +1770,7 @@ function WorkshopPage({
           <select
             value={selectedClientId}
             onChange={handleClientChange}
-            disabled={Boolean(jobRequestActionId) || isRecordingApplication}
+            disabled={isRecordingApplication}
           >
             <option value="">
               Select a client
@@ -1783,173 +1867,30 @@ function WorkshopPage({
         )}
 
         {selectedClient && (
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                  Client Job Requests
-                </h3>
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-blue-900/40 dark:bg-blue-900/20">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <FiLink className="shrink-0 text-[#1E50C3]" />
 
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Review active opportunities and withdrawn job links separately.
-                </p>
+                <strong className="text-sm text-gray-900 dark:text-white">
+                  {activeJobRequests.length > 0
+                    ? `${activeJobRequests.length} active job link${activeJobRequests.length === 1 ? '' : 's'} available`
+                    : 'No active job links waiting'}
+                </strong>
               </div>
 
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1E50C3] dark:bg-blue-900/30">
-                {selectedClientJobRequests.length}
-              </span>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Job opportunities are managed in the dedicated Job Links workspace.
+              </p>
             </div>
 
-            {jobRequestActionError && (
-              <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400">
-                {jobRequestActionError}
-              </div>
-            )}
-
-            {selectedClientJobRequests.length > 0 ? (
-              <>
-                <div
-                  className="mt-4 flex flex-wrap gap-2"
-                  role="tablist"
-                  aria-label="Client job link status"
-                >
-                  {[
-                    ['active', 'Active', activeJobRequests.length],
-                    ['withdrawn', 'Withdrawn', withdrawnJobRequests.length],
-                    ['completed', 'Completed', completedJobRequests.length],
-                  ].map(([view, label, count]) => (
-                    <button
-                      key={view}
-                      type="button"
-                      role="tab"
-                      aria-selected={jobRequestView === view}
-                      onClick={() => setJobRequestView(view)}
-                      className={classNames(
-                        'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                        jobRequestView === view
-                          ? 'bg-[#1E50C3] text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                      )}
-                    >
-                      {label} ({count})
-                    </button>
-                  ))}
-                </div>
-
-              <div className="mt-4 space-y-3">
-                {visibleJobRequests.map(
-                  (request) => (
-                    <div
-                      key={request.id}
-                      className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold capitalize text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                              {String(
-                                request.status ||
-                                  'new'
-                              ).replace(
-                                /_/g,
-                                ' '
-                              )}
-                            </span>
-
-                            {(request.withdrawnAt || request.createdAt) && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {new Date(
-                                  request.withdrawnAt ||
-                                    request.createdAt
-                                ).toLocaleDateString(
-                                  'en-US',
-                                  {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  }
-                                )}
-                              </span>
-                            )}
-
-                            {request.status === 'withdrawn' && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                Withdrawn by the client
-                              </span>
-                            )}
-                          </div>
-
-                          {request.comment && (
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                              {request.comment}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                          <a
-                            href={request.jobLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                          >
-                            Open Job
-                            <FiExternalLink />
-                          </a>
-
-                          {!isPreview &&
-                            ['new', 'in_review'].includes(
-                              request.status
-                            ) && (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={
-                                    Boolean(
-                                      jobRequestActionId
-                                    )
-                                  }
-                                  onClick={() =>
-                                    handleUseJobRequest(
-                                      request
-                                    )
-                                  }
-                                  className="rounded-xl bg-[#1E50C3] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  {jobRequestActionId ===
-                                  request.id
-                                    ? 'Updating...'
-                                    : activeJobRequestId ===
-                                        request.id
-                                      ? 'Selected'
-                                      : 'Open Job & Start Application'}
-                                </button>
-
-
-                              </>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-
-                {visibleJobRequests.length === 0 && (
-                  <p className="rounded-xl border border-dashed border-gray-200 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                    {jobRequestView === 'withdrawn'
-                      ? 'No withdrawn job links for this client.'
-                      : jobRequestView === 'completed'
-                        ? 'No completed job links for this client.'
-                        : 'No active job links for this client.'}
-                  </p>
-                )}
-              </div>
-              </>
-            ) : (
-              <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                This client has not submitted any job links.
-              </p>
-            )}
+            <Link
+              href="/applicant/job-links"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3] transition hover:bg-blue-100 dark:border-blue-800 dark:bg-gray-900 dark:hover:bg-blue-900/30"
+            >
+              View Job Links
+              <FiArrowRight />
+            </Link>
           </div>
         )}
 
@@ -2089,6 +2030,112 @@ function WorkshopPage({
               placeholder="Paste the job description here"
             />
           </div>
+
+          <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/40 dark:bg-blue-900/20">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <FiFileText className="text-[#1E50C3]" />
+
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                    Tailored Resume
+                  </h3>
+                </div>
+
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 dark:text-gray-400">
+                  Generate a job-specific version from the Client&apos;s existing resume and this job description. The master resume remains unchanged.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={generateTailoredResume}
+                disabled={!canGenerateTailoredResume}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FiFileText />
+
+                {isGeneratingTailoredResume
+                  ? 'Generating...'
+                  : tailoredResume
+                    ? 'Regenerate Tailored Resume'
+                    : 'Generate Tailored Resume'}
+              </button>
+            </div>
+
+            {!selectedClient.hasResume ? (
+              <p className="mt-3 text-xs font-medium text-amber-700">
+                A Client resume is required before a tailored version can be generated.
+              </p>
+            ) : !companyName.trim() ||
+              !position.trim() ||
+              jobDescription.trim().length < 80 ? (
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                Add the company, position and a complete job description to enable generation.
+              </p>
+            ) : null}
+
+            {resumeGenerationError && (
+              <div
+                role="alert"
+                className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+              >
+                {resumeGenerationError}
+              </div>
+            )}
+          </div>
+
+          {tailoredResume && (
+            <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FiCheckCircle className="text-green-600" />
+
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                      Tailored Resume Preview
+                    </h3>
+                  </div>
+
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Review and edit this version before using it for the application.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={copyTailoredResume}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700"
+                >
+                  <FiCopy />
+                  Copy Resume
+                </button>
+              </div>
+
+              {!tailoredResumeIsCurrent && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
+                  The job details have changed since this resume was generated. Regenerate it before using it.
+                </div>
+              )}
+
+              <textarea
+                value={tailoredResume}
+                onChange={(event) =>
+                  setTailoredResume(
+                    event.target.value
+                  )
+                }
+                rows={28}
+                spellCheck
+                className="mt-4 min-h-[560px] w-full resize-y rounded-xl border border-gray-200 bg-white p-5 font-mono text-sm leading-6 text-gray-800 outline-none focus:border-blue-500"
+                aria-label="Tailored resume preview"
+              />
+
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                This working copy is separate from the Client&apos;s original resume.
+              </p>
+            </section>
+          )}
         </section>
       )}
     </>
