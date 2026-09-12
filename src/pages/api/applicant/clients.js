@@ -396,6 +396,12 @@ async function getClients(req, res) {
       converted_application_id,
       reviewed_at,
       withdrawn_at,
+      job_company,
+      job_position,
+      job_location,
+      job_type,
+      salary_range,
+      link_provider,
       created_at,
       updated_at
     `)
@@ -453,6 +459,18 @@ async function getClients(req, res) {
           request.reviewed_at,
         withdrawnAt:
           request.withdrawn_at,
+        jobCompany:
+          request.job_company || null,
+        jobPosition:
+          request.job_position || null,
+        jobLocation:
+          request.job_location || null,
+        jobType:
+          request.job_type || null,
+        salaryRange:
+          request.salary_range || null,
+        linkProvider:
+          request.link_provider || null,
         createdAt:
           request.created_at,
         updatedAt:

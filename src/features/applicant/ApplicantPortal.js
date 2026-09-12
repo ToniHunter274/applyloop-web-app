@@ -48,6 +48,7 @@ import styles from './ApplicantPortal.module.css';
 const NAVIGATION = [
   { section: 'dashboard', label: 'Dashboard', icon: FiHome, href: '/applicant' },
   { section: 'clients', label: 'My Clients', icon: FiUsers, href: '/applicant/clients' },
+  { section: 'job-links', label: 'Job Links', icon: FiLink, href: '/applicant/job-links' },
   { section: 'workshop', label: 'Workshop', icon: FiMessageSquare, href: '/applicant/workshop' },
   { section: 'feedback', label: 'Feedback and Messages', icon: FiMessageSquare, href: '/applicant/feedback' },
   { section: 'performance', label: 'Performance', icon: FiTrendingUp, href: '/applicant/performance' },
@@ -597,6 +598,233 @@ function Dashboard({
         onOpen={onOpenApplication}
         readOnly={readOnly}
       />
+    </>
+  );
+}
+
+function JobLinksPage({ clients, workshopHref }) {
+  const [search, setSearch] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [sourceFilter, setSourceFilter] = useState('');
+
+  const jobLinks = useMemo(
+    () =>
+      clients.flatMap((client) =>
+        (client.jobRequests || []).map(
+          (request) => ({
+            ...request,
+            clientId: client.id,
+            clientName: client.name,
+          })
+        )
+      ),
+    [clients]
+  );
+
+  const filteredJobLinks = jobLinks.filter((request) => {
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchesSearch =
+      !normalizedSearch ||
+      [
+        request.clientName,
+        request.jobCompany,
+        request.jobPosition,
+        request.jobLocation,
+        request.jobLink,
+        request.comment,
+      ].some((value) =>
+        String(value || '')
+          .toLowerCase()
+          .includes(normalizedSearch)
+      );
+    const matchesClient =
+      !clientFilter ||
+      request.clientId === clientFilter;
+    const matchesSource =
+      !sourceFilter ||
+      request.source === sourceFilter;
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active'
+        ? ['new', 'in_review'].includes(request.status)
+        : statusFilter === 'completed'
+          ? ['converted', 'dismissed'].includes(request.status)
+          : request.status === statusFilter);
+
+    return (
+      matchesSearch &&
+      matchesClient &&
+      matchesSource &&
+      matchesStatus
+    );
+  });
+
+  const getProvider = (request) => {
+    if (request.linkProvider) {
+      return request.linkProvider;
+    }
+
+    try {
+      return new URL(request.jobLink).hostname.replace(/^www\./, '');
+    } catch {
+      return 'Job link';
+    }
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Job Links"
+        subtitle="Review assigned job opportunities before recording an application."
+        searchable
+        search={search}
+        onSearch={setSearch}
+        action={
+          <Link
+            href={workshopHref}
+            className={styles.primaryButton}
+          >
+            <FiBriefcase />
+            Open Workshop
+          </Link>
+        }
+      />
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Job link status">
+            {[
+              ['active', 'Active'],
+              ['withdrawn', 'Withdrawn'],
+              ['completed', 'Completed'],
+              ['all', 'All'],
+            ].map(([status, label]) => (
+              <button
+                key={status}
+                type="button"
+                role="tab"
+                aria-selected={statusFilter === status}
+                onClick={() => setStatusFilter(status)}
+                className={classNames(
+                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                  statusFilter === status
+                    ? 'bg-[#1E50C3] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={clientFilter}
+              onChange={(event) => setClientFilter(event.target.value)}
+              aria-label="Filter job links by client"
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+            >
+              <option value="">All clients</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={sourceFilter}
+              onChange={(event) => setSourceFilter(event.target.value)}
+              aria-label="Filter job links by source"
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+            >
+              <option value="">All sources</option>
+              <option value="Client">Client</option>
+              <option value="Linker">Linker</option>
+            </select>
+          </div>
+        </div>
+
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          {filteredJobLinks.length} job link{filteredJobLinks.length === 1 ? '' : 's'} shown
+        </p>
+
+        {filteredJobLinks.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {filteredJobLinks.map((request) => (
+              <article
+                key={request.id}
+                className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        {request.source || 'Client'}
+                      </span>
+                      <span className="rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-semibold capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                        {String(request.status || 'new').replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {request.clientName}
+                      </span>
+                    </div>
+
+                    <h2 className="mt-3 text-base font-bold text-gray-900 dark:text-white">
+                      {request.jobPosition || 'Position not provided'}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      {request.jobCompany || getProvider(request)}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      {request.jobLocation && <span>{request.jobLocation}</span>}
+                      {request.jobType && <span>{request.jobType}</span>}
+                      {request.salaryRange && <span>{request.salaryRange}</span>}
+                      <span>{getProvider(request)}</span>
+                    </div>
+
+                    {request.comment && (
+                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                        {request.comment}
+                      </p>
+                    )}
+
+                    <p className="mt-3 break-all text-xs text-gray-500 dark:text-gray-400">
+                      {request.jobLink}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <a
+                      href={request.jobLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                      Open Job
+                      <FiExternalLink />
+                    </a>
+                    {['new', 'in_review'].includes(request.status) && (
+                      <Link
+                        href={workshopHref}
+                        className="rounded-xl bg-[#1E50C3] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7]"
+                      >
+                        Start Application
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            No job links match these filters.
+          </p>
+        )}
+      </section>
     </>
   );
 }
@@ -3628,6 +3856,17 @@ export default function ApplicantPortal() {
     );
   } else if (section === 'clients') {
     page = <ClientsPage clients={assignedClients} onOpenClient={openClient} />;
+  } else if (section === 'job-links') {
+    page = (
+      <JobLinksPage
+        clients={assignedClients}
+        workshopHref={
+          getApplicantRoute(
+            '/applicant/workshop'
+          )
+        }
+      />
+    );
   } else if (section === 'workshop') {
     page = (
       <WorkshopPage
