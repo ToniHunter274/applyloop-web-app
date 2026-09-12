@@ -658,8 +658,24 @@ function SettingsPage() {
 
 export default function PromptEngineerPortal() {
   const router = useRouter();
+  const { user } = useAuth();
   const segments = getSegments(router);
   const title = titleForSegments(segments);
+
+  useEffect(() => {
+    if (
+      user?.role &&
+      user.role !== USER_ROLES.PROMPT_ENGINEER
+    ) {
+      router.replace(getRoleHome(user.role));
+    }
+  }, [router, user?.role]);
+
+  // Client/company prompt content must never render for Applicants or any
+  // other workspace role, even briefly while the redirect is taking place.
+  if (user?.role !== USER_ROLES.PROMPT_ENGINEER) {
+    return null;
+  }
 
   let page = <DashboardPage />;
   if (segments[0] === 'prompt-library' && segments[1] === 'edit') page = <PromptEditorPage />;

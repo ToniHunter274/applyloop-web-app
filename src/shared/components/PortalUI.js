@@ -181,12 +181,15 @@ export const Toolbar = ({ search, setSearch, filters = [], primaryAction, second
 );
 
 export const DataTable = ({ columns, rows, empty = 'No records found.', rowKey = 'id', onRowClick, pageSize = 7 }) => {
-  const [page, setPage] = useState(1);
   const rowSignature = rows.map((row) => row[rowKey]).join('|');
+  const [page, setPage] = useState(1);
+  const [previousRowSignature, setPreviousRowSignature] = useState(rowSignature);
 
-  useEffect(() => {
+  // Reset before children render when the displayed record set changes.
+  if (previousRowSignature !== rowSignature) {
+    setPreviousRowSignature(rowSignature);
     setPage(1);
-  }, [rowSignature]);
+  }
 
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const safePage = Math.min(page, totalPages);

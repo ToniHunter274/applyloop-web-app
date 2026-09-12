@@ -29,6 +29,7 @@ const validSections = new Set([
   'clients',
   'applicants',
   'record-link',
+  'job-links',
   'feedback',
   'performance',
   'settings',
@@ -969,6 +970,8 @@ function ApplicantsPage({
     useState('');
   const [filter, setFilter] =
     useState('all');
+  const [revealedRatings, setRevealedRatings] =
+    useState(() => new Set());
 
   if (isLoading) {
     return <LoadingState />;
@@ -1264,10 +1267,23 @@ function ApplicantsPage({
                       </td>
 
                       <td>
-                        {Number(
-                          applicant.qualityRating ||
-                            0
-                        ).toFixed(1)}
+                        <button
+                          type="button"
+                          aria-label={`${revealedRatings.has(applicant.id) ? 'Hide' : 'Show'} quality rating for ${applicant.fullName}`}
+                          onClick={() =>
+                            setRevealedRatings((current) => {
+                              const next = new Set(current);
+                              if (next.has(applicant.id)) next.delete(applicant.id);
+                              else next.add(applicant.id);
+                              return next;
+                            })
+                          }
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        >
+                          {revealedRatings.has(applicant.id)
+                            ? `${Number(applicant.qualityRating || 0).toFixed(1)}/5 · Hide`
+                            : 'Show rating'}
+                        </button>
                       </td>
 
                       <td>
@@ -1882,6 +1898,187 @@ function RecordLinkPage({
   );
 }
 
+function JobLinksPage({ data }) {
+  const [requests, setRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('active');
+
+  useEffect(() => {
+    let active = true;
+
+    const loadRequests = async () => {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const accessToken = await getLinkerAccessToken();
+        const response = await fetch('/api/linker/job-requests', {
+          cache: 'no-store',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+          },
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !Array.isArray(result.requests)) {
+          throw new Error(
+            result.error || 'Your job links could not be loaded.'
+          );
+        }
+
+        if (active) setRequests(result.requests);
+      } catch (loadError) {
+        if (active) {
+          setError(
+            loadError.message || 'Your job links could not be loaded.'
+          );
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    loadRequests();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+
+  const applicantNames = new Map(
+    data.applicants.map((applicant) => [applicant.id, applicant.fullName])
+  );
+  const clientNames = new Map(
+    data.clients.map((client) => [client.id, client.fullName])
+  );
+  const term = search.trim().toLowerCase();
+  const visibleRequests = requests.filter((request) => {
+    const matchesStatus =
+      status === 'all' ||
+      (status === 'active'
+        ? ['new', 'in_review'].includes(request.status)
+        : status === 'completed'
+          ? ['converted', 'dismissed'].includes(request.status)
+          : request.status === status);
+    const matchesSearch =
+      !term ||
+      [
+        request.company,
+        request.position,
+        request.location,
+        request.jobLink,
+        applicantNames.get(request.applicantId),
+        clientNames.get(request.clientId),
+      ].some((value) =>
+        String(value || '').toLowerCase().includes(term)
+      );
+
+    return matchesStatus && matchesSearch;
+  });
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <label className="block w-full max-w-xl">
+          <span className="sr-only">Search recorded job links</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search company, role, client, applicant, or URL"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+          />
+        </label>
+
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Job-link status">
+          {[
+            ['active', 'Active'],
+            ['withdrawn', 'Withdrawn'],
+            ['completed', 'Completed'],
+            ['all', 'All'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={status === value}
+              onClick={() => setStatus(value)}
+              className={
+                status === value
+                  ? 'rounded-full bg-blue-700 px-3 py-2 text-xs font-semibold text-white'
+                  : 'rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200'
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-bold text-slate-900">Recorded Job Links</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Links are kept separate from completed applications.
+            </p>
+          </div>
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            {visibleRequests.length}
+          </span>
+        </div>
+
+        {visibleRequests.length ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {visibleRequests.map((request) => (
+              <article
+                key={request.id}
+                className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-bold text-slate-900">
+                      {request.position || 'Position not provided'}
+                    </h3>
+                    <p className="mt-1 truncate text-sm text-slate-600">
+                      {request.company || 'Company not provided'}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600">
+                    {String(request.status || 'new').replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                  <div><dt className="text-slate-400">Client</dt><dd className="mt-1 font-semibold text-slate-700">{clientNames.get(request.clientId) || 'Assigned Client'}</dd></div>
+                  <div><dt className="text-slate-400">Applicant</dt><dd className="mt-1 font-semibold text-slate-700">{applicantNames.get(request.applicantId) || 'Assigned Applicant'}</dd></div>
+                  <div><dt className="text-slate-400">Location</dt><dd className="mt-1 font-semibold text-slate-700">{request.location || 'Not provided'}</dd></div>
+                  <div><dt className="text-slate-400">Recorded</dt><dd className="mt-1 font-semibold text-slate-700">{formatDate(request.createdAt)}</dd></div>
+                </dl>
+                <a
+                  href={request.jobLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900"
+                >
+                  Open job link <FiExternalLink />
+                </a>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+            No job links match this view.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function FeedbackPage() {
   const [conversations, setConversations] =
     useState([]);
@@ -2420,6 +2617,7 @@ function PerformancePage({
   isLoading,
   error,
 }) {
+  const [ratingRevealed, setRatingRevealed] = useState(false);
   if (isLoading) {
     return <LoadingState />;
   }
@@ -2590,11 +2788,15 @@ function PerformancePage({
 
         <article>
           <span>Average Quality</span>
-          <strong>
-            {averageQuality}/5.0
-          </strong>
+          <strong>{ratingRevealed ? `${averageQuality}/5.0` : 'Concealed'}</strong>
           <small>
-            Assigned Applicant rating
+            <button
+              type="button"
+              onClick={() => setRatingRevealed((current) => !current)}
+              className="font-semibold text-blue-700 hover:text-blue-900"
+            >
+              {ratingRevealed ? 'Hide rating' : 'Show rating'}
+            </button>
           </small>
         </article>
       </section>
@@ -2952,6 +3154,10 @@ function renderPage(
         error={error}
       />
     );
+  }
+
+  if (section === 'job-links') {
+    return <JobLinksPage data={data} />;
   }
 
   if (section === 'feedback') {

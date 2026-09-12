@@ -2644,6 +2644,8 @@ function FeedbackPage({
 }
 
 function PerformancePage() {
+  const [ratingRevealed, setRatingRevealed] = useState(false);
+
   return (
     <>
       <PageHeader title="Performance" subtitle="Track your productivity and quality metrics" />
@@ -2652,7 +2654,17 @@ function PerformancePage() {
         <div className={styles.performanceCard}><span>Total Rejection</span><strong>100</strong><small>30.5% rejection rate</small></div>
         <div className={styles.performanceCard}><span>Total Interviews</span><strong>90</strong><small>27.4% interview rate</small></div>
         <div className={styles.performanceCard}><span>Total Offers</span><strong>90</strong><small className={styles.statPositive}>↗ 8% success rate</small></div>
-        <div className={styles.performanceCard}><span>Client Satisfaction</span><strong>4.8/5.0</strong><small className={styles.statWarning}>★ Excellent Rating</small></div>
+        <div className={styles.performanceCard}>
+          <span>Client Satisfaction</span>
+          <strong>{ratingRevealed ? '4.8/5.0' : 'Concealed'}</strong>
+          <button
+            type="button"
+            onClick={() => setRatingRevealed((current) => !current)}
+            className={styles.textButton}
+          >
+            {ratingRevealed ? 'Hide rating' : 'Show rating'}
+          </button>
+        </div>
       </div>
       <section className={styles.performanceLevel}>
         <div className={styles.levelHeader}>

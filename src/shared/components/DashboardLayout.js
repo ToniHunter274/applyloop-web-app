@@ -8,6 +8,7 @@ import {
   FiCreditCard,
   FiHelpCircle,
   FiHome,
+  FiLink,
   FiLogOut,
   FiMenu,
   FiSearch,
@@ -64,6 +65,7 @@ function formatNotificationDate(value) {
 
 const pageMeta = {
   '/dashboard': ['Dashboard', 'Track applications, monitor progress, and stay in control of your job search.'],
+  '/job-links': ['Job Links', 'Submit job opportunities and track active, withdrawn, and completed links.'],
   '/growth': ['Career Growth', 'Build job-ready skills with a personalized learning plan.'],
   '/loop-lab': ['Loop Lab', 'Prepare for interviews with role-specific practice sessions.'],
   '/billing': ['Billing & Subscription', 'Manage your plan, billing history, and application volume.'],
@@ -144,6 +146,13 @@ export default function DashboardLayout({
       href: '/dashboard',
       tour: 'home-nav',
     },
+    ...(!isClientPreview
+      ? [{
+          icon: FiLink,
+          label: 'Job Links',
+          href: '/job-links',
+        }]
+      : []),
     {
       icon: FiCpu,
       label: 'Loop Lab',

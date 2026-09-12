@@ -1,5 +1,6 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireLinker } from '../../../lib/auth/requireLinker';
+import { findDuplicateJobLink } from '../../../lib/jobs/jobLinkDeduplication';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -306,6 +307,24 @@ async function createRequest(
     }
   );
 
+  const duplicateCheck =
+    await findDuplicateJobLink({
+      supabase,
+      clientId,
+      jobLink: jobUrl,
+    });
+
+  if (duplicateCheck.type) {
+    throw new ApiError(
+      409,
+      duplicateCheck.type === 'application'
+        ? 'This job link has already been recorded as an application for the selected Client.'
+        : `This job link already exists for the selected Client with status “${String(
+            duplicateCheck.status || 'active'
+          ).replace(/_/g, ' ')}”.`
+    );
+  }
+
   const {
     data: requestRows,
     error: requestError,
@@ -350,6 +369,17 @@ async function createRequest(
       String(
         requestError?.message || ''
       ).toLowerCase();
+
+    if (
+      message.includes(
+        'duplicate job link'
+      )
+    ) {
+      throw new ApiError(
+        409,
+        'This job link already exists for the selected Client.'
+      );
+    }
 
     if (
       message.includes(
@@ -431,6 +461,24 @@ async function createRequest(
     throw new ApiError(
       500,
       'The job link could not be recorded.'
+    );
+  }
+
+  const {
+    error: normalizationError,
+  } = await supabase
+    .from('client_job_requests')
+    .update({
+      normalized_job_url:
+        duplicateCheck.normalizedJobLink,
+    })
+    .eq('id', request.id)
+    .eq('submitted_by', profile.id);
+
+  if (normalizationError) {
+    console.error(
+      'Unable to save normalized Linker job URL:',
+      normalizationError
     );
   }
 

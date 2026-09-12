@@ -189,12 +189,11 @@ export function ConversionFunnelChart() {
 }
 
 export function PieChart({ segments }) {
-  let current = 0;
-  const stops = segments.map((segment) => {
-    const start = current;
-    current += segment.value;
-    return `${segment.color} ${start}% ${current}%`;
-  }).join(', ');
+  const { stops } = segments.reduce(({ end, stops }, segment) => {
+    const nextEnd = end + segment.value;
+    const stop = `${segment.color} ${end}% ${nextEnd}%`;
+    return { end: nextEnd, stops: stops ? `${stops}, ${stop}` : stop };
+  }, { end: 0, stops: '' });
   return <div className={styles.pieChart} style={{ background: `conic-gradient(${stops})` }} />;
 }
 

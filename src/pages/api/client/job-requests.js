@@ -1,5 +1,6 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
+import { findDuplicateJobLink } from '../../../lib/jobs/jobLinkDeduplication';
 
 function validateJobUrl(value) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -202,6 +203,24 @@ export default async function handler(req, res) {
       req.body?.jobLink
     );
 
+    const duplicateCheck =
+      await findDuplicateJobLink({
+        supabase,
+        clientId: client.id,
+        jobLink: jobUrl,
+      });
+
+    if (duplicateCheck.type) {
+      throw new ApiError(
+        409,
+        duplicateCheck.type === 'application'
+          ? 'This job link has already been recorded as an application.'
+          : `This job link already exists with status “${String(
+              duplicateCheck.status || 'active'
+            ).replace(/_/g, ' ')}”.`
+      );
+    }
+
     const comment = validateComment(
       req.body?.comment
     );
@@ -215,6 +234,8 @@ export default async function handler(req, res) {
         client_id: client.id,
         submitted_by: profile.id,
         job_url: jobUrl,
+        normalized_job_url:
+          duplicateCheck.normalizedJobLink,
         comment,
         status: 'new',
         request_source: 'client',
@@ -229,6 +250,17 @@ export default async function handler(req, res) {
       .single();
 
     if (requestError || !request) {
+      if (
+        String(requestError?.message || '')
+          .toLowerCase()
+          .includes('duplicate job link')
+      ) {
+        throw new ApiError(
+          409,
+          'This job link has already been submitted.'
+        );
+      }
+
       throw new ApiError(
         500,
         'Your job link could not be submitted.'
