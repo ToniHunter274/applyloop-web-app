@@ -1154,6 +1154,10 @@ function WorkshopPage({
     jobRequestActionError,
     setJobRequestActionError,
   ] = useState('');
+  const [
+    jobRequestView,
+    setJobRequestView,
+  ] = useState('active');
 
   const activeClients =
     clients.filter(
@@ -1166,6 +1170,35 @@ function WorkshopPage({
       (client) =>
         client.id === selectedClientId
     );
+
+  const selectedClientJobRequests =
+    selectedClient?.jobRequests || [];
+  const activeJobRequests =
+    selectedClientJobRequests.filter(
+      (request) =>
+        ['new', 'in_review'].includes(
+          request.status
+        )
+    );
+  const withdrawnJobRequests =
+    selectedClientJobRequests.filter(
+      (request) =>
+        request.status === 'withdrawn'
+    );
+  const completedJobRequests =
+    selectedClientJobRequests.filter(
+      (request) =>
+        ['converted', 'dismissed'].includes(
+          request.status
+        )
+    );
+  const jobRequestsByView = {
+    active: activeJobRequests,
+    withdrawn: withdrawnJobRequests,
+    completed: completedJobRequests,
+  };
+  const visibleJobRequests =
+    jobRequestsByView[jobRequestView] || [];
 
   const isQuotaReached =
     Boolean(
@@ -1204,6 +1237,7 @@ function WorkshopPage({
     setActiveJobRequestId('');
     setJobRequestActionId('');
     setJobRequestActionError('');
+    setJobRequestView('active');
   };
 
   const openClientResume = async () => {
@@ -1529,12 +1563,12 @@ function WorkshopPage({
                 </h3>
 
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Job opportunities submitted directly by this client.
+                  Review active opportunities and withdrawn job links separately.
                 </p>
               </div>
 
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1E50C3] dark:bg-blue-900/30">
-                {selectedClient.jobRequests.length}
+                {selectedClientJobRequests.length}
               </span>
             </div>
 
@@ -1544,9 +1578,38 @@ function WorkshopPage({
               </div>
             )}
 
-            {selectedClient.jobRequests.length > 0 ? (
+            {selectedClientJobRequests.length > 0 ? (
+              <>
+                <div
+                  className="mt-4 flex flex-wrap gap-2"
+                  role="tablist"
+                  aria-label="Client job link status"
+                >
+                  {[
+                    ['active', 'Active', activeJobRequests.length],
+                    ['withdrawn', 'Withdrawn', withdrawnJobRequests.length],
+                    ['completed', 'Completed', completedJobRequests.length],
+                  ].map(([view, label, count]) => (
+                    <button
+                      key={view}
+                      type="button"
+                      role="tab"
+                      aria-selected={jobRequestView === view}
+                      onClick={() => setJobRequestView(view)}
+                      className={classNames(
+                        'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                        jobRequestView === view
+                          ? 'bg-[#1E50C3] text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                      )}
+                    >
+                      {label} ({count})
+                    </button>
+                  ))}
+                </div>
+
               <div className="mt-4 space-y-3">
-                {selectedClient.jobRequests.map(
+                {visibleJobRequests.map(
                   (request) => (
                     <div
                       key={request.id}
@@ -1565,10 +1628,11 @@ function WorkshopPage({
                               )}
                             </span>
 
-                            {request.createdAt && (
+                            {(request.withdrawnAt || request.createdAt) && (
                               <span className="text-xs text-gray-500 dark:text-gray-400">
                                 {new Date(
-                                  request.createdAt
+                                  request.withdrawnAt ||
+                                    request.createdAt
                                 ).toLocaleDateString(
                                   'en-US',
                                   {
@@ -1577,6 +1641,12 @@ function WorkshopPage({
                                     year: 'numeric',
                                   }
                                 )}
+                              </span>
+                            )}
+
+                            {request.status === 'withdrawn' && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                Withdrawn by the client
                               </span>
                             )}
                           </div>
@@ -1600,11 +1670,7 @@ function WorkshopPage({
                           </a>
 
                           {!isPreview &&
-                            ![
-                              'converted',
-                              'dismissed',
-                              'withdrawn',
-                            ].includes(
+                            ['new', 'in_review'].includes(
                               request.status
                             ) && (
                               <>
@@ -1639,7 +1705,18 @@ function WorkshopPage({
                     </div>
                   )
                 )}
+
+                {visibleJobRequests.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-gray-200 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                    {jobRequestView === 'withdrawn'
+                      ? 'No withdrawn job links for this client.'
+                      : jobRequestView === 'completed'
+                        ? 'No completed job links for this client.'
+                        : 'No active job links for this client.'}
+                  </p>
+                )}
               </div>
+              </>
             ) : (
               <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
                 This client has not submitted any job links.

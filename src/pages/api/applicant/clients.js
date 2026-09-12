@@ -395,6 +395,7 @@ async function getClients(req, res) {
       target_applicant_id,
       converted_application_id,
       reviewed_at,
+      withdrawn_at,
       created_at,
       updated_at
     `)
@@ -450,6 +451,8 @@ async function getClients(req, res) {
           request.converted_application_id,
         reviewedAt:
           request.reviewed_at,
+        withdrawnAt:
+          request.withdrawn_at,
         createdAt:
           request.created_at,
         updatedAt:
