@@ -1,0 +1,116 @@
+diff --git a/src/pages/settings.js b/src/pages/settings.js
+index a6dd898..a23e3da 100644
+--- a/src/pages/settings.js
++++ b/src/pages/settings.js
+@@ -417,6 +417,47 @@ export default function Settings() {
+   const [settingsMessage, setSettingsMessage] = useState('');
+   const fileInputRef = useRef(null);
+ 
++  const [jobs, setJobs] = useState([]);
++  const [applicationLimit, setApplicationLimit] =
++    useState(0);
++  const [industry, setIndustry] = useState('');
++  const [specialization, setSpecialization] = useState('');
++  const [workType, setWorkType] = useState('');
++  const [schedule, setSchedule] = useState('');
++  const [duration, setDuration] = useState('');
++  const [locations, setLocations] = useState([]);
++  const [savedWorkPreferences, setSavedWorkPreferences] =
++    useState(null);
++  const [isEditingWorkPreferences, setIsEditingWorkPreferences] =
++    useState(false);
++  const [isSavingWorkPreferences, setIsSavingWorkPreferences] =
++    useState(false);
++  const [workPreferencesError, setWorkPreferencesError] =
++    useState('');
++  const [workPreferencesMessage, setWorkPreferencesMessage] =
++    useState('');
++
++  const [targetMarkets, setTargetMarkets] =
++    useState([]);
++  const [requireSponsorship, setRequireSponsorship] =
++    useState('');
++  const [authorizedToWork, setAuthorizedToWork] =
++    useState('');
++  const [excludedCompanies, setExcludedCompanies] =
++    useState([]);
++  const [priorityCompanies, setPriorityCompanies] =
++    useState([]);
++  const [savedWorkAuthorization, setSavedWorkAuthorization] =
++    useState(null);
++  const [isEditingWorkAuthorization, setIsEditingWorkAuthorization] =
++    useState(false);
++  const [isSavingWorkAuthorization, setIsSavingWorkAuthorization] =
++    useState(false);
++  const [workAuthorizationError, setWorkAuthorizationError] =
++    useState('');
++  const [workAuthorizationMessage, setWorkAuthorizationMessage] =
++    useState('');
++
+   const updateProfile = (field, value) => {
+     setProfile((prev) => ({ ...prev, [field]: value }));
+   };
+@@ -425,9 +466,6 @@ export default function Settings() {
+     let mounted = true;
+ 
+     const loadClientSettings = async () => {
+-      setIsLoadingSettings(true);
+-      setSettingsError('');
+-
+       try {
+         const accessToken = await getAccessToken();
+ 
+@@ -555,46 +593,6 @@ export default function Settings() {
+     };
+   }, []);
+ 
+-  const [jobs, setJobs] = useState([]);
+-  const [applicationLimit, setApplicationLimit] =
+-    useState(0);
+-  const [industry, setIndustry] = useState('');
+-  const [specialization, setSpecialization] = useState('');
+-  const [workType, setWorkType] = useState('');
+-  const [schedule, setSchedule] = useState('');
+-  const [duration, setDuration] = useState('');
+-  const [locations, setLocations] = useState([]);
+-  const [savedWorkPreferences, setSavedWorkPreferences] =
+-    useState(null);
+-  const [isEditingWorkPreferences, setIsEditingWorkPreferences] =
+-    useState(false);
+-  const [isSavingWorkPreferences, setIsSavingWorkPreferences] =
+-    useState(false);
+-  const [workPreferencesError, setWorkPreferencesError] =
+-    useState('');
+-  const [workPreferencesMessage, setWorkPreferencesMessage] =
+-    useState('');
+-
+-  const [targetMarkets, setTargetMarkets] =
+-    useState([]);
+-  const [requireSponsorship, setRequireSponsorship] =
+-    useState('');
+-  const [authorizedToWork, setAuthorizedToWork] =
+-    useState('');
+-  const [excludedCompanies, setExcludedCompanies] =
+-    useState([]);
+-  const [priorityCompanies, setPriorityCompanies] =
+-    useState([]);
+-  const [savedWorkAuthorization, setSavedWorkAuthorization] =
+-    useState(null);
+-  const [isEditingWorkAuthorization, setIsEditingWorkAuthorization] =
+-    useState(false);
+-  const [isSavingWorkAuthorization, setIsSavingWorkAuthorization] =
+-    useState(false);
+-  const [workAuthorizationError, setWorkAuthorizationError] =
+-    useState('');
+-  const [workAuthorizationMessage, setWorkAuthorizationMessage] =
+-    useState('');
+ 
+   // ── Tab 4: Password & Security State ──
+   const [currentPassword, setCurrentPassword] = useState('');
+@@ -2016,4 +2014,4 @@ export default function Settings() {
+       </div>
+     </DashboardLayout>
+   );
+-}
+\ No newline at end of file
++}

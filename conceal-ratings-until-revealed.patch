@@ -1,0 +1,212 @@
+diff --git a/src/shared/components/ClientApplicantRating.js b/src/shared/components/ClientApplicantRating.js
+index 3fa4787..89189a9 100644
+--- a/src/shared/components/ClientApplicantRating.js
++++ b/src/shared/components/ClientApplicantRating.js
+@@ -67,6 +67,11 @@ export default function ClientApplicantRating() {
+     setRefreshKey,
+   ] = useState(0);
+ 
++  const [
++    revealedApplicantIds,
++    setRevealedApplicantIds,
++  ] = useState(() => new Set());
++
+   useEffect(() => {
+     let cancelled = false;
+     let controller =
+@@ -260,6 +265,20 @@ export default function ClientApplicantRating() {
+       }
+     };
+ 
++  const toggleRating = (applicantId) => {
++    setRevealedApplicantIds((current) => {
++      const next = new Set(current);
++
++      if (next.has(applicantId)) {
++        next.delete(applicantId);
++      } else {
++        next.add(applicantId);
++      }
++
++      return next;
++    });
++  };
++
+   return (
+     <section
+       aria-label="Rate your applicant"
+@@ -298,11 +317,19 @@ export default function ClientApplicantRating() {
+       ) : (
+         <div className="space-y-2">
+           {applicants.map(
+-            (applicant) => (
+-              <div
+-                key={applicant.id}
+-                className="rounded-xl bg-slate-50 px-3 py-3"
+-              >
++            (applicant) => {
++              const isRatingRevealed =
++                revealedApplicantIds.has(
++                  applicant.id
++                );
++              const ratingPanelId =
++                `applicant-rating-${applicant.id}`;
++
++              return (
++                <div
++                  key={applicant.id}
++                  className="rounded-xl bg-slate-50 px-3 py-3"
++                >
+                 <p
+                   className="truncate text-xs font-semibold text-slate-800"
+                   title={
+@@ -312,70 +339,89 @@ export default function ClientApplicantRating() {
+                   {applicant.fullName}
+                 </p>
+ 
+-                <p className="mt-1 text-[11px] text-slate-500">
+-                  {applicant.rating
+-                    ? `Your rating: ${applicant.rating}/5`
+-                    : 'Not rated yet'}
+-                </p>
+-
+-                <div
+-                  className="mt-1 flex items-center gap-0.5"
+-                  aria-label={
+-                    `Rate ${applicant.fullName}`
++                <button
++                  type="button"
++                  aria-expanded={isRatingRevealed}
++                  aria-controls={ratingPanelId}
++                  onClick={() =>
++                    toggleRating(applicant.id)
+                   }
++                  className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800"
+                 >
+-                  {[1, 2, 3, 4, 5].map(
+-                    (star) => {
+-                      const selected =
+-                        star <=
+-                        Number(
+-                          applicant.rating ||
+-                            0
+-                        );
+-
+-                      return (
+-                        <button
+-                          key={star}
+-                          type="button"
+-                          disabled={Boolean(
+-                            savingApplicantId
+-                          )}
+-                          aria-label={
+-                            `${star} star${star === 1 ? '' : 's'} for ${applicant.fullName}`
+-                          }
+-                          title={
+-                            `Rate ${star} star${star === 1 ? '' : 's'}`
+-                          }
+-                          onClick={() =>
+-                            saveRating(
+-                              applicant.id,
+-                              star
+-                            )
+-                          }
+-                          className="rounded p-0.5 text-amber-400 transition hover:scale-110 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+-                        >
+-                          <FiStar
+-                            className="h-5 w-5"
+-                            fill={
+-                              selected
+-                                ? 'currentColor'
+-                                : 'none'
+-                            }
+-                          />
+-                        </button>
+-                      );
+-                    }
+-                  )}
+-                </div>
+-
+-                {savingApplicantId ===
+-                  applicant.id && (
+-                  <p className="mt-1 text-[11px] font-medium text-blue-600">
+-                    Saving...
+-                  </p>
++                  {isRatingRevealed
++                    ? 'Hide rating'
++                    : 'Show rating'}
++                </button>
++
++                {isRatingRevealed && (
++                  <div id={ratingPanelId}>
++                    <p className="mt-1 text-[11px] text-slate-500">
++                      {applicant.rating
++                        ? `Your rating: ${applicant.rating}/5`
++                        : 'Not rated yet'}
++                    </p>
++
++                    <div
++                      className="mt-1 flex items-center gap-0.5"
++                      aria-label={
++                        `Rate ${applicant.fullName}`
++                      }
++                    >
++                      {[1, 2, 3, 4, 5].map(
++                        (star) => {
++                          const selected =
++                            star <=
++                            Number(
++                              applicant.rating ||
++                                0
++                            );
++
++                          return (
++                            <button
++                              key={star}
++                              type="button"
++                              disabled={Boolean(
++                                savingApplicantId
++                              )}
++                              aria-label={
++                                `${star} star${star === 1 ? '' : 's'} for ${applicant.fullName}`
++                              }
++                              title={
++                                `Rate ${star} star${star === 1 ? '' : 's'}`
++                              }
++                              onClick={() =>
++                                saveRating(
++                                  applicant.id,
++                                  star
++                                )
++                              }
++                              className="rounded p-0.5 text-amber-400 transition hover:scale-110 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
++                            >
++                              <FiStar
++                                className="h-5 w-5"
++                                fill={
++                                  selected
++                                    ? 'currentColor'
++                                    : 'none'
++                                }
++                              />
++                            </button>
++                          );
++                        }
++                      )}
++                    </div>
++
++                    {savingApplicantId ===
++                      applicant.id && (
++                      <p className="mt-1 text-[11px] font-medium text-blue-600">
++                        Saving...
++                      </p>
++                    )}
++                  </div>
+                 )}
+               </div>
+-            )
++              );
++            }
+           )}
+ 
+           {message && (

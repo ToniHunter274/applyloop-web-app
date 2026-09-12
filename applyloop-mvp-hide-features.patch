@@ -1,0 +1,59 @@
+--- a/src/shared/components/DashboardLayout.js
++++ b/src/shared/components/DashboardLayout.js
+@@ -4,8 +4,6 @@
+ import {
+   FiBell,
+   FiChevronDown,
+-  FiCpu,
+-  FiCreditCard,
+   FiHelpCircle,
+   FiHome,
+   FiLogOut,
+@@ -65,8 +63,6 @@
+ const pageMeta = {
+   '/dashboard': ['Dashboard', 'Track applications, monitor progress, and stay in control of your job search.'],
+   '/growth': ['Career Growth', 'Build job-ready skills with a personalized learning plan.'],
+-  '/loop-lab': ['Loop Lab', 'Prepare for interviews with role-specific practice sessions.'],
+-  '/billing': ['Billing & Subscription', 'Manage your plan, billing history, and application volume.'],
+   '/settings': ['Settings', 'Update your profile, work preferences, and account details.'],
+   '/notifications': ['Notifications', 'Review important application and interview updates.'],
+   '/support': ['Help & Support', 'Get help with your account, applications, or technical issues.'],
+@@ -143,16 +139,6 @@
+       label: 'Home',
+       href: '/dashboard',
+       tour: 'home-nav',
+-    },
+-    {
+-      icon: FiCpu,
+-      label: 'Loop Lab',
+-      href: '/loop-lab',
+-    },
+-    {
+-      icon: FiCreditCard,
+-      label: 'Billing & Subscription',
+-      href: '/billing',
+     },
+     {
+       icon: FiTrendingUp,
+--- a/src/pages/billing.js
++++ b/src/pages/billing.js
+@@ -310,3 +310,8 @@
+     </>
+   );
+ }
++
++// This feature is excluded from the first MVP, including direct URL access.
++export async function getStaticProps() {
++  return { notFound: true };
++}
+--- a/src/pages/loop-lab.js
++++ b/src/pages/loop-lab.js
+@@ -209,3 +209,8 @@
+     </>
+   );
+ }
++
++// This feature is excluded from the first MVP, including direct URL access.
++export async function getStaticProps() {
++  return { notFound: true };
++}

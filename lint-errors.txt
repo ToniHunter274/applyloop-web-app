@@ -1,0 +1,719 @@
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\features\applicant\ApplicantPortal.js
+   451:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  449 |
+  450 |   useEffect(() => {
+> 451 |     setPage(1);
+      |     ^^^^^^^ Avoid calling setState() directly within an effect
+  452 |   }, [search, clientFilter]);
+  453 |
+  454 |   useEffect(() => {                                                                                        react-hooks/set-state-in-effect
+   455:28  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  453 |
+  454 |   useEffect(() => {
+> 455 |     if (page > totalPages) setPage(totalPages);
+      |                            ^^^^^^^ Avoid calling setState() directly within an effect
+  456 |   }, [page, totalPages]);
+  457 |
+  458 |   const visiblePages = useMemo(() => {                  react-hooks/set-state-in-effect
+  2419:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  2417 |
+  2418 |   useEffect(() => {
+> 2419 |     setEmailNotifications(
+       |     ^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  2420 |       user?.emailNotifications ?? true
+  2421 |     );
+  2422 |     setPushNotifications(                                  react-hooks/set-state-in-effect
+  2710:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  2708 |       !isApplicantPreview
+  2709 |     ) {
+> 2710 |       setAssignedClients([]);
+       |       ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  2711 |       setClientFeedback([]);
+  2712 |       setAssignedClientsError('');
+  2713 |       return undefined;  react-hooks/set-state-in-effect
+  2828:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  2826 |       !isApplicantPreview
+  2827 |     ) {
+> 2828 |       setApplications([]);
+       |       ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  2829 |       setApplicationSummary({
+  2830 |         totalApplications: 0,
+  2831 |         persistedApplications: 0,  react-hooks/set-state-in-effect
+  2964:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  2962 |       !isApplicantPreview
+  2963 |     ) {
+> 2964 |       setPreviewApplicant(null);
+       |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  2965 |       setApplicantPreviewError('');
+  2966 |       return undefined;
+  2967 |     }                    react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\features\owner\OwnerCharts.js
+  195:5  error  Error: Cannot reassign variable after render completes
+
+Reassigning `current` after render has completed can cause inconsistent behavior on subsequent renders. Consider using state instead.
+
+  193 |   const stops = segments.map((segment) => {
+  194 |     const start = current;
+> 195 |     current += segment.value;
+      |     ^^^^^^^ Cannot reassign `current` after render completes
+  196 |     return `${segment.color} ${start}% ${current}%`;
+  197 |   }).join(', ');
+  198 |   return <div className={styles.pieChart} style={{ background: `conic-gradient(${stops})` }} />;  react-hooks/immutability
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\features\owner\OwnerPortal.js
+  4043:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  4041 |     }
+  4042 |
+> 4043 |     setFormError('');
+       |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  4044 |     setCredentials(
+  4045 |       initialCredentials
+  4046 |     );  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\features\team-auditor\TeamAuditorPortal.js
+  1505:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  1503 |   useEffect(() => {
+  1504 |     if (!hasWorkspaceAccess) {
+> 1505 |       setAuditQueue([]);
+       |       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  1506 |       setAuditQueueError('');
+  1507 |       setAuditQueueLoading(false);
+  1508 |       return undefined;  react-hooks/set-state-in-effect
+  1596:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  1594 |       !detailId
+  1595 |     ) {
+> 1596 |       setAuditDetail(null);
+       |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  1597 |       setAuditDetailError('');
+  1598 |       setAuditDetailLoading(false);
+  1599 |       return undefined;                       react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\pages\_app.js
+  57:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  55 |   useEffect(() => {
+  56 |     if (!shouldCheckClientOnboarding) {
+> 57 |       setClientWorkspaceReady(false);
+     |       ^^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  58 |       return undefined;
+  59 |     }
+  60 |  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\pages\dashboard.js
+  182:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  180 |
+  181 |     if (typeof searchParam === 'string') {
+> 182 |       setSearchQuery(searchParam);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  183 |     }
+  184 |   }, [
+  185 |     router.isReady,                                             react-hooks/set-state-in-effect
+  191:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  189 |   useEffect(() => {
+  190 |     if (announcements.length <= 1) {
+> 191 |       setUpdateSlideIndex(0);
+      |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  192 |       return undefined;
+  193 |     }
+  194 |                                  react-hooks/set-state-in-effect
+  320:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  318 |
+  319 |     if (previewClientId) {
+> 320 |       setJobRequests([]);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  321 |       setJobRequestsError('');
+  322 |       setJobRequestMessage('');
+  323 |       setIsLoadingJobRequests(false);  react-hooks/set-state-in-effect
+  392:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  390 |   useEffect(() => {
+  391 |     if (previewClientId) {
+> 392 |       setAnnouncements([]);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  393 |       setAnnouncementsError('');
+  394 |       setIsLoadingAnnouncements(false);
+  395 |      react-hooks/set-state-in-effect
+  529:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  527 |
+  528 |   useEffect(() => {
+> 529 |     setCurrentPage(1);
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  530 |   }, [activeFilter, searchQuery]);
+  531 |
+  532 |   const totalCount = Math.max(                                                 react-hooks/set-state-in-effect
+  568:35  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  566 |
+  567 |   useEffect(() => {
+> 568 |     if (currentPage > totalPages) setCurrentPage(totalPages);
+      |                                   ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  569 |   }, [currentPage, totalPages]);
+  570 |
+  571 |             react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\pages\growth.js
+  500:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  498 |
+  499 |   useEffect(() => {
+> 500 |     loadGrowthData();
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  501 |   }, []);
+  502 |
+  503 |   const updateCourse =  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\pages\settings.js
+  482:9  error  Error: Cannot access variable before it is declared
+
+`setJobs` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  480 |         };
+  481 |
+> 482 |         setJobs(loadedWorkPreferences.jobs);
+      |         ^^^^^^^ `setJobs` accessed before it is declared
+  483 |         setApplicationLimit(
+  484 |           Number(data.applicationLimit) || 0
+  485 |         );
+
+  556 |   }, []);
+  557 |
+> 558 |   const [jobs, setJobs] = useState([]);
+      |                ^^^^^^^ `setJobs` is declared here
+  559 |   const [applicationLimit, setApplicationLimit] =
+  560 |     useState(0);
+  561 |   const [industry, setIndustry] = useState('');                                                                                                                                                                                                                                                                                                                                                                               react-hooks/immutability
+  483:9  error  Error: Cannot access variable before it is declared
+
+`setApplicationLimit` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  481 |
+  482 |         setJobs(loadedWorkPreferences.jobs);
+> 483 |         setApplicationLimit(
+      |         ^^^^^^^^^^^^^^^^^^^ `setApplicationLimit` accessed before it is declared
+  484 |           Number(data.applicationLimit) || 0
+  485 |         );
+  486 |         setIndustry(loadedWorkPreferences.industry);
+
+  557 |
+  558 |   const [jobs, setJobs] = useState([]);
+> 559 |   const [applicationLimit, setApplicationLimit] =
+      |                            ^^^^^^^^^^^^^^^^^^^ `setApplicationLimit` is declared here
+  560 |     useState(0);
+  561 |   const [industry, setIndustry] = useState('');
+  562 |   const [specialization, setSpecialization] = useState('');                                                                                                                                                                                                           react-hooks/immutability
+  486:9  error  Error: Cannot access variable before it is declared
+
+`setIndustry` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  484 |           Number(data.applicationLimit) || 0
+  485 |         );
+> 486 |         setIndustry(loadedWorkPreferences.industry);
+      |         ^^^^^^^^^^^ `setIndustry` accessed before it is declared
+  487 |         setSpecialization(loadedWorkPreferences.specialization);
+  488 |         setWorkType(loadedWorkPreferences.workType);
+  489 |         setSchedule(loadedWorkPreferences.schedule);
+
+  559 |   const [applicationLimit, setApplicationLimit] =
+  560 |     useState(0);
+> 561 |   const [industry, setIndustry] = useState('');
+      |                    ^^^^^^^^^^^ `setIndustry` is declared here
+  562 |   const [specialization, setSpecialization] = useState('');
+  563 |   const [workType, setWorkType] = useState('');
+  564 |   const [schedule, setSchedule] = useState('');                                                                                                  react-hooks/immutability
+  487:9  error  Error: Cannot access variable before it is declared
+
+`setSpecialization` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  485 |         );
+  486 |         setIndustry(loadedWorkPreferences.industry);
+> 487 |         setSpecialization(loadedWorkPreferences.specialization);
+      |         ^^^^^^^^^^^^^^^^^ `setSpecialization` accessed before it is declared
+  488 |         setWorkType(loadedWorkPreferences.workType);
+  489 |         setSchedule(loadedWorkPreferences.schedule);
+  490 |         setDuration(loadedWorkPreferences.duration);
+
+  560 |     useState(0);
+  561 |   const [industry, setIndustry] = useState('');
+> 562 |   const [specialization, setSpecialization] = useState('');
+      |                          ^^^^^^^^^^^^^^^^^ `setSpecialization` is declared here
+  563 |   const [workType, setWorkType] = useState('');
+  564 |   const [schedule, setSchedule] = useState('');
+  565 |   const [duration, setDuration] = useState('');                                                        react-hooks/immutability
+  488:9  error  Error: Cannot access variable before it is declared
+
+`setWorkType` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  486 |         setIndustry(loadedWorkPreferences.industry);
+  487 |         setSpecialization(loadedWorkPreferences.specialization);
+> 488 |         setWorkType(loadedWorkPreferences.workType);
+      |         ^^^^^^^^^^^ `setWorkType` accessed before it is declared
+  489 |         setSchedule(loadedWorkPreferences.schedule);
+  490 |         setDuration(loadedWorkPreferences.duration);
+  491 |         setLocations(loadedWorkPreferences.locations);
+
+  561 |   const [industry, setIndustry] = useState('');
+  562 |   const [specialization, setSpecialization] = useState('');
+> 563 |   const [workType, setWorkType] = useState('');
+      |                    ^^^^^^^^^^^ `setWorkType` is declared here
+  564 |   const [schedule, setSchedule] = useState('');
+  565 |   const [duration, setDuration] = useState('');
+  566 |   const [locations, setLocations] = useState([]);               react-hooks/immutability
+  489:9  error  Error: Cannot access variable before it is declared
+
+`setSchedule` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  487 |         setSpecialization(loadedWorkPreferences.specialization);
+  488 |         setWorkType(loadedWorkPreferences.workType);
+> 489 |         setSchedule(loadedWorkPreferences.schedule);
+      |         ^^^^^^^^^^^ `setSchedule` accessed before it is declared
+  490 |         setDuration(loadedWorkPreferences.duration);
+  491 |         setLocations(loadedWorkPreferences.locations);
+  492 |         setSavedWorkPreferences(loadedWorkPreferences);
+
+  562 |   const [specialization, setSpecialization] = useState('');
+  563 |   const [workType, setWorkType] = useState('');
+> 564 |   const [schedule, setSchedule] = useState('');
+      |                    ^^^^^^^^^^^ `setSchedule` is declared here
+  565 |   const [duration, setDuration] = useState('');
+  566 |   const [locations, setLocations] = useState([]);
+  567 |   const [savedWorkPreferences, setSavedWorkPreferences] =  react-hooks/immutability
+  490:9  error  Error: Cannot access variable before it is declared
+
+`setDuration` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  488 |         setWorkType(loadedWorkPreferences.workType);
+  489 |         setSchedule(loadedWorkPreferences.schedule);
+> 490 |         setDuration(loadedWorkPreferences.duration);
+      |         ^^^^^^^^^^^ `setDuration` accessed before it is declared
+  491 |         setLocations(loadedWorkPreferences.locations);
+  492 |         setSavedWorkPreferences(loadedWorkPreferences);
+  493 |
+
+  563 |   const [workType, setWorkType] = useState('');
+  564 |   const [schedule, setSchedule] = useState('');
+> 565 |   const [duration, setDuration] = useState('');
+      |                    ^^^^^^^^^^^ `setDuration` is declared here
+  566 |   const [locations, setLocations] = useState([]);
+  567 |   const [savedWorkPreferences, setSavedWorkPreferences] =
+  568 |     useState(null);                                                                                                           react-hooks/immutability
+  491:9  error  Error: Cannot access variable before it is declared
+
+`setLocations` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  489 |         setSchedule(loadedWorkPreferences.schedule);
+  490 |         setDuration(loadedWorkPreferences.duration);
+> 491 |         setLocations(loadedWorkPreferences.locations);
+      |         ^^^^^^^^^^^^ `setLocations` accessed before it is declared
+  492 |         setSavedWorkPreferences(loadedWorkPreferences);
+  493 |
+  494 |         const loadedWorkAuthorization = {
+
+  564 |   const [schedule, setSchedule] = useState('');
+  565 |   const [duration, setDuration] = useState('');
+> 566 |   const [locations, setLocations] = useState([]);
+      |                     ^^^^^^^^^^^^ `setLocations` is declared here
+  567 |   const [savedWorkPreferences, setSavedWorkPreferences] =
+  568 |     useState(null);
+  569 |   const [isEditingWorkPreferences, setIsEditingWorkPreferences] =                                                                                              react-hooks/immutability
+  492:9  error  Error: Cannot access variable before it is declared
+
+`setSavedWorkPreferences` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  490 |         setDuration(loadedWorkPreferences.duration);
+  491 |         setLocations(loadedWorkPreferences.locations);
+> 492 |         setSavedWorkPreferences(loadedWorkPreferences);
+      |         ^^^^^^^^^^^^^^^^^^^^^^^ `setSavedWorkPreferences` accessed before it is declared
+  493 |
+  494 |         const loadedWorkAuthorization = {
+  495 |           targetMarkets:
+
+  565 |   const [duration, setDuration] = useState('');
+  566 |   const [locations, setLocations] = useState([]);
+> 567 |   const [savedWorkPreferences, setSavedWorkPreferences] =
+      |                                ^^^^^^^^^^^^^^^^^^^^^^^ `setSavedWorkPreferences` is declared here
+  568 |     useState(null);
+  569 |   const [isEditingWorkPreferences, setIsEditingWorkPreferences] =
+  570 |     useState(false);                                                                                   react-hooks/immutability
+  522:9  error  Error: Cannot access variable before it is declared
+
+`setTargetMarkets` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  520 |         };
+  521 |
+> 522 |         setTargetMarkets([
+      |         ^^^^^^^^^^^^^^^^ `setTargetMarkets` accessed before it is declared
+  523 |           ...loadedWorkAuthorization.targetMarkets,
+  524 |         ]);
+  525 |         setRequireSponsorship(
+
+  576 |     useState('');
+  577 |
+> 578 |   const [targetMarkets, setTargetMarkets] =
+      |                         ^^^^^^^^^^^^^^^^ `setTargetMarkets` is declared here
+  579 |     useState([]);
+  580 |   const [requireSponsorship, setRequireSponsorship] =
+  581 |     useState('');                                                                                                                                                                                                                                                                                                                                              react-hooks/immutability
+  525:9  error  Error: Cannot access variable before it is declared
+
+`setRequireSponsorship` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  523 |           ...loadedWorkAuthorization.targetMarkets,
+  524 |         ]);
+> 525 |         setRequireSponsorship(
+      |         ^^^^^^^^^^^^^^^^^^^^^ `setRequireSponsorship` accessed before it is declared
+  526 |           loadedWorkAuthorization.requireSponsorship
+  527 |         );
+  528 |         setAuthorizedToWork(
+
+  578 |   const [targetMarkets, setTargetMarkets] =
+  579 |     useState([]);
+> 580 |   const [requireSponsorship, setRequireSponsorship] =
+      |                              ^^^^^^^^^^^^^^^^^^^^^ `setRequireSponsorship` is declared here
+  581 |     useState('');
+  582 |   const [authorizedToWork, setAuthorizedToWork] =
+  583 |     useState('');                                                                                                                                                                                                       react-hooks/immutability
+  528:9  error  Error: Cannot access variable before it is declared
+
+`setAuthorizedToWork` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  526 |           loadedWorkAuthorization.requireSponsorship
+  527 |         );
+> 528 |         setAuthorizedToWork(
+      |         ^^^^^^^^^^^^^^^^^^^ `setAuthorizedToWork` accessed before it is declared
+  529 |           loadedWorkAuthorization.authorizedToWork
+  530 |         );
+  531 |         setExcludedCompanies(
+
+  580 |   const [requireSponsorship, setRequireSponsorship] =
+  581 |     useState('');
+> 582 |   const [authorizedToWork, setAuthorizedToWork] =
+      |                            ^^^^^^^^^^^^^^^^^^^ `setAuthorizedToWork` is declared here
+  583 |     useState('');
+  584 |   const [excludedCompanies, setExcludedCompanies] =
+  585 |     useState([]);                                                                                                                                                                                                              react-hooks/immutability
+  531:9  error  Error: Cannot access variable before it is declared
+
+`setExcludedCompanies` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  529 |           loadedWorkAuthorization.authorizedToWork
+  530 |         );
+> 531 |         setExcludedCompanies(
+      |         ^^^^^^^^^^^^^^^^^^^^ `setExcludedCompanies` accessed before it is declared
+  532 |           loadedWorkAuthorization.excludedCompanies
+  533 |         );
+  534 |         setPriorityCompanies(
+
+  582 |   const [authorizedToWork, setAuthorizedToWork] =
+  583 |     useState('');
+> 584 |   const [excludedCompanies, setExcludedCompanies] =
+      |                             ^^^^^^^^^^^^^^^^^^^^ `setExcludedCompanies` is declared here
+  585 |     useState([]);
+  586 |   const [priorityCompanies, setPriorityCompanies] =
+  587 |     useState([]);                                                                                                                                                                                                          react-hooks/immutability
+  534:9  error  Error: Cannot access variable before it is declared
+
+`setPriorityCompanies` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  532 |           loadedWorkAuthorization.excludedCompanies
+  533 |         );
+> 534 |         setPriorityCompanies(
+      |         ^^^^^^^^^^^^^^^^^^^^ `setPriorityCompanies` accessed before it is declared
+  535 |           loadedWorkAuthorization.priorityCompanies
+  536 |         );
+  537 |         setSavedWorkAuthorization(loadedWorkAuthorization);
+
+  584 |   const [excludedCompanies, setExcludedCompanies] =
+  585 |     useState([]);
+> 586 |   const [priorityCompanies, setPriorityCompanies] =
+      |                             ^^^^^^^^^^^^^^^^^^^^ `setPriorityCompanies` is declared here
+  587 |     useState([]);
+  588 |   const [savedWorkAuthorization, setSavedWorkAuthorization] =
+  589 |     useState(null);                                                                                                                                                             react-hooks/immutability
+  537:9  error  Error: Cannot access variable before it is declared
+
+`setSavedWorkAuthorization` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  535 |           loadedWorkAuthorization.priorityCompanies
+  536 |         );
+> 537 |         setSavedWorkAuthorization(loadedWorkAuthorization);
+      |         ^^^^^^^^^^^^^^^^^^^^^^^^^ `setSavedWorkAuthorization` accessed before it is declared
+  538 |       } catch (error) {
+  539 |         if (mounted) {
+  540 |           setSettingsError(
+
+  586 |   const [priorityCompanies, setPriorityCompanies] =
+  587 |     useState([]);
+> 588 |   const [savedWorkAuthorization, setSavedWorkAuthorization] =
+      |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ `setSavedWorkAuthorization` is declared here
+  589 |     useState(null);
+  590 |   const [isEditingWorkAuthorization, setIsEditingWorkAuthorization] =
+  591 |     useState(false);                                                                                                                            react-hooks/immutability
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\components\ClientManagementWorkspace.js
+  767:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  765 |
+  766 |   useEffect(() => {
+> 767 |     loadClients();
+      |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  768 |   }, [loadClients]);
+  769 |
+  770 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\components\ClientProductTour.js
+  273:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  271 |   useEffect(() => {
+  272 |     if (!open) {
+> 273 |       setTargetRect(null);
+      |       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  274 |       setStepIndex(0);
+  275 |       setError('');
+  276 |       return undefined;  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\components\DashboardLayout.js
+  232:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  230 |       !isClientPreview
+  231 |     ) {
+> 232 |       setPreviewClient(null);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  233 |       setPreviewError('');
+  234 |
+  235 |       return undefined;                         react-hooks/set-state-in-effect
+  339:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  337 |
+  338 |     if (tourQuery === '1') {
+> 339 |       setTourChecked(true);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  340 |
+  341 |       window.setTimeout(() => {
+  342 |         setTourOpen(true);                       react-hooks/set-state-in-effect
+  468:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  466 |       user?.role !== USER_ROLES.USER_CLIENT
+  467 |     ) {
+> 468 |       setNotifications([]);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  469 |       setUnreadCount(0);
+  470 |       return undefined;
+  471 |     }  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\components\PortalUI.js
+  188:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  186 |
+  187 |   useEffect(() => {
+> 188 |     setPage(1);
+      |     ^^^^^^^ Avoid calling setState() directly within an effect
+  189 |   }, [rowSignature]);
+  190 |
+  191 |   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\context\AuthContext.js
+  113:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  111 |
+  112 |     if (!supabase) {
+> 113 |       setIsLoading(false);
+      |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  114 |       return undefined;
+  115 |     }
+  116 |  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\hooks\useDashboardData.js
+  311:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  309 |   // Fetch data initially and when timeframe changes
+  310 |   useEffect(() => {
+> 311 |     fetchDashboardData();
+      |     ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  312 |     
+  313 |     // Setup periodic refresh every 5 minutes
+  314 |     const intervalId = setInterval(fetchDashboardData, 5 * 60 * 1000);  react-hooks/set-state-in-effect
+
+C:\Users\Tonip\Documents\applyloop-web-app\src\shared\hooks\useTheme.js
+  17:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  15 |       
+  16 |       if (savedTheme) {
+> 17 |         setIsDarkMode(savedTheme === 'dark');
+     |         ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  18 |       } else {
+  19 |         // Default to light mode (original color scheme) to prevent unwanted system dark mode overrides
+  20 |         setIsDarkMode(false);  react-hooks/set-state-in-effect
+
+✖ 42 problems (42 errors, 0 warnings)
+

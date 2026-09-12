@@ -1,0 +1,110 @@
+--- a/src/features/applicant/ApplicantPortal.js
++++ b/src/features/applicant/ApplicantPortal.js
+@@ -40,7 +40,6 @@
+ import { createClient } from '../../lib/supabase/client';
+ import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
+ import {
+-  PERFORMANCE_PERIODS,
+   STATUS_OPTIONS,
+ } from '../../data/applicantData';
+ import styles from './ApplicantPortal.module.css';
+@@ -993,6 +992,14 @@
+ }
+ 
+ function ApplicationDetail({ application, onBack }) {
++  let jobUrl = '';
++  try {
++    const parsed = new URL(application.jobLink);
++    if (['https:', 'http:'].includes(parsed.protocol)) jobUrl = parsed.href;
++  } catch {
++    // Missing or invalid listings remain readable without creating a broken link.
++  }
++
+   return (
+     <div className={styles.applicationDetail}>
+       <div className={styles.detailHeader}>
+@@ -1012,7 +1019,12 @@
+         <dd className={styles.preferenceTags}>
+           {(application.preferences || []).map((item, index) => <span key={item} className={classNames(styles.preferenceTag, index === 0 ? styles.preferenceBlue : index === 1 ? styles.preferencePurple : styles.preferenceYellow)}>{item}</span>)}
+         </dd>
+-        <dt><FiLink /> Job Link</dt><dd><u>{application.jobLink}</u></dd>
++        <dt><FiLink /> Job Link</dt>
++        <dd>{jobUrl ? (
++          <a href={jobUrl} target="_blank" rel="noopener noreferrer">
++            {application.jobLink} <FiExternalLink aria-hidden="true" />
++          </a>
++        ) : (application.jobLink || 'No job link recorded.')}</dd>
+       </dl>
+       <div className={styles.documentRow}>
+         <PdfDocument
+@@ -2338,38 +2350,32 @@
+   );
+ }
+ 
+-function PerformancePage() {
++function PerformancePage({ applications, historicalApplications = 0 }) {
++  const metrics = [
++    ['Recorded Applications', applications.length],
++    ['Currently Rejected', applications.filter((item) => item.status === 'Rejected').length],
++    ['Interviews Scheduled', applications.filter((item) => item.status === 'Interview Scheduled').length],
++    ['Offers Received', applications.filter((item) => item.status === 'Offer Received').length],
++  ];
++
+   return (
+     <>
+-      <PageHeader title="Performance" subtitle="Track your productivity and quality metrics" />
++      <PageHeader title="Performance" subtitle="Current outcomes from your recorded applications" />
+       <div className={styles.performanceStats}>
+-        <div className={styles.performanceCard}><span>Total Applications</span><strong>328</strong><small className={styles.statPositive}>↗ 12% from last month</small></div>
+-        <div className={styles.performanceCard}><span>Total Rejection</span><strong>100</strong><small>30.5% rejection rate</small></div>
+-        <div className={styles.performanceCard}><span>Total Interviews</span><strong>90</strong><small>27.4% interview rate</small></div>
+-        <div className={styles.performanceCard}><span>Total Offers</span><strong>90</strong><small className={styles.statPositive}>↗ 8% success rate</small></div>
+-        <div className={styles.performanceCard}><span>Client Satisfaction</span><strong>4.8/5.0</strong><small className={styles.statWarning}>★ Excellent Rating</small></div>
+-      </div>
+-      <section className={styles.performanceLevel}>
+-        <div className={styles.levelHeader}>
+-          <div className={styles.levelIdentity}><span className={styles.goldMedal}><FiAward /></span><div><strong>Gold</strong><p>328 points to Platinum</p></div></div>
+-          <div className={styles.levelStatus}><p>Highest Reached</p><strong>Gold</strong></div>
+-        </div>
+-        <div className={styles.levelBar}><span /></div>
+-        <div className={styles.levelLabels}><span>Bronze</span><span>Silver</span><span className={styles.levelCurrent}>Gold (Current)</span><span>Platinum</span><span>Diamond</span></div>
+-      </section>
+-      <section className={styles.performancePanel}>
+-        <h3>Recent Performance</h3>
+-        {PERFORMANCE_PERIODS.map((period) => (
+-          <div className={styles.periodRow} key={period.label}>
+-            <div><strong>{period.label}</strong><span>Applications<br />Interviews</span></div>
+-            <div className={classNames(styles.periodMetric, styles.metricBlue)}>{period.applications}<br />{period.interviews}</div>
+-            <div className={styles.periodMetric}>Rejections<br />Offers</div>
+-            <div className={classNames(styles.periodMetric, styles.metricRed)}>{period.rejections}<br /><span className={styles.metricGreen}>{period.offers}</span></div>
+-            <div />
++        {metrics.map(([label, value]) => (
++          <div className={styles.performanceCard} key={label}>
++            <span>{label}</span><strong>{value}</strong>
+           </div>
+         ))}
++      </div>
++      <section className={styles.performancePanel}>
++        <h3>About these figures</h3>
++        <p>These counts reflect each recorded application&apos;s current status, not its full status history.</p>
++        {historicalApplications > 0 && (
++          <p>{historicalApplications} historical applications have no individual records and are excluded from these figures.</p>
++        )}
++        {applications.length === 0 && <p>No applications have been recorded yet.</p>}
+       </section>
+-      <section className={styles.achievements}><h3>Achievements</h3></section>
+     </>
+   );
+ }
+@@ -3587,7 +3593,10 @@
+       />
+     );
+   } else if (section === 'performance') {
+-    page = <PerformancePage />;
++    page = <PerformancePage
++      applications={visibleApplications}
++      historicalApplications={Number(applicationSummary.historicalApplications || 0)}
++    />;
+   } else if (section === 'settings') {
+     page = <SettingsPage />;
+   } else {
