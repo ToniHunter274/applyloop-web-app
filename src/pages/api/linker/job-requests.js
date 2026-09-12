@@ -484,7 +484,7 @@ async function createRequest(
 
   return res.status(201).json({
     message:
-      'Job link recorded successfully.',
+      'Job link sent to the Applicant successfully.',
     request: formatRequest({
       ...request,
       converted_application_id:
