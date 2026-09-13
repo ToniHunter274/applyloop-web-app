@@ -1,5 +1,10 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
+import {
+  ensureCurrentSubscriptionNotification,
+  loadClientSubscription,
+  syncClientSubscriptionLifecycle,
+} from '../../../lib/subscriptions/clientSubscription';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -42,7 +47,14 @@ async function getClient(
     error,
   } = await supabase
     .from('clients')
-    .select('id')
+    .select(`
+      id,
+      plan,
+      application_limit,
+      applications_completed,
+      status,
+      created_at
+    `)
     .eq('user_id', profileId)
     .single();
 
@@ -72,6 +84,32 @@ export default async function handler(
     );
 
     if (req.method === 'GET') {
+      let subscription =
+        await loadClientSubscription(
+          supabase,
+          client
+        );
+
+      subscription =
+        await syncClientSubscriptionLifecycle(
+          supabase,
+          subscription,
+          client
+        );
+
+      await ensureCurrentSubscriptionNotification(
+        supabase,
+        subscription,
+        {
+          ...client,
+          status:
+            subscription.status ===
+              'paused'
+              ? 'paused'
+              : client.status,
+        }
+      );
+
       const {
         data: notifications,
         error,
