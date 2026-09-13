@@ -672,11 +672,52 @@ function JobLinksPage({ clients, workshopHref }) {
     }
   };
 
+  const getWorkshopLink =
+    (request) => {
+      const base =
+        typeof workshopHref ===
+        'string'
+          ? {
+              pathname:
+                workshopHref,
+              query: {},
+            }
+          : {
+              pathname:
+                workshopHref
+                  ?.pathname ||
+                '/applicant/workshop',
+              query:
+                workshopHref
+                  ?.query || {},
+            };
+
+      return {
+        pathname:
+          base.pathname,
+        query: {
+          ...base.query,
+          clientId:
+            request.clientId,
+          jobRequestId:
+            request.id,
+        },
+      };
+    };
+
+  const newLinkerLinks =
+    jobLinks.filter(
+      (request) =>
+        request.source ===
+          'Linker' &&
+        request.status === 'new'
+    ).length;
+
   return (
     <>
       <PageHeader
         title="Job Links"
-        subtitle="Review assigned job opportunities before recording an application."
+        subtitle="Review opportunities sent by Clients and Linkers, then start the application workflow."
         searchable
         search={search}
         onSearch={setSearch}
@@ -690,6 +731,28 @@ function JobLinksPage({ clients, workshopHref }) {
           </Link>
         }
       />
+
+      {newLinkerLinks > 0 && (
+        <section className="mb-5 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-blue-900/40 dark:bg-blue-900/20">
+          <div className="flex items-start gap-3">
+            <FiBell className="mt-0.5 shrink-0 text-[#1E50C3]" />
+
+            <div>
+              <strong className="text-sm text-gray-900 dark:text-white">
+                {newLinkerLinks} new job link{newLinkerLinks === 1 ? '' : 's'} from your Linker
+              </strong>
+
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Review the opportunit{newLinkerLinks === 1 ? 'y' : 'ies'} and start an application when ready.
+              </p>
+            </div>
+          </div>
+
+          <span className="inline-flex shrink-0 items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1E50C3] shadow-sm dark:bg-gray-900">
+            New
+          </span>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -764,7 +827,23 @@ function JobLinksPage({ clients, workshopHref }) {
                         {request.source || 'Client'}
                       </span>
                       <span className="rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-semibold capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-                        {String(request.status || 'new').replace(/_/g, ' ')}
+                        {request.status === 'new'
+                          ? 'New'
+                          : request.status === 'in_review'
+                            ? 'In Review'
+                            : request.status === 'converted'
+                              ? 'Application Recorded'
+                              : request.status === 'dismissed'
+                                ? 'Closed'
+                                : request.status === 'withdrawn'
+                                  ? 'Withdrawn'
+                                  : String(
+                                      request.status ||
+                                        'new'
+                                    ).replace(
+                                      /_/g,
+                                      ' '
+                                    )}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {request.clientName}
@@ -808,7 +887,7 @@ function JobLinksPage({ clients, workshopHref }) {
                     </a>
                     {['new', 'in_review'].includes(request.status) && (
                       <Link
-                        href={workshopHref}
+                        href={getWorkshopLink(request)}
                         className="rounded-xl bg-[#1E50C3] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7]"
                       >
                         Start Application
@@ -1350,9 +1429,12 @@ function ScoreCard({ label, value, note, state, icon: Icon }) {
 function WorkshopPage({
   clients,
   onRecordApplication,
+  onUpdateJobRequest,
   isPreview = false,
   isRecordingApplication = false,
 }) {
+  const router = useRouter();
+
   const [selectedClientId, setSelectedClientId] =
     useState('');
   const [companyName, setCompanyName] =
@@ -1390,6 +1472,9 @@ function WorkshopPage({
     setActiveJobRequestId,
   ] = useState('');
 
+  const jobLinkHandoffRef =
+    useRef('');
+
   const activeClients =
     clients.filter(
       (client) =>
@@ -1412,6 +1497,140 @@ function WorkshopPage({
           request.status
         )
     );
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      isPreview
+    ) {
+      return;
+    }
+
+    const requestedClientId =
+      Array.isArray(
+        router.query.clientId
+      )
+        ? router.query.clientId[0]
+        : router.query.clientId;
+
+    const requestedJobRequestId =
+      Array.isArray(
+        router.query.jobRequestId
+      )
+        ? router.query
+            .jobRequestId[0]
+        : router.query
+            .jobRequestId;
+
+    if (
+      !requestedClientId ||
+      !requestedJobRequestId
+    ) {
+      return;
+    }
+
+    const handoffKey =
+      `${requestedClientId}:${requestedJobRequestId}`;
+
+    if (
+      jobLinkHandoffRef.current ===
+      handoffKey
+    ) {
+      return;
+    }
+
+    const handoffClient =
+      activeClients.find(
+        (client) =>
+          client.id ===
+          requestedClientId
+      );
+
+    if (!handoffClient) {
+      return;
+    }
+
+    const handoffRequest =
+      (
+        handoffClient.jobRequests ||
+        []
+      ).find(
+        (request) =>
+          request.id ===
+          requestedJobRequestId
+      );
+
+    if (
+      !handoffRequest ||
+      !['new', 'in_review'].includes(
+        handoffRequest.status
+      )
+    ) {
+      return;
+    }
+
+    jobLinkHandoffRef.current =
+      handoffKey;
+
+    setSelectedClientId(
+      handoffClient.id
+    );
+
+    setCompanyName(
+      handoffRequest
+        .jobCompany || ''
+    );
+
+    setPosition(
+      handoffRequest
+        .jobPosition || ''
+    );
+
+    setJobLocation(
+      handoffRequest
+        .jobLocation || ''
+    );
+
+    setJobUrl(
+      handoffRequest
+        .jobLink || ''
+    );
+
+    setJobDescription('');
+    setActiveJobRequestId(
+      handoffRequest.id
+    );
+
+    setResumeStatus('');
+    setTailoredResume('');
+    setTailoredResumeFingerprint('');
+    setResumeGenerationError('');
+
+    if (
+      handoffRequest.status ===
+        'new' &&
+      onUpdateJobRequest
+    ) {
+      Promise.resolve(
+        onUpdateJobRequest(
+          handoffRequest.id,
+          'in_review'
+        )
+      ).catch((error) => {
+        setResumeStatus(
+          error?.message ||
+            'The job link was loaded, but its status could not be updated.'
+        );
+      });
+    }
+  }, [
+    activeClients,
+    isPreview,
+    onUpdateJobRequest,
+    router.isReady,
+    router.query.clientId,
+    router.query.jobRequestId,
+  ]);
 
   const isQuotaReached =
     Boolean(
@@ -1891,6 +2110,22 @@ function WorkshopPage({
               View Job Links
               <FiArrowRight />
             </Link>
+          </div>
+        )}
+
+        {activeJobRequestId && (
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 dark:border-green-900/40 dark:bg-green-900/20">
+            <FiCheckCircle className="mt-0.5 shrink-0 text-green-600" />
+
+            <div>
+              <strong className="text-sm text-gray-900 dark:text-white">
+                Job link loaded into Workshop
+              </strong>
+
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Client, company, position, location and job URL were prefilled from Job Links. Add the job description, complete the application, then record it here.
+              </p>
+            </div>
           </div>
         )}
 
