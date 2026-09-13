@@ -1316,7 +1316,7 @@ function ApplicantsPage({
                               .applicantAction
                           }
                         >
-                          + Submit Link
+                          + Send Job Link
                         </Link>
                       </td>
                     </tr>
@@ -1451,7 +1451,7 @@ function RecordLinkPage({
       !jobLink.trim()
     ) {
       setRequestError(
-        'Complete every required field before saving the job link.'
+        'Complete every required field before sending the job link.'
       );
       return;
     }
@@ -1495,13 +1495,13 @@ function RecordLinkPage({
       if (!response.ok) {
         throw new Error(
           result.error ||
-            'The job link could not be recorded.'
+            'The job link could not be sent.'
         );
       }
 
       if (!result.request?.id) {
         throw new Error(
-          'The recorded job link could not be verified.'
+          'The sent job link could not be verified.'
         );
       }
 
@@ -1514,9 +1514,29 @@ function RecordLinkPage({
       setLinkProvider('');
       setComment('');
 
+      const recipientApplicant =
+        data.applicants.find(
+          (applicant) =>
+            applicant.id ===
+            applicantId
+        );
+
+      const recipientClient =
+        data.clients.find(
+          (client) =>
+            client.id === clientId
+        );
+
       setSuccessMessage(
-        result.message ||
-          'Job link saved successfully.'
+        `Job link sent to ${
+          recipientApplicant
+            ?.fullName ||
+          'the selected Applicant'
+        } for ${
+          recipientClient
+            ?.fullName ||
+          'the selected Client'
+        }.`
       );
     } catch (submitError) {
       setRequestError(
@@ -1547,10 +1567,11 @@ function RecordLinkPage({
       >
         <span aria-hidden="true">←</span>
         <div>
-          <h2>Record Job Application</h2>
+          <h2>Send Job Link</h2>
           <p>
-            Log a new job application for
-            your assigned clients
+            Send a verified opportunity to
+            the Applicant responsible for
+            the selected Client.
           </p>
         </div>
       </header>
@@ -1560,7 +1581,7 @@ function RecordLinkPage({
         onSubmit={handleSubmit}
       >
         <fieldset>
-          <legend>Select Client</legend>
+          <legend>Choose Recipient</legend>
 
           <div
             className={
@@ -1889,8 +1910,8 @@ function RecordLinkPage({
             }
           >
             {isSubmitting
-              ? 'Saving...'
-              : '▣  Save Job Link'}
+              ? 'Sending...'
+              : '▣  Send to Applicant'}
           </button>
         </footer>
       </form>
@@ -1984,7 +2005,7 @@ function JobLinksPage({ data }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <label className="block w-full max-w-xl">
-          <span className="sr-only">Search recorded job links</span>
+          <span className="sr-only">Search sent job links</span>
           <input
             type="search"
             value={search}
@@ -1996,7 +2017,7 @@ function JobLinksPage({ data }) {
 
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Job-link status">
           {[
-            ['active', 'Active'],
+            ['active', 'Awaiting Applicant'],
             ['withdrawn', 'Withdrawn'],
             ['completed', 'Completed'],
             ['all', 'All'],
@@ -2022,9 +2043,9 @@ function JobLinksPage({ data }) {
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-bold text-slate-900">Recorded Job Links</h2>
+            <h2 className="font-bold text-slate-900">Sent Job Links</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Links are kept separate from completed applications.
+              Track each opportunity from delivery to Applicant action and completed application.
             </p>
           </div>
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -2049,7 +2070,23 @@ function JobLinksPage({ data }) {
                     </p>
                   </div>
                   <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600">
-                    {String(request.status || 'new').replace(/_/g, ' ')}
+                    {request.status === 'new'
+                      ? 'Sent'
+                      : request.status === 'in_review'
+                        ? 'In Review'
+                        : request.status === 'converted'
+                          ? 'Application Recorded'
+                          : request.status === 'dismissed'
+                            ? 'Closed'
+                            : request.status === 'withdrawn'
+                              ? 'Withdrawn'
+                              : String(
+                                  request.status ||
+                                    'Sent'
+                                ).replace(
+                                  /_/g,
+                                  ' '
+                                )}
                   </span>
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
@@ -2071,7 +2108,7 @@ function JobLinksPage({ data }) {
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-            No job links match this view.
+            No sent job links match this view.
           </p>
         )}
       </section>
