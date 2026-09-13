@@ -152,6 +152,63 @@ async function getClients(req, res) {
   } = await requireApplicant(req);
 
   const {
+    data: performanceRows,
+    error: performanceError,
+  } = await supabase.rpc(
+    'get_applicant_performance'
+  );
+
+  if (performanceError) {
+    console.error(
+      'Unable to load Applicant performance:',
+      performanceError
+    );
+
+    throw new ApiError(
+      500,
+      'Your performance information could not be loaded.'
+    );
+  }
+
+  const performanceRow =
+    (performanceRows || []).find(
+      (row) =>
+        row.applicant_id ===
+        applicant.id
+    ) || {};
+
+  const performance = {
+    completedTasks: Number(
+      performanceRow.completed_tasks ||
+        0
+    ),
+    clientSatisfaction: Number(
+      performanceRow.quality_rating ||
+        0
+    ),
+    ratingCount: Number(
+      performanceRow.rating_count ||
+        0
+    ),
+    completionRate: Number(
+      performanceRow.completion_rate ||
+        0
+    ),
+    monitoredWorkdays: Number(
+      performanceRow.monitored_workdays ||
+        0
+    ),
+    todayCompleted: Number(
+      performanceRow.today_completed ||
+        0
+    ),
+    todayCompletionRate: Number(
+      performanceRow.today_completion_rate ||
+        0
+    ),
+  };
+
+  const {
     data: assignmentRows,
     error: assignmentsError,
   } = await supabase
@@ -192,6 +249,7 @@ async function getClients(req, res) {
     return res.status(200).json({
       clients: [],
       feedback: [],
+      performance,
     });
   }
 
@@ -773,6 +831,7 @@ async function getClients(req, res) {
   return res.status(200).json({
     clients,
     feedback,
+    performance,
   });
 }
 

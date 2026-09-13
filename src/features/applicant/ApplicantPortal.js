@@ -6,7 +6,6 @@ import {
   FiAlertCircle,
   FiArrowLeft,
   FiArrowRight,
-  FiAward,
   FiBell,
   FiBriefcase,
   FiCalendar,
@@ -40,7 +39,6 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
 import {
-  PERFORMANCE_PERIODS,
   STATUS_OPTIONS,
 } from '../../data/applicantData';
 import styles from './ApplicantPortal.module.css';
@@ -56,6 +54,16 @@ const NAVIGATION = [
 ];
 
 const classNames = (...values) => values.filter(Boolean).join(' ');
+
+const EMPTY_APPLICANT_PERFORMANCE = {
+  completedTasks: 0,
+  clientSatisfaction: 0,
+  ratingCount: 0,
+  completionRate: 0,
+  monitoredWorkdays: 0,
+  todayCompleted: 0,
+  todayCompletionRate: 0,
+};
 
 async function getApplicantAccessToken() {
   const supabase = createClient();
@@ -2925,50 +2933,194 @@ function FeedbackPage({
   );
 }
 
-function PerformancePage() {
-  const [ratingRevealed, setRatingRevealed] = useState(false);
+function PerformancePage({
+  applications = [],
+  performance =
+    EMPTY_APPLICANT_PERFORMANCE,
+}) {
+  const [
+    ratingRevealed,
+    setRatingRevealed,
+  ] = useState(false);
+
+  const totalApplications =
+    applications.length;
+
+  const countStatus = (status) =>
+    applications.filter(
+      (application) =>
+        application.status === status
+    ).length;
+
+  const rejected =
+    countStatus('Rejected');
+
+  const interviews =
+    countStatus(
+      'Interview Scheduled'
+    );
+
+  const offers =
+    countStatus(
+      'Offer Received'
+    );
+
+  const percentage = (value) =>
+    totalApplications > 0
+      ? (
+          (
+            value /
+            totalApplications
+          ) * 100
+        ).toFixed(1)
+      : '0.0';
+
+  const clientSatisfaction =
+    Number(
+      performance
+        .clientSatisfaction || 0
+    );
+
+  const ratingCount =
+    Number(
+      performance.ratingCount || 0
+    );
+
+  const completionRate =
+    Number(
+      performance
+        .completionRate || 0
+    );
 
   return (
     <>
-      <PageHeader title="Performance" subtitle="Track your productivity and quality metrics" />
-      <div className={styles.performanceStats}>
-        <div className={styles.performanceCard}><span>Total Applications</span><strong>328</strong><small className={styles.statPositive}>↗ 12% from last month</small></div>
-        <div className={styles.performanceCard}><span>Total Rejection</span><strong>100</strong><small>30.5% rejection rate</small></div>
-        <div className={styles.performanceCard}><span>Total Interviews</span><strong>90</strong><small>27.4% interview rate</small></div>
-        <div className={styles.performanceCard}><span>Total Offers</span><strong>90</strong><small className={styles.statPositive}>↗ 8% success rate</small></div>
-        <div className={styles.performanceCard}>
-          <span>Client Satisfaction</span>
-          <strong>{ratingRevealed ? '4.8/5.0' : 'Concealed'}</strong>
-          <button
-            type="button"
-            onClick={() => setRatingRevealed((current) => !current)}
-            className={styles.textButton}
+      <PageHeader
+        title="Performance"
+        subtitle="Live productivity and Client satisfaction metrics"
+      />
+
+      <div
+        className={
+          styles.performanceStats
+        }
+      >
+        <div
+          className={
+            styles.performanceCard
+          }
+        >
+          <span>
+            Recorded Applications
+          </span>
+
+          <strong>
+            {totalApplications}
+          </strong>
+
+          <small>
+            {completionRate.toFixed(1)}%
+            {' '}workload completion
+          </small>
+        </div>
+
+        <div
+          className={
+            styles.performanceCard
+          }
+        >
+          <span>Total Rejections</span>
+
+          <strong>{rejected}</strong>
+
+          <small>
+            {percentage(rejected)}%
+            {' '}rejection rate
+          </small>
+        </div>
+
+        <div
+          className={
+            styles.performanceCard
+          }
+        >
+          <span>Total Interviews</span>
+
+          <strong>{interviews}</strong>
+
+          <small>
+            {percentage(interviews)}%
+            {' '}interview rate
+          </small>
+        </div>
+
+        <div
+          className={
+            styles.performanceCard
+          }
+        >
+          <span>Total Offers</span>
+
+          <strong>{offers}</strong>
+
+          <small
+            className={
+              styles.statPositive
+            }
           >
-            {ratingRevealed ? 'Hide rating' : 'Show rating'}
-          </button>
+            {percentage(offers)}%
+            {' '}offer rate
+          </small>
+        </div>
+
+        <div
+          className={
+            styles.performanceCard
+          }
+        >
+          <span>
+            Client Satisfaction
+          </span>
+
+          <strong>
+            {ratingCount === 0
+              ? 'No ratings yet'
+              : ratingRevealed
+                ? `${clientSatisfaction.toFixed(
+                    1
+                  )}/5.0`
+                : 'Concealed'}
+          </strong>
+
+          <small>
+            {ratingCount === 0
+              ? 'Waiting for Client feedback'
+              : `Based on ${ratingCount} Client rating${
+                  ratingCount === 1
+                    ? ''
+                    : 's'
+                }`}
+          </small>
+
+          {ratingCount > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setRatingRevealed(
+                  (current) =>
+                    !current
+                )
+              }
+              className={
+                styles.textButton
+              }
+            >
+              {ratingRevealed
+                ? 'Hide rating'
+                : 'Show rating'}
+            </button>
+          )}
         </div>
       </div>
-      <section className={styles.performanceLevel}>
-        <div className={styles.levelHeader}>
-          <div className={styles.levelIdentity}><span className={styles.goldMedal}><FiAward /></span><div><strong>Gold</strong><p>328 points to Platinum</p></div></div>
-          <div className={styles.levelStatus}><p>Highest Reached</p><strong>Gold</strong></div>
-        </div>
-        <div className={styles.levelBar}><span /></div>
-        <div className={styles.levelLabels}><span>Bronze</span><span>Silver</span><span className={styles.levelCurrent}>Gold (Current)</span><span>Platinum</span><span>Diamond</span></div>
-      </section>
-      <section className={styles.performancePanel}>
-        <h3>Recent Performance</h3>
-        {PERFORMANCE_PERIODS.map((period) => (
-          <div className={styles.periodRow} key={period.label}>
-            <div><strong>{period.label}</strong><span>Applications<br />Interviews</span></div>
-            <div className={classNames(styles.periodMetric, styles.metricBlue)}>{period.applications}<br />{period.interviews}</div>
-            <div className={styles.periodMetric}>Rejections<br />Offers</div>
-            <div className={classNames(styles.periodMetric, styles.metricRed)}>{period.rejections}<br /><span className={styles.metricGreen}>{period.offers}</span></div>
-            <div />
-          </div>
-        ))}
-      </section>
-      <section className={styles.achievements}><h3>Achievements</h3></section>
     </>
   );
 }
@@ -3273,6 +3425,12 @@ export default function ApplicantPortal() {
     setAssignedClients,
   ] = useState([]);
   const [
+    applicantPerformance,
+    setApplicantPerformance,
+  ] = useState(
+    EMPTY_APPLICANT_PERFORMANCE
+  );
+  const [
     clientFeedback,
     setClientFeedback,
   ] = useState([]);
@@ -3307,6 +3465,9 @@ export default function ApplicantPortal() {
       !isApplicantPreview
     ) {
       setAssignedClients([]);
+      setApplicantPerformance(
+        EMPTY_APPLICANT_PERFORMANCE
+      );
       setClientFeedback([]);
       setAssignedClientsError('');
       return undefined;
@@ -3375,6 +3536,37 @@ export default function ApplicantPortal() {
               feedbackRows
             );
 
+            setApplicantPerformance({
+              completedTasks: Number(
+                result.performance
+                  ?.completedTasks || 0
+              ),
+              clientSatisfaction: Number(
+                result.performance
+                  ?.clientSatisfaction || 0
+              ),
+              ratingCount: Number(
+                result.performance
+                  ?.ratingCount || 0
+              ),
+              completionRate: Number(
+                result.performance
+                  ?.completionRate || 0
+              ),
+              monitoredWorkdays: Number(
+                result.performance
+                  ?.monitoredWorkdays || 0
+              ),
+              todayCompleted: Number(
+                result.performance
+                  ?.todayCompleted || 0
+              ),
+              todayCompletionRate: Number(
+                result.performance
+                  ?.todayCompletionRate || 0
+              ),
+            });
+
             setAssignedClients(
               clientRows.map(
                 normalizeAssignedClient
@@ -3384,6 +3576,9 @@ export default function ApplicantPortal() {
         } catch (error) {
           if (!cancelled) {
             setAssignedClients([]);
+            setApplicantPerformance(
+              EMPTY_APPLICANT_PERFORMANCE
+            );
             setClientFeedback([]);
             setAssignedClientsError(
               error?.message ||
@@ -4197,7 +4392,14 @@ export default function ApplicantPortal() {
       />
     );
   } else if (section === 'performance') {
-    page = <PerformancePage />;
+    page = (
+      <PerformancePage
+        applications={applications}
+        performance={
+          applicantPerformance
+        }
+      />
+    );
   } else if (section === 'settings') {
     page = <SettingsPage />;
   } else {

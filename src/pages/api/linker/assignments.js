@@ -170,6 +170,35 @@ async function getAssignments(req, res) {
   const applicants =
     applicantRows || [];
 
+  const {
+    data: performanceRows,
+    error: performanceError,
+  } = await supabase.rpc(
+    'get_applicant_performance'
+  );
+
+  if (performanceError) {
+    console.error(
+      'Unable to load Applicant performance:',
+      performanceError
+    );
+
+    throw new ApiError(
+      500,
+      'Applicant performance could not be loaded.'
+    );
+  }
+
+  const performanceByApplicantId =
+    new Map(
+      (performanceRows || []).map(
+        (performance) => [
+          performance.applicant_id,
+          performance,
+        ]
+      )
+    );
+
   const applicantUserIds =
     unique(
       applicants.map(
@@ -420,6 +449,11 @@ async function getAssignments(req, res) {
             applicant.id
           );
 
+        const performance =
+          performanceByApplicantId.get(
+            applicant.id
+          ) || {};
+
         return {
           id: applicant.id,
           userId: applicant.user_id,
@@ -450,18 +484,23 @@ async function getAssignments(req, res) {
             ),
           completedTasks:
             Number(
-              applicant.completed_tasks ||
-                0
+              performance
+                .completed_tasks || 0
             ),
-          qualityRating:
+          clientSatisfaction:
             Number(
-              applicant.quality_rating ||
-                0
+              performance
+                .quality_rating || 0
+            ),
+          ratingCount:
+            Number(
+              performance
+                .rating_count || 0
             ),
           completionRate:
             Number(
-              applicant.completion_rate ||
-                0
+              performance
+                .completion_rate || 0
             ),
           canReceiveLinks:
             applicant.availability ===
