@@ -26,6 +26,7 @@ import {
   FiX,
 } from 'react-icons/fi';
 import PasswordResetConfirmationModal from './PasswordResetConfirmationModal';
+import SubscriptionOperationsPanel from './SubscriptionOperationsPanel';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import { createClient } from '../../lib/supabase/client';
 import {
@@ -769,6 +770,34 @@ function TargetAllocationPanel({
   useEffect(() => {
     loadAllocation();
   }, [loadAllocation]);
+
+  useEffect(() => {
+    const handleSubscriptionUpdate =
+      (event) => {
+        if (
+          !event.detail?.clientId ||
+          event.detail.clientId ===
+            clientId
+        ) {
+          loadAllocation();
+        }
+      };
+
+    window.addEventListener(
+      'applyloop:subscription-updated',
+      handleSubscriptionUpdate
+    );
+
+    return () => {
+      window.removeEventListener(
+        'applyloop:subscription-updated',
+        handleSubscriptionUpdate
+      );
+    };
+  }, [
+    clientId,
+    loadAllocation,
+  ]);
 
 
   const draftTotal =
@@ -2767,6 +2796,14 @@ export default function ClientManagementWorkspace({
               </DetailItem>
             )}
           </div>
+
+          <SubscriptionOperationsPanel
+            clientId={selectedClient.id}
+            canEdit={[
+              'admin',
+              'operations',
+            ].includes(mode)}
+          />
 
           <TargetAllocationPanel
             clientId={selectedClient.id}

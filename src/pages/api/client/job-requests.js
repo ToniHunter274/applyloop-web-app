@@ -1,5 +1,6 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
+import { getClientServiceState } from '../../../lib/subscriptions/clientServiceState';
 import { findDuplicateJobLink } from '../../../lib/jobs/jobLinkDeduplication';
 
 function validateJobUrl(value) {
@@ -197,6 +198,20 @@ export default async function handler(req, res) {
           })
         ),
       });
+    }
+
+    const serviceState =
+      await getClientServiceState({
+        supabase,
+        clientId:
+          client.id,
+      });
+
+    if (!serviceState.canOperate) {
+      throw new ApiError(
+        409,
+        'Your application service is currently paused or expired. Please renew or contact ApplyLoop before submitting new job links.'
+      );
     }
 
     const jobUrl = validateJobUrl(
