@@ -289,6 +289,80 @@ async function getClients(req, res) {
     );
   }
 
+  const {
+    data: subscriptionRows,
+    error: subscriptionsError,
+  } = await supabase
+    .from('client_subscriptions')
+    .select(`
+      id,
+      client_id,
+      status,
+      current_period_start,
+      current_period_end,
+      grace_period_ends_at
+    `)
+    .in('client_id', clientIds);
+
+  if (subscriptionsError) {
+    console.error(
+      'Unable to load Client subscriptions:',
+      subscriptionsError
+    );
+
+    throw new ApiError(
+      500,
+      'Client subscription information could not be loaded.'
+    );
+  }
+
+  const subscriptionIds =
+    (subscriptionRows || []).map(
+      (subscription) =>
+        subscription.id
+    );
+
+  let targetRows = [];
+
+  if (subscriptionIds.length > 0) {
+    const {
+      data: targets,
+      error: targetsError,
+    } = await supabase
+      .from(
+        'client_applicant_targets'
+      )
+      .select(`
+        subscription_id,
+        applicant_id,
+        period_start,
+        period_end,
+        application_target
+      `)
+      .in(
+        'subscription_id',
+        subscriptionIds
+      )
+      .eq(
+        'applicant_id',
+        applicant.id
+      );
+
+    if (targetsError) {
+      console.error(
+        'Unable to load Applicant targets:',
+        targetsError
+      );
+
+      throw new ApiError(
+        500,
+        'Your Client targets could not be loaded.'
+      );
+    }
+
+    targetRows = targets || [];
+  }
+
   const userIds =
     (clientRows || []).map(
       (client) => client.user_id
@@ -370,7 +444,9 @@ async function getClients(req, res) {
       id,
       client_id,
       company,
-      position
+      position,
+      created_by,
+      applied_at
     `)
     .in('client_id', clientIds);
 
@@ -639,6 +715,26 @@ async function getClients(req, res) {
       })
       .filter(Boolean);
 
+  const subscriptionByClientId =
+    new Map(
+      (subscriptionRows || []).map(
+        (subscription) => [
+          subscription.client_id,
+          subscription,
+        ]
+      )
+    );
+
+  const targetByPeriod =
+    new Map(
+      targetRows.map(
+        (target) => [
+          `${target.subscription_id}:${target.period_start}`,
+          target,
+        ]
+      )
+    );
+
   const clients =
     clientIds
       .map((clientId) => {
@@ -704,6 +800,95 @@ async function getClients(req, res) {
                   (
                     applicationsCompleted /
                     applicationLimit
+                  ) * 100
+                )
+              )
+            : 0;
+
+        const currentSubscription =
+          subscriptionByClientId.get(
+            client.id
+          ) || null;
+
+        const currentTarget =
+          currentSubscription
+            ? targetByPeriod.get(
+                `${currentSubscription.id}:${currentSubscription.current_period_start}`
+              )
+            : null;
+
+        const periodStartMs =
+          currentSubscription
+            ? Date.parse(
+                `${currentSubscription.current_period_start}T00:00:00+01:00`
+              )
+            : null;
+
+        const periodEndMs =
+          currentSubscription
+            ? Date.parse(
+                `${currentSubscription.current_period_end}T00:00:00+01:00`
+              )
+            : null;
+
+        const periodApplications =
+          currentSubscription
+            ? applicationRows.filter(
+                (application) => {
+                  if (
+                    application.client_id !==
+                      client.id ||
+                    !application.applied_at
+                  ) {
+                    return false;
+                  }
+
+                  const appliedAt =
+                    Date.parse(
+                      application.applied_at
+                    );
+
+                  return (
+                    appliedAt >=
+                      periodStartMs &&
+                    appliedAt <
+                      periodEndMs
+                  );
+                }
+              )
+            : [];
+
+        const applicantPeriodCompleted =
+          periodApplications.filter(
+            (application) =>
+              application.created_by ===
+              applicant.user_id
+          ).length;
+
+        const clientPeriodCompleted =
+          periodApplications.length;
+
+        const applicantTarget =
+          Number(
+            currentTarget
+              ?.application_target || 0
+          );
+
+        const applicantTargetRemaining =
+          Math.max(
+            0,
+            applicantTarget -
+              applicantPeriodCompleted
+          );
+
+        const applicantTargetProgress =
+          applicantTarget > 0
+            ? Math.min(
+                100,
+                Math.round(
+                  (
+                    applicantPeriodCompleted /
+                    applicantTarget
                   ) * 100
                 )
               )
@@ -821,6 +1006,26 @@ async function getClients(req, res) {
           applications:
             applicationsCompleted,
           applicationLimit,
+          applicantTarget,
+          applicantPeriodCompleted,
+          applicantTargetRemaining,
+          applicantTargetProgress,
+          clientPeriodCompleted,
+          subscriptionStatus:
+            currentSubscription
+              ?.status || null,
+          subscriptionPeriodStart:
+            currentSubscription
+              ?.current_period_start ||
+            null,
+          subscriptionPeriodEnd:
+            currentSubscription
+              ?.current_period_end ||
+            null,
+          gracePeriodEndsAt:
+            currentSubscription
+              ?.grace_period_ends_at ||
+            null,
           status:
             client.status ||
             'active',

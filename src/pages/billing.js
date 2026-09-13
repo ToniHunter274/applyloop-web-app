@@ -305,26 +305,6 @@ export default function BillingPage() {
   }, []);
 
 
-  const usage =
-    subscription?.usage || {
-      used: 0,
-      limit: 0,
-    };
-
-  const usagePercent =
-    usage.limit > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (
-              usage.used /
-              usage.limit
-            ) * 100
-          )
-        )
-      : 0;
-
-
   const status =
     STATUS_COPY[
       subscription?.lifecycle
@@ -360,10 +340,9 @@ export default function BillingPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Track your monthly service,
-              application allowance,
-              renewal date and subscription
-              status.
+              Track your subscription
+              status, renewal date and
+              service availability.
             </p>
           </header>
 
@@ -536,80 +515,37 @@ export default function BillingPage() {
               </section>
 
 
-              <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                <article className="rounded-2xl border border-slate-200 bg-white p-6">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-bold text-slate-950">
-                        Application allowance
-                      </h2>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        Your application usage
-                        for this Client account.
-                      </p>
-                    </div>
-
-                    <strong className="text-2xl text-slate-950">
-                      {usage.used}
-                      <span className="text-sm font-medium text-slate-400">
-                        {' '}
-                        / {usage.limit}
-                      </span>
-                    </strong>
-                  </div>
-
-                  <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-[#1E50C3] transition-all"
-                      style={{
-                        width:
-                          `${usagePercent}%`,
-                      }}
-                    />
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                    <span>
-                      {usagePercent}% used
-                    </span>
-
-                    <span>
-                      {Math.max(
-                        0,
-                        usage.limit -
-                          usage.used
-                      )}{' '}
-                      remaining
-                    </span>
-                  </div>
-                </article>
-
-
-                <article className="rounded-2xl border border-slate-200 bg-slate-950 p-6 text-white">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+              <section className="rounded-2xl border border-slate-200 bg-slate-950 p-6 text-white">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
                     <FiInfo />
                   </span>
 
-                  <h2 className="mt-5 text-lg font-bold">
-                    Renewal without online billing
-                  </h2>
+                  <div>
+                    <h2 className="text-lg font-bold">
+                      How renewal is handled
+                    </h2>
 
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Online payment is not
-                    connected yet. ApplyLoop
-                    will record your renewal
-                    manually when payment is
-                    confirmed.
-                  </p>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      Online payment is not
+                      connected yet. ApplyLoop
+                      records your renewal
+                      when payment is
+                      confirmed.
+                    </p>
 
-                  <p className="mt-4 text-xs leading-5 text-slate-400">
-                    You will receive reminders
-                    before your renewal date so
-                    your service does not pause
-                    unexpectedly.
-                  </p>
-                </article>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                      We will remind you
+                      before your renewal
+                      date and during the
+                      grace period so you
+                      have enough time to
+                      renew without an
+                      unexpected service
+                      interruption.
+                    </p>
+                  </div>
+                </div>
               </section>
 
 

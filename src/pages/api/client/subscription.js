@@ -78,18 +78,31 @@ export default async function handler(
         client
       );
 
+    const clientForSubscription = {
+      ...client,
+      status:
+        subscription.status ===
+          'paused'
+          ? 'paused'
+          : client.status,
+    };
+
     await ensureCurrentSubscriptionNotification(
       supabase,
       subscription,
-      {
-        ...client,
-        status:
-          subscription.status ===
-            'paused'
-            ? 'paused'
-            : client.status,
-      }
+      clientForSubscription
     );
+
+    const clientSubscription =
+      serializeSubscription(
+        subscription,
+        clientForSubscription
+      );
+
+    // Delivery quota and Applicant target
+    // progress are internal operational data.
+    // Clients should not receive them.
+    delete clientSubscription.usage;
 
     const {
       data: events,
@@ -126,17 +139,7 @@ export default async function handler(
 
     return res.status(200).json({
       subscription:
-        serializeSubscription(
-          subscription,
-          {
-            ...client,
-            status:
-              subscription.status ===
-                'paused'
-                ? 'paused'
-                : client.status,
-          }
-        ),
+        clientSubscription,
       events: events || [],
     });
   } catch (error) {

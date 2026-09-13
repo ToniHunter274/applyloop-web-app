@@ -259,6 +259,39 @@ const normalizeAssignedClient = (
     Number(
       client.applicationLimit || 0
     ),
+  applicantTarget:
+    Number(
+      client.applicantTarget || 0
+    ),
+  applicantPeriodCompleted:
+    Number(
+      client.applicantPeriodCompleted ||
+        0
+    ),
+  applicantTargetRemaining:
+    Number(
+      client.applicantTargetRemaining ||
+        0
+    ),
+  applicantTargetProgress:
+    Number(
+      client.applicantTargetProgress ||
+        0
+    ),
+  clientPeriodCompleted:
+    Number(
+      client.clientPeriodCompleted || 0
+    ),
+  subscriptionStatus:
+    client.subscriptionStatus || null,
+  subscriptionPeriodStart:
+    client.subscriptionPeriodStart ||
+    null,
+  subscriptionPeriodEnd:
+    client.subscriptionPeriodEnd ||
+    null,
+  gracePeriodEndsAt:
+    client.gracePeriodEndsAt || null,
   status:
     client.status || 'active',
   notes:
@@ -917,20 +950,122 @@ function JobLinksPage({ clients, workshopHref }) {
 }
 
 function ClientCard({ client, onOpen }) {
+  const subscriptionPaused =
+    client.subscriptionStatus ===
+      'paused' ||
+    client.status === 'paused';
+
   return (
     <article className={styles.clientCard}>
-      <h3 className={styles.clientName}>{client.name}</h3>
-      <p className={styles.clientRole}>{client.role}</p>
-      <div className={styles.progressHeader}><span>Application Progress</span><span>{client.progress}/100</span></div>
-      <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${client.progress}%` }} /></div>
-      <div className={styles.clientFacts}>
-        <span>Rejected Roles:</span><span>{client.rejectedRoles}</span>
-        <span>Client Feedback:</span><span>{client.feedbacks ?? 2}</span>
-        <span>Job Offers:</span><span>{client.offers}</span>
-        <span>Target Countries:</span><span>{client.targetCountries}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className={styles.clientName}>
+            {client.name}
+          </h3>
+
+          <p className={styles.clientRole}>
+            {client.contract}
+          </p>
+        </div>
+
+        <span
+          className={classNames(
+            'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            subscriptionPaused
+              ? 'bg-rose-50 text-rose-700'
+              : 'bg-emerald-50 text-emerald-700'
+          )}
+        >
+          {subscriptionPaused
+            ? 'Subscription Paused'
+            : 'Active'}
+        </span>
       </div>
+
+      <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+        <div className={styles.progressHeader}>
+          <span>Your Period Target</span>
+
+          <span>
+            {client.applicantPeriodCompleted}
+            {' / '}
+            {client.applicantTarget}
+          </span>
+        </div>
+
+        <div className={styles.progressTrack}>
+          <div
+            className={styles.progressFill}
+            style={{
+              width:
+                `${client.applicantTargetProgress}%`,
+            }}
+          />
+        </div>
+
+        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+          <span>
+            {client.applicantTargetRemaining}{' '}
+            remaining
+          </span>
+
+          <span>
+            {client.applicantTargetProgress}%
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.clientFacts}>
+        <span>Client Allowance:</span>
+        <span>
+          {client.applicationLimit}
+        </span>
+
+        <span>Client Period Progress:</span>
+        <span>
+          {client.clientPeriodCompleted}
+          {' / '}
+          {client.applicationLimit}
+        </span>
+
+        <span>My Remaining Target:</span>
+        <span>
+          {client.applicantTargetRemaining}
+        </span>
+
+        <span>Target Countries:</span>
+        <span>
+          {client.targetCountries}
+        </span>
+      </div>
+
+      {client.subscriptionPeriodEnd && (
+        <p className="mt-4 text-xs text-gray-500">
+          Current period ends{' '}
+          {new Date(
+            `${client.subscriptionPeriodEnd}T12:00:00`
+          ).toLocaleDateString(
+            'en-US',
+            {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }
+          )}
+        </p>
+      )}
+
       <div className={styles.cardFooter}>
-        <button type="button" className={styles.textButton} onClick={() => onOpen(client)}>View Details <FiArrowRight /></button>
+        <button
+          type="button"
+          className={styles.textButton}
+          onClick={() =>
+            onOpen(client)
+          }
+        >
+          View Details
+          <FiArrowRight />
+        </button>
       </div>
     </article>
   );
@@ -968,42 +1103,45 @@ function ClientsPage({
           label="Total Clients"
           value={clients.length}
         />
+
         <StatCard
-          label="Total Applications"
+          label="My Period Target"
           value={
             clients.reduce(
               (total, client) =>
                 total +
                 Number(
-                  client.applications ||
+                  client.applicantTarget ||
                     0
                 ),
               0
             )
           }
         />
+
         <StatCard
-          label="Completed Applications"
+          label="Completed This Period"
           value={
             clients.reduce(
               (total, client) =>
                 total +
                 Number(
-                  client.applications ||
+                  client.applicantPeriodCompleted ||
                     0
                 ),
               0
             )
           }
         />
+
         <StatCard
-          label="Client Feedback"
+          label="Remaining Target"
           value={
             clients.reduce(
               (total, client) =>
                 total +
                 Number(
-                  client.feedbacks ||
+                  client.applicantTargetRemaining ||
                     0
                 ),
               0
@@ -1078,15 +1216,38 @@ function ClientDetail({
         </div>
         <NotificationButton />
       </div>
-      <div className={classNames(styles.statsGrid, styles.statsGridFive)}>
+      <div
+        className={classNames(
+          styles.statsGrid,
+          styles.statsGridFive
+        )}
+      >
         <StatCard
-          label="Total Applications"
-          value={`${client.applications}/${client.applicationLimit}`}
+          label="My Period Target"
+          value={`${client.applicantPeriodCompleted}/${client.applicantTarget}`}
         />
-        <StatCard label="Upcoming Interviews" value={client.interviews} />
-        <StatCard label="Total Rejected Roles" value={client.rejectedRoles} />
-        <StatCard label="Total Selected Roles" value={client.selectedRoles ?? 3} />
-        <StatCard label="Feedbacks" value={client.feedbacks} />
+
+        <StatCard
+          label="Client Period Usage"
+          value={`${client.clientPeriodCompleted}/${client.applicationLimit}`}
+        />
+
+        <StatCard
+          label="Upcoming Interviews"
+          value={client.interviews}
+        />
+
+        <StatCard
+          label="Remaining Target"
+          value={
+            client.applicantTargetRemaining
+          }
+        />
+
+        <StatCard
+          label="Feedbacks"
+          value={client.feedbacks}
+        />
       </div>
       <section className={styles.readiness}>
         <div className={styles.readinessHead}>
