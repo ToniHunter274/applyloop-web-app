@@ -75,7 +75,7 @@ const TEAM_MEMBERS = Array.from({ length: 9 }, (_, index) => ({
   average: '2.3 hrs avg',
   status: [4, 5, 6, 8].includes(index) ? 'Paused' : 'Available',
   tasks: 15,
-  quality: 4.8,
+  quality: null,
   completion: 72,
 }));
 
@@ -314,12 +314,12 @@ function TeamPage() {
       </div>
       <div className={styles.tableScroll}>
         <table className={cn(styles.dataTable, styles.teamTable)}>
-          <thead><tr><th>Team Member</th><th>Status</th><th>Active Tasks</th><th>Quality Rating</th><th>Completion Rate</th><th>Action</th></tr></thead>
+          <thead><tr><th>Team Member</th><th>Status</th><th>Active Tasks</th><th>Client Satisfaction</th><th>Completion Rate</th><th>Action</th></tr></thead>
           <tbody>{rows.map((member) => <tr key={member.id}>
             <td><strong>{member.name}</strong><small>{member.completed} completed • {member.average}</small></td>
             <td><StatusPill>{member.status}</StatusPill></td>
             <td><span className={styles.taskCount}>{member.tasks}</span></td>
-            <td>{member.quality} <FiStar className={styles.star} /></td>
+            <td>{member.quality == null ? 'Not connected' : `${member.quality}/5`}</td>
             <td><div className={styles.completionCell}><strong>{member.completion}%</strong><span><i style={{ width: `${member.completion}%` }} /></span></div></td>
             <td><div className={styles.actionGroup}><button onClick={() => setAssignMember(member)}><FiUserPlus /> Assign</button><button onClick={() => setStatsMember(member)}><FiBarChart2 /> Stats</button><button onClick={() => setMessageMember(member)}><FiMessageSquare /> Chat</button></div></td>
           </tr>)}</tbody>

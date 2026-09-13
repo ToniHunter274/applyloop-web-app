@@ -1,311 +1,733 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
-import DashboardLayout from '../shared/components/DashboardLayout';
-import { FiX, FiArrowLeft, FiDownload, FiPause, FiRefreshCw } from 'react-icons/fi';
-import { HiOutlineSwitchVertical } from 'react-icons/hi';
-
-// ─── Cancel / Pause Modals ────────────────────────────────────────────────────
-
-function ManageSubscriptionModal({ type, onClose }) {
-  const config = {
-    cancel: {
-      title: 'Cancel Subscription',
-      description: 'Cancel your subscription and discontinue application services.',
-      buttonLabel: 'Cancel Subscription',
-      buttonClass: 'bg-red-600 hover:bg-red-700 text-white',
-    },
-    pause: {
-      title: 'Pause Subscription',
-      description: 'Take a break while keeping your account and data safe.',
-      buttonLabel: 'Pause Subscription',
-      buttonClass: 'bg-[#1E50C3] hover:bg-[#1A45A7] text-white',
-    },
-  };
-  const c = config[type];
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-[440px] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <span className="text-sm font-semibold text-gray-700">Manage Subscription</span>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
-            <FiX className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="px-6 py-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">{c.title}</h3>
-          <p className="text-sm text-gray-500 leading-relaxed">{c.description}</p>
-        </div>
-        <div className="px-6 pb-6 flex justify-end">
-          <button onClick={onClose} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${c.buttonClass}`}>
-            {c.buttonLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Static data ──────────────────────────────────────────────────────────────
-
-// ─── Centralized mock data (replace with API calls when backend is ready) ────
-// Backend: GET /api/billing/plan, GET /api/billing/receipts
 import {
-  MOCK_PLAN as PLAN,
-  MOCK_PLANS as PLANS,
-  MOCK_RECEIPTS as RECEIPTS,
-  MOCK_MANAGE_ACTIONS as MANAGE_ACTIONS_DATA,
-} from '../data/mockData';
+  useEffect,
+  useState,
+} from 'react';
 
-const MANAGE_ACTIONS = MANAGE_ACTIONS_DATA.map(action => {
-  let icon = null;
-  if (action.id === 'pause') icon = <FiPause className="w-5 h-5 text-gray-700" />;
-  if (action.id === 'change') icon = <HiOutlineSwitchVertical className="w-5 h-5 text-gray-700" />;
-  if (action.id === 'cancel') icon = <FiX className="w-5 h-5 text-gray-700" />;
-  if (action.id === 'resubscribe') icon = <FiRefreshCw className="w-5 h-5 text-gray-700" />;
-  return { ...action, icon };
-});
+import Head from 'next/head';
 
-// ─── Sub-views ────────────────────────────────────────────────────────────────
+import {
+  FiAlertTriangle,
+  FiCalendar,
+  FiCheckCircle,
+  FiClock,
+  FiCreditCard,
+  FiInfo,
+  FiRefreshCw,
+  FiShield,
+} from 'react-icons/fi';
 
-function ManageSubscriptionView({ onBack, onSelectAction }) {
-  return (
-    <div className="max-w-4xl">
-      {/* Back nav */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <FiArrowLeft className="w-4 h-4" />
-        Manage Subscription
-      </button>
+import DashboardLayout
+  from '../shared/components/DashboardLayout';
 
-      {/* Action cards grid */}
-      <div className="grid grid-cols-3 gap-4">
-        {MANAGE_ACTIONS.map((action) => (
-          <button
-            key={action.id}
-            onClick={() => onSelectAction(action.id)}
-            className="text-left bg-white border border-gray-100 rounded-2xl p-5 hover:border-gray-200 hover:shadow-sm transition-all"
-          >
-            <div className="mb-3">{action.icon}</div>
-            <p className="text-sm font-bold text-gray-900 mb-1.5">{action.title}</p>
-            <p className="text-xs text-gray-500 leading-relaxed">{action.description}</p>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+import {
+  createClient,
+} from '../lib/supabase/client';
 
-function ChangePlanView({ onBack }) {
-  const [selectedPlan, setSelectedPlan] = useState('Basic Plan');
 
-  return (
-    <div className="max-w-4xl">
-      {/* Back nav */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <FiArrowLeft className="w-4 h-4" />
-        Change Plan
-      </button>
+async function getAccessToken() {
+  const supabase =
+    createClient();
 
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PLANS.map((plan) => {
-          const isCurrent = plan.name === selectedPlan || plan.current;
-          return (
-            <div
-              key={plan.name}
-              onClick={() => setSelectedPlan(plan.name)}
-              className={`cursor-pointer rounded-2xl p-6 border-2 transition-all ${
-                isCurrent
-                  ? 'bg-[#E8EDF8] border-[#1E50C3]'
-                  : 'bg-white border-gray-100 hover:border-gray-200'
-              }`}
-            >
-              {/* Name + price row */}
-              <div className="flex items-start justify-between mb-4">
-                <p className="text-sm font-bold text-gray-900">{plan.name}</p>
-                <div className="text-right">
-                  <p className="text-2xl font-extrabold text-gray-900">{plan.price}</p>
-                  <p className="text-xs text-gray-500">per month</p>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <hr className="border-gray-200 mb-4" />
-
-              {/* Benefits */}
-              <ul className="space-y-1.5 mb-6">
-                {plan.benefits.map((b) => (
-                  <li key={b} className="flex items-center gap-2 text-xs text-gray-600">
-                    <span className="w-1 h-1 rounded-full bg-gray-600 flex-shrink-0" />
-                    {b}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Button */}
-              <button
-                className={`w-full py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                  isCurrent
-                    ? 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
-                    : 'border-[#1E50C3] text-[#1E50C3] hover:bg-[#eef2fb]'
-                }`}
-                onClick={(e) => { e.stopPropagation(); setSelectedPlan(plan.name); }}
-              >
-                {isCurrent ? 'Current Subscription' : 'Choose Subscription'}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-// view: 'main' | 'manage' | 'change-plan'
-export default function BillingPage() {
-  const [view, setView] = useState('main');
-  const [modal, setModal] = useState(null); // 'cancel' | 'pause'
-
-  const usagePercent = Math.round((PLAN.appsUsed / PLAN.appsTotal) * 100);
-
-  function handleManageAction(id) {
-    if (id === 'pause') setModal('pause');
-    else if (id === 'cancel') setModal('cancel');
-    else if (id === 'change') setView('change-plan');
-    // resubscribe is a no-op for now
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
   }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth
+    .getSession();
+
+  if (
+    error ||
+    !session?.access_token
+  ) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
+
+
+function formatDate(value) {
+  if (!value) {
+    return 'Not available';
+  }
+
+  const date =
+    new Date(
+      `${String(value).slice(
+        0,
+        10
+      )}T12:00:00`
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return 'Not available';
+  }
+
+  return date.toLocaleDateString(
+    'en-US',
+    {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }
+  );
+}
+
+
+function formatMoney(
+  cents,
+  currency = 'USD'
+) {
+  return new Intl.NumberFormat(
+    'en-US',
+    {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }
+  ).format(
+    Number(cents || 0) / 100
+  );
+}
+
+
+const STATUS_COPY = {
+  active: {
+    label: 'Active',
+    title:
+      'Your subscription is active',
+    description:
+      'Your ApplyLoop application service is running normally.',
+    icon: FiCheckCircle,
+    classes:
+      'border-emerald-200 bg-emerald-50 text-emerald-900',
+    iconClasses:
+      'bg-emerald-100 text-emerald-700',
+  },
+
+  due_soon: {
+    label: 'Renewal Due Soon',
+    title:
+      'Your renewal date is approaching',
+    description:
+      'Your service is active. Renew before the end of your grace period to avoid interruption.',
+    icon: FiClock,
+    classes:
+      'border-amber-200 bg-amber-50 text-amber-950',
+    iconClasses:
+      'bg-amber-100 text-amber-700',
+  },
+
+  renewal_due: {
+    label: 'Renewal Due',
+    title:
+      'Your subscription renewal is due today',
+    description:
+      'Your service remains available while the renewal enters its grace period.',
+    icon: FiAlertTriangle,
+    classes:
+      'border-amber-300 bg-amber-50 text-amber-950',
+    iconClasses:
+      'bg-amber-100 text-amber-700',
+  },
+
+  grace_period: {
+    label: 'Grace Period',
+    title:
+      'Your subscription is awaiting renewal',
+    description:
+      'Your application service is still available during the grace period.',
+    icon: FiAlertTriangle,
+    classes:
+      'border-orange-200 bg-orange-50 text-orange-950',
+    iconClasses:
+      'bg-orange-100 text-orange-700',
+  },
+
+  paused: {
+    label: 'Paused',
+    title:
+      'New application work is paused',
+    description:
+      'Your account, applications and history remain safe. Renew your subscription to resume new application activity.',
+    icon: FiShield,
+    classes:
+      'border-rose-200 bg-rose-50 text-rose-950',
+    iconClasses:
+      'bg-rose-100 text-rose-700',
+  },
+
+  cancelled: {
+    label: 'Cancelled',
+    title:
+      'Your subscription is not active',
+    description:
+      'Your historical ApplyLoop information remains available.',
+    icon: FiShield,
+    classes:
+      'border-slate-200 bg-slate-50 text-slate-900',
+    iconClasses:
+      'bg-slate-200 text-slate-600',
+  },
+};
+
+
+const EVENT_LABELS = {
+  subscription_started:
+    'Subscription started',
+  renewal_reminder:
+    'Renewal reminder',
+  renewal_due:
+    'Renewal due',
+  grace_period_started:
+    'Grace period started',
+  paused:
+    'Service paused',
+  renewed:
+    'Subscription renewed',
+  reactivated:
+    'Service reactivated',
+  plan_changed:
+    'Plan changed',
+};
+
+
+function LoadingState() {
+  return (
+    <div className="max-w-6xl animate-pulse space-y-6">
+      <div className="h-28 rounded-2xl bg-slate-100" />
+
+      <div className="grid gap-4 md:grid-cols-4">
+        {[1, 2, 3, 4].map(
+          (item) => (
+            <div
+              key={item}
+              className="h-28 rounded-2xl bg-slate-100"
+            />
+          )
+        )}
+      </div>
+
+      <div className="h-72 rounded-2xl bg-slate-100" />
+    </div>
+  );
+}
+
+
+export default function BillingPage() {
+  const [
+    subscription,
+    setSubscription,
+  ] = useState(null);
+
+  const [
+    events,
+    setEvents,
+  ] = useState([]);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState('');
+
+
+  const loadSubscription =
+    async () => {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const token =
+          await getAccessToken();
+
+        const response =
+          await fetch(
+            '/api/client/subscription',
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Subscription information could not be loaded.'
+          );
+        }
+
+        setSubscription(
+          result.subscription
+        );
+
+        setEvents(
+          result.events || []
+        );
+      } catch (loadError) {
+        setSubscription(null);
+        setEvents([]);
+
+        setError(
+          loadError?.message ||
+            'Subscription information could not be loaded.'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+
+  useEffect(() => {
+    loadSubscription();
+  }, []);
+
+
+  const status =
+    STATUS_COPY[
+      subscription?.lifecycle
+    ] ||
+    STATUS_COPY.active;
+
+  const StatusIcon =
+    status.icon;
+
 
   return (
     <>
       <Head>
-        <title>Billing &amp; Subscription | ApplyLoop</title>
-        <meta name="description" content="Manage your plan, billing, and application volume with ease." />
+        <title>
+          Billing &amp; Subscription | ApplyLoop
+        </title>
+
+        <meta
+          name="description"
+          content="Review your ApplyLoop subscription, renewal date and service status."
+        />
       </Head>
 
       <DashboardLayout>
-        {/* ── Manage Subscription view ── */}
-        {view === 'manage' && (
-          <ManageSubscriptionView
-            onBack={() => setView('main')}
-            onSelectAction={handleManageAction}
-          />
-        )}
+        <div className="max-w-6xl pb-10">
+          <header className="mb-8">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1E50C3]">
+              Account
+            </p>
 
-        {/* ── Change Plan view ── */}
-        {view === 'change-plan' && (
-          <ChangePlanView onBack={() => setView('manage')} />
-        )}
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+              Billing &amp; Subscription
+            </h1>
 
-        {/* ── Main view ── */}
-        {view === 'main' && (
-          <div className="max-w-4xl space-y-6">
-            {/* Plan Card */}
-            <div className="bg-white border border-gray-100 rounded-2xl px-6 sm:px-8 py-6">
-              <div className="flex flex-col sm:flex-row gap-6 sm:gap-10">
-                {/* Left: plan name + usage */}
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              Track your subscription
+              status, renewal date and
+              service availability.
+            </p>
+          </header>
+
+          {isLoading ? (
+            <LoadingState />
+          ) : error ? (
+            <section className="rounded-2xl border border-rose-200 bg-white p-8">
+              <div className="flex items-start gap-4">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                  <FiAlertTriangle />
+                </span>
+
                 <div className="flex-1">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Plan</p>
-                  <p className="text-xl font-bold text-gray-900 mb-4">{PLAN.name}</p>
+                  <h2 className="font-bold text-slate-900">
+                    Subscription could not be loaded
+                  </h2>
 
-                  <p className="text-xs text-gray-500 mb-1.5">
-                    Applications Used: {PLAN.appsUsed} / {PLAN.appsTotal}
+                  <p className="mt-2 text-sm text-slate-500">
+                    {error}
                   </p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#1E50C3] rounded-full"
-                        style={{ width: `${usagePercent}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500 font-medium">{usagePercent}%</span>
-                  </div>
 
-                  <div className="mt-4">
-                    <button
-                      onClick={() => setView('manage')}
-                      className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Manage subscription
-                    </button>
-                  </div>
-                </div>
-
-                {/* Right: benefits + status */}
-                <div className="flex-1">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Plan Benefits</p>
-                  <ul className="space-y-1 mb-6">
-                    {PLAN.benefits.map((b) => (
-                      <li key={b} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span className="w-1 h-1 rounded-full bg-gray-700 flex-shrink-0" />
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="flex gap-8 pt-4 border-t border-gray-100">
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Status</p>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-600" />
-                        <span className="text-sm font-semibold text-gray-900">{PLAN.status}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Next Billing</p>
-                      <p className="text-sm font-semibold text-gray-900">{PLAN.nextBilling}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Price/month</p>
-                      <p className="text-sm font-semibold text-gray-900">{PLAN.price}</p>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={
+                      loadSubscription
+                    }
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1A45A7]"
+                  >
+                    <FiRefreshCw />
+                    Try again
+                  </button>
                 </div>
               </div>
-            </div>
+            </section>
+          ) : subscription ? (
+            <div className="space-y-6">
+              <section
+                className={`rounded-2xl border p-5 sm:p-6 ${status.classes}`}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <span
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl ${status.iconClasses}`}
+                  >
+                    <StatusIcon />
+                  </span>
 
-            {/* Receipts */}
-            <div className="bg-white border border-gray-100 rounded-2xl px-8 py-6">
-              <h2 className="text-base font-bold text-gray-900 mb-5">Receipts</h2>
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Type</th>
-                    <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Total</th>
-                    <th className="pb-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {RECEIPTS.map((r, i) => (
-                    <tr key={i} className="text-sm text-gray-700">
-                      <td className="py-4">{r.date}</td>
-                      <td className="py-4">{r.type}</td>
-                      <td className="py-4 font-medium">{r.total}</td>
-                      <td className="py-4 text-right">
-                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#1E50C3] text-white text-xs font-semibold hover:bg-[#1A45A7] transition-colors ml-auto">
-                          <FiDownload className="w-3.5 h-3.5" />
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-lg font-bold">
+                        {status.title}
+                      </h2>
 
-        {/* Modals */}
-        {modal && (
-          <ManageSubscriptionModal type={modal} onClose={() => setModal(null)} />
-        )}
+                      <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold">
+                        {status.label}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-sm leading-6 opacity-80">
+                      {status.description}
+                    </p>
+
+                    {subscription.lifecycle ===
+                      'due_soon' && (
+                      <p className="mt-2 text-sm font-semibold">
+                        {
+                          subscription.daysRemaining
+                        }{' '}
+                        day
+                        {subscription.daysRemaining ===
+                        1
+                          ? ''
+                          : 's'}{' '}
+                        until renewal.
+                      </p>
+                    )}
+
+                    {subscription.lifecycle ===
+                      'grace_period' && (
+                      <p className="mt-2 text-sm font-semibold">
+                        {Math.max(
+                          0,
+                          subscription
+                            .graceDaysRemaining
+                        )}{' '}
+                        day
+                        {subscription.graceDaysRemaining ===
+                        1
+                          ? ''
+                          : 's'}{' '}
+                        remaining before
+                        service pauses.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <article className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1E50C3]">
+                    <FiCreditCard />
+                  </span>
+
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Current plan
+                  </p>
+
+                  <strong className="mt-1 block text-xl text-slate-950">
+                    {subscription.planLabel}
+                  </strong>
+                </article>
+
+
+                <article className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <FiCheckCircle />
+                  </span>
+
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Service
+                  </p>
+
+                  <strong className="mt-1 block text-xl text-slate-950">
+                    {subscription.canOperate
+                      ? 'Available'
+                      : 'Paused'}
+                  </strong>
+                </article>
+
+
+                <article className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                    <FiCalendar />
+                  </span>
+
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Renewal date
+                  </p>
+
+                  <strong className="mt-1 block text-base text-slate-950">
+                    {formatDate(
+                      subscription
+                        .currentPeriodEnd
+                    )}
+                  </strong>
+                </article>
+
+
+                <article className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                    <FiCreditCard />
+                  </span>
+
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Monthly service
+                  </p>
+
+                  <strong className="mt-1 block text-xl text-slate-950">
+                    {subscription.monthlyPriceCents >
+                    0
+                      ? formatMoney(
+                          subscription
+                            .monthlyPriceCents,
+                          subscription.currency
+                        )
+                      : 'Managed plan'}
+                  </strong>
+                </article>
+              </section>
+
+
+              <section className="rounded-2xl border border-slate-200 bg-slate-950 p-6 text-white">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
+                    <FiInfo />
+                  </span>
+
+                  <div>
+                    <h2 className="text-lg font-bold">
+                      How renewal is handled
+                    </h2>
+
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      Online payment is not
+                      connected yet. ApplyLoop
+                      records your renewal
+                      when payment is
+                      confirmed.
+                    </p>
+
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                      We will remind you
+                      before your renewal
+                      date and during the
+                      grace period so you
+                      have enough time to
+                      renew without an
+                      unexpected service
+                      interruption.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-6">
+                <h2 className="text-lg font-bold text-slate-950">
+                  Subscription timeline
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Your current monthly service
+                  period and grace period.
+                </p>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Current period started
+                    </p>
+
+                    <p className="mt-2 font-bold text-slate-900">
+                      {formatDate(
+                        subscription
+                          .currentPeriodStart
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-blue-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">
+                      Renewal date
+                    </p>
+
+                    <p className="mt-2 font-bold text-blue-950">
+                      {formatDate(
+                        subscription
+                          .currentPeriodEnd
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-amber-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+                      Grace period ends
+                    </p>
+
+                    <p className="mt-2 font-bold text-amber-950">
+                      {formatDate(
+                        subscription
+                          .gracePeriodEndsAt
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-6">
+                <h2 className="text-lg font-bold text-slate-950">
+                  What happens at renewal?
+                </h2>
+
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-xl border border-slate-100 p-4">
+                    <span className="text-sm font-bold text-[#1E50C3]">
+                      01
+                    </span>
+
+                    <h3 className="mt-2 font-bold text-slate-900">
+                      We remind you
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      ApplyLoop sends renewal
+                      notices before your
+                      current period ends.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-100 p-4">
+                    <span className="text-sm font-bold text-[#1E50C3]">
+                      02
+                    </span>
+
+                    <h3 className="mt-2 font-bold text-slate-900">
+                      Grace period
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      Your service remains
+                      available for three days
+                      after the renewal date.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-100 p-4">
+                    <span className="text-sm font-bold text-[#1E50C3]">
+                      03
+                    </span>
+
+                    <h3 className="mt-2 font-bold text-slate-900">
+                      Service pause
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      If renewal is still
+                      outstanding, new
+                      application work pauses.
+                      Your account and history
+                      remain available.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-6">
+                <h2 className="text-lg font-bold text-slate-950">
+                  Subscription history
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Important subscription and
+                  renewal events are recorded
+                  here.
+                </p>
+
+                <div className="mt-5 divide-y divide-slate-100">
+                  {events.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-slate-400">
+                      No subscription events
+                      have been recorded yet.
+                    </div>
+                  ) : (
+                    events.map(
+                      (event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-start gap-4 py-4"
+                        >
+                          <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-[#1E50C3]">
+                            <FiClock />
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-slate-900">
+                              {EVENT_LABELS[
+                                event
+                                  .event_type
+                              ] ||
+                                event
+                                  .event_type}
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-400">
+                              {new Date(
+                                event
+                                  .created_at
+                              ).toLocaleString(
+                                'en-US',
+                                {
+                                  month:
+                                    'short',
+                                  day: 'numeric',
+                                  year:
+                                    'numeric',
+                                  hour:
+                                    'numeric',
+                                  minute:
+                                    '2-digit',
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    )
+                  )}
+                </div>
+              </section>
+            </div>
+          ) : null}
+        </div>
       </DashboardLayout>
     </>
   );

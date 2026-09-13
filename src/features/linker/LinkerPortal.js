@@ -1200,7 +1200,7 @@ function ApplicantsPage({
                 <th>Status</th>
                 <th>Active Clients</th>
                 <th>Total Links</th>
-                <th>Quality Rating</th>
+                <th>Client Satisfaction</th>
                 <th>Completion Rate</th>
                 <th>Action</th>
               </tr>
@@ -1269,7 +1269,7 @@ function ApplicantsPage({
                       <td>
                         <button
                           type="button"
-                          aria-label={`${revealedRatings.has(applicant.id) ? 'Hide' : 'Show'} quality rating for ${applicant.fullName}`}
+                          aria-label={`${revealedRatings.has(applicant.id) ? 'Hide' : 'Show'} Client satisfaction for ${applicant.fullName}`}
                           onClick={() =>
                             setRevealedRatings((current) => {
                               const next = new Set(current);
@@ -1281,7 +1281,9 @@ function ApplicantsPage({
                           className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                         >
                           {revealedRatings.has(applicant.id)
-                            ? `${Number(applicant.qualityRating || 0).toFixed(1)}/5 · Hide`
+                            ? Number(applicant.ratingCount || 0) > 0
+                              ? `${Number(applicant.clientSatisfaction || 0).toFixed(1)}/5 · ${Number(applicant.ratingCount)} rating${Number(applicant.ratingCount) === 1 ? '' : 's'} · Hide`
+                              : 'No ratings yet · Hide'
                             : 'Show rating'}
                         </button>
                       </td>

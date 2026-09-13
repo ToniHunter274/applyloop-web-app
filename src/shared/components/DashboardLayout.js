@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import {
   FiBell,
   FiChevronDown,
-  FiCpu,
   FiCreditCard,
   FiHelpCircle,
   FiHome,
@@ -67,7 +66,6 @@ const pageMeta = {
   '/dashboard': ['Dashboard', 'Track applications, monitor progress, and stay in control of your job search.'],
   '/job-links': ['Job Links', 'Submit job opportunities and track active, withdrawn, and completed links.'],
   '/growth': ['Career Growth', 'Build job-ready skills with a personalized learning plan.'],
-  '/loop-lab': ['Loop Lab', 'Prepare for interviews with role-specific practice sessions.'],
   '/billing': ['Billing & Subscription', 'Manage your plan, billing history, and application volume.'],
   '/settings': ['Settings', 'Update your profile, work preferences, and account details.'],
   '/notifications': ['Notifications', 'Review important application and interview updates.'],
@@ -153,11 +151,6 @@ export default function DashboardLayout({
           href: '/job-links',
         }]
       : []),
-    {
-      icon: FiCpu,
-      label: 'Loop Lab',
-      href: '/loop-lab',
-    },
     {
       icon: FiCreditCard,
       label: 'Billing & Subscription',

@@ -1,5 +1,6 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireLinker } from '../../../lib/auth/requireLinker';
+import { getClientServiceState } from '../../../lib/subscriptions/clientServiceState';
 import { findDuplicateJobLink } from '../../../lib/jobs/jobLinkDeduplication';
 
 const UUID_PATTERN =
@@ -252,6 +253,19 @@ async function createRequest(
     req.body?.clientId,
     'Client'
   );
+
+  const serviceState =
+    await getClientServiceState({
+      supabase,
+      clientId,
+    });
+
+  if (!serviceState.canOperate) {
+    throw new ApiError(
+      409,
+      'This Client’s application service is paused or expired. New job links cannot be sent until service is active.'
+    );
+  }
 
   const jobUrl = validateJobUrl(
     req.body?.jobLink

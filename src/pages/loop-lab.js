@@ -84,6 +84,16 @@ function SkeletonLines() {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
+export async function getServerSideProps() {
+  return {
+    redirect: {
+      destination: '/dashboard',
+      permanent: false,
+    },
+  };
+}
+
+
 export default function LoopLabPage() {
   const [activeModal, setActiveModal] = useState(null);   // interview object for duration modal
   const [activeSession, setActiveSession] = useState(null); // interview object for active session

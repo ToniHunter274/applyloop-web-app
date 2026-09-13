@@ -2,6 +2,9 @@ import {
   PortalApiError,
   requirePortalProfile,
 } from '../../../lib/auth/requirePortalProfile';
+import {
+  getClientServiceState,
+} from '../../../lib/subscriptions/clientServiceState';
 
 const APPLICATION_STATUSES =
   new Set([
@@ -766,6 +769,19 @@ async function createApplication(
     throw new PortalApiError(
       400,
       'Select a Client.'
+    );
+  }
+
+  const serviceState =
+    await getClientServiceState({
+      supabase,
+      clientId,
+    });
+
+  if (!serviceState.canOperate) {
+    throw new PortalApiError(
+      409,
+      'This Client’s application service is paused or expired. New Applications cannot be recorded until service is active.'
     );
   }
 

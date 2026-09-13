@@ -2,6 +2,9 @@ import {
   PortalApiError,
   requirePortalProfile,
 } from '../../../../lib/auth/requirePortalProfile';
+import {
+  getClientServiceState,
+} from '../../../../lib/subscriptions/clientServiceState';
 
 const ALLOWED_STATUSES = new Set(['in_review']);
 
@@ -192,6 +195,20 @@ export default async function handler(
       throw new PortalApiError(
         403,
         'This Client is not assigned to you.'
+      );
+    }
+
+    const serviceState =
+      await getClientServiceState({
+        supabase,
+        clientId:
+          jobRequest.client_id,
+      });
+
+    if (!serviceState.canOperate) {
+      throw new PortalApiError(
+        409,
+        'This Client’s application service is paused or expired. New work cannot be started until service is active.'
       );
     }
 
