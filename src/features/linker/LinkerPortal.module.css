@@ -2476,3 +2476,802 @@ article {
     flex-direction: column;
   }
 }
+
+
+/* APPLYLOOP LINKER LAUNCH READABILITY PASS */
+
+/*
+ * Launch readability treatment.
+ * Keep the Linker workflow intact while
+ * improving typography, spacing and visual
+ * hierarchy for daily operational use.
+ */
+
+.workspace {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.main {
+  background: #f6f8fc;
+}
+
+.content {
+  width: 100%;
+  max-width: 1500px;
+  padding: 42px 42px 68px;
+}
+
+.pageHeader {
+  margin-bottom: 34px;
+}
+
+.pageHeader h1 {
+  color: #111827;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.pageHeader p {
+  max-width: 720px;
+  margin-top: 7px;
+  color: #737b8c;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+
+/* Sidebar */
+
+.brand {
+  font-size: 18px;
+}
+
+.navItem,
+.navActive {
+  min-height: 46px;
+  font-size: 14px;
+}
+
+.accountText strong {
+  font-size: 13px;
+}
+
+.accountText small {
+  font-size: 11px;
+}
+
+
+/* Dashboard */
+
+.figmaDashboard {
+  gap: 30px;
+  padding-top: 44px;
+}
+
+.dashboardSearch {
+  top: -66px;
+}
+
+.dashboardSearch input {
+  width: 270px;
+  min-height: 42px;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0 15px;
+  font-size: 13px;
+}
+
+.figmaMetrics {
+  gap: 18px;
+}
+
+.figmaMetrics article {
+  min-height: 122px;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow:
+    0 4px 18px
+    rgba(15, 23, 42, 0.035);
+}
+
+.figmaMetrics span {
+  font-size: 11px;
+  letter-spacing: 0.035em;
+}
+
+.figmaMetrics strong {
+  margin-top: 14px;
+  font-size: 28px;
+}
+
+.figmaMetrics small {
+  margin-top: 13px;
+  font-size: 11px;
+}
+
+.figmaDashboardTable {
+  border: 1px solid #e7eaf0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.figmaDashboardTable > header {
+  margin-bottom: 16px;
+}
+
+.figmaDashboardTable h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.figmaDashboardTable select {
+  min-height: 36px;
+  border: 1px solid #e3e7ee;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.figmaDashboardTable th,
+.figmaDashboardTable td {
+  padding: 16px 14px;
+}
+
+.figmaDashboardTable th {
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+
+.figmaDashboardTable td {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.figmaRejected,
+.figmaInfo {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+
+/* Assigned Clients */
+
+.figmaClients,
+.figmaApplicants,
+.figmaPerformance,
+.figmaSettings {
+  gap: 24px;
+}
+
+.clientMetrics,
+.clientDetailMetrics,
+.applicantMetrics,
+.performanceMetrics {
+  gap: 16px;
+}
+
+.clientMetrics article,
+.clientDetailMetrics article,
+.applicantMetrics article,
+.performanceMetrics article {
+  min-height: 108px;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow:
+    0 4px 16px
+    rgba(15, 23, 42, 0.025);
+}
+
+.clientMetrics span,
+.clientDetailMetrics span,
+.applicantMetrics span,
+.performanceMetrics span {
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+
+.clientMetrics strong,
+.clientDetailMetrics strong,
+.applicantMetrics strong,
+.performanceMetrics strong {
+  margin-top: 12px;
+  font-size: 25px;
+}
+
+.clientSearch input {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.clientTabs,
+.applicantTabs,
+.feedbackTabs {
+  gap: 30px;
+}
+
+.clientTab,
+.clientTabActive,
+.applicantTab,
+.applicantTabActive,
+.feedbackTab,
+.feedbackTabActive {
+  padding-bottom: 12px;
+  font-size: 13px;
+}
+
+.clientCardGrid {
+  gap: 18px;
+}
+
+.clientCard {
+  border-radius: 12px;
+  padding: 21px;
+  box-shadow:
+    0 4px 18px
+    rgba(15, 23, 42, 0.025);
+}
+
+.clientCard h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.clientCard header p {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.progressLabel {
+  margin-top: 20px;
+  font-size: 12px;
+}
+
+.clientProgress {
+  height: 5px;
+  margin-top: 9px;
+  border-radius: 999px;
+}
+
+.clientCard dl {
+  gap: 14px 20px;
+  margin: 20px 0;
+}
+
+.clientCard dt {
+  font-size: 11px;
+}
+
+.clientCard dd {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.clientCard footer {
+  padding-top: 15px;
+  font-size: 12px;
+}
+
+.clientCard footer button {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detailPlan {
+  font-size: 12px;
+}
+
+.readinessSection h2,
+.clientInformation h2,
+.adminNotes h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.readinessGrid {
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.readinessGrid article {
+  min-height: 76px;
+  border-radius: 10px;
+  padding: 15px;
+}
+
+.readinessGrid strong {
+  font-size: 12px;
+}
+
+.readinessGrid span {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.clientInformation dl {
+  gap: 16px;
+}
+
+.clientInformation dl div {
+  border-radius: 10px;
+  padding: 15px;
+}
+
+.clientInformation dt {
+  font-size: 11px;
+}
+
+.clientInformation dd {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.adminNotes p {
+  font-size: 13px;
+}
+
+
+/* Assigned Applicants */
+
+.applicantSearch {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 0 14px;
+  background: #ffffff;
+}
+
+.applicantSearch svg {
+  width: 16px;
+  height: 16px;
+}
+
+.applicantSearch input {
+  padding: 11px 0;
+  font-size: 13px;
+}
+
+.applicantTable {
+  border-radius: 12px;
+}
+
+.applicantTable th,
+.applicantTable td {
+  padding: 16px 14px;
+}
+
+.applicantTable th {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.applicantTable td {
+  font-size: 13px;
+}
+
+.applicantTable td strong {
+  font-size: 13px;
+}
+
+.applicantTable td small {
+  margin-top: 5px;
+  font-size: 11px;
+}
+
+.applicantAvailable,
+.applicantUnavailable {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+.applicantAction {
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.applicantSummary {
+  font-size: 12px;
+}
+
+
+/* Send Job Link */
+
+.figmaRecordPage {
+  gap: 28px;
+}
+
+.recordPageHeader {
+  gap: 13px;
+}
+
+.recordPageHeader > span {
+  font-size: 18px;
+}
+
+.recordPageHeader h2 {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.recordPageHeader p {
+  margin-top: 6px;
+  color: #737b8c;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.figmaRecordForm {
+  gap: 22px;
+}
+
+.figmaRecordForm fieldset {
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow:
+    0 4px 16px
+    rgba(15, 23, 42, 0.025);
+}
+
+.figmaRecordForm legend {
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.recordFieldGrid {
+  gap: 17px 20px;
+}
+
+.recordFieldGrid label,
+.recordFullField {
+  gap: 8px;
+}
+
+.figmaRecordForm label > span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.figmaRecordForm input,
+.figmaRecordForm select,
+.figmaRecordForm textarea {
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 13px;
+}
+
+.figmaRecordForm input,
+.figmaRecordForm select {
+  height: 44px;
+}
+
+.figmaRecordForm textarea {
+  min-height: 120px;
+  line-height: 1.55;
+}
+
+.recordActions {
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.clearRecordButton,
+.saveRecordButton {
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+
+/* Feedback & Messages */
+
+.figmaFeedback {
+  gap: 22px;
+}
+
+.feedbackWorkspace {
+  gap: 16px;
+}
+
+.feedbackList {
+  gap: 12px;
+}
+
+.feedbackCard,
+.feedbackCardActive {
+  border-radius: 11px;
+  padding: 18px;
+}
+
+.feedbackCard strong,
+.feedbackCardActive strong {
+  font-size: 14px;
+}
+
+.feedbackCard header span,
+.feedbackCardActive header span {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.feedbackCard p,
+.feedbackCardActive p {
+  margin: 15px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.feedbackCard time,
+.feedbackCardActive time {
+  font-size: 11px;
+}
+
+.feedbackResolved,
+.feedbackPending {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+.feedbackDetail {
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.feedbackDetail > h2 {
+  font-size: 16px;
+}
+
+.feedbackDetail > header strong {
+  font-size: 14px;
+}
+
+.feedbackDetail > header span,
+.feedbackDetail > header time {
+  font-size: 11px;
+}
+
+.feedbackThread {
+  max-height: 360px;
+  gap: 12px;
+}
+
+.feedbackThread article {
+  border-radius: 10px;
+  padding: 13px;
+}
+
+.feedbackThread article strong {
+  font-size: 11px;
+}
+
+.feedbackThread article p {
+  margin: 7px 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.feedbackThread article time {
+  font-size: 10px;
+}
+
+.feedbackDetail form label > span {
+  font-size: 12px;
+}
+
+.feedbackDetail textarea {
+  min-height: 130px;
+  border-radius: 9px;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.feedbackDetail form > button {
+  min-height: 42px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.feedbackResolution {
+  padding: 10px;
+  font-size: 11px;
+}
+
+.feedbackEmpty h2 {
+  font-size: 16px;
+}
+
+.feedbackEmpty p {
+  font-size: 13px;
+}
+
+
+/* Performance */
+
+.performanceMetrics small {
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.performanceLevel,
+.recentPerformance,
+.performanceAchievements,
+.settingsSection {
+  padding-top: 22px;
+}
+
+.performanceLevel h2,
+.recentPerformance h2,
+.performanceAchievements h2,
+.settingsSection h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.performanceLevelHeader strong {
+  font-size: 15px;
+}
+
+.performanceLevelHeader span,
+.performanceLevelHeader small {
+  font-size: 11px;
+}
+
+.performanceTrack {
+  height: 6px;
+  border-radius: 999px;
+}
+
+.performanceTrack span {
+  border-radius: inherit;
+}
+
+.performanceLabels span {
+  font-size: 10px;
+}
+
+.recentPerformance > div {
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.recentPerformance article {
+  padding: 12px 0;
+}
+
+.recentPerformance article > strong {
+  font-size: 13px;
+}
+
+.recentPerformance dt,
+.recentPerformance dd {
+  font-size: 12px;
+}
+
+.performanceAchievements p {
+  border-radius: 10px;
+  padding: 20px;
+  font-size: 13px;
+}
+
+
+/* Settings */
+
+.settingsAvatar {
+  width: 54px;
+  height: 54px;
+  font-size: 19px;
+}
+
+.settingsIdentity strong {
+  font-size: 15px;
+}
+
+.settingsIdentity span {
+  font-size: 12px;
+}
+
+.settingsGrid {
+  gap: 14px 18px;
+  margin-top: 18px;
+}
+
+.settingsGrid div {
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.settingsGrid dt {
+  font-size: 11px;
+}
+
+.settingsGrid dd {
+  margin-top: 7px;
+  font-size: 13px;
+}
+
+.settingsNotice {
+  font-size: 12px;
+}
+
+.securityPanel {
+  border-radius: 10px;
+  padding: 15px;
+}
+
+.securityPanel strong,
+.preferenceList strong,
+.companySettings strong {
+  font-size: 13px;
+}
+
+.securityPanel span,
+.preferenceList span,
+.companySettings span {
+  font-size: 11px;
+}
+
+.securityPanel a {
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 12px;
+}
+
+.preferenceList small {
+  font-size: 11px;
+}
+
+
+/* Mobile readability */
+
+@media (max-width: 860px) {
+  .content {
+    padding: 30px 20px 52px;
+  }
+
+  .pageHeader h1 {
+    font-size: 25px;
+  }
+
+  .pageHeader p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 680px) {
+  .figmaDashboard {
+    padding-top: 0;
+  }
+
+  .dashboardSearch {
+    position: static;
+  }
+
+  .dashboardSearch input {
+    width: 100%;
+  }
+
+  .figmaRecordForm fieldset {
+    padding: 18px;
+  }
+}
