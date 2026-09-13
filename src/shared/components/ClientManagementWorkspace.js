@@ -650,6 +650,653 @@ function MetricCard({ label, value, tone }) {
   );
 }
 
+function TargetAllocationPanel({
+  clientId,
+  canEdit = false,
+}) {
+  const [
+    allocation,
+    setAllocation,
+  ] = useState(null);
+
+  const [
+    draftTargets,
+    setDraftTargets,
+  ] = useState({});
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState('');
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState('');
+
+
+  const applyAllocation = (
+    nextAllocation
+  ) => {
+    setAllocation(
+      nextAllocation
+    );
+
+    setDraftTargets(
+      Object.fromEntries(
+        (
+          nextAllocation
+            ?.applicants || []
+        ).map(
+          (applicant) => [
+            applicant.id,
+            String(
+              applicant.target || 0
+            ),
+          ]
+        )
+      )
+    );
+  };
+
+
+  const loadAllocation =
+    useCallback(
+      async () => {
+        if (!clientId) {
+          return;
+        }
+
+        setIsLoading(true);
+        setError('');
+        setSuccessMessage('');
+
+        try {
+          const accessToken =
+            await getAccessToken();
+
+          const response =
+            await fetch(
+              `/api/admin/clients/${clientId}/targets`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Applicant targets could not be loaded.'
+            );
+          }
+
+          applyAllocation(
+            result.allocation
+          );
+        } catch (
+          loadError
+        ) {
+          setError(
+            loadError?.message ||
+              'Applicant targets could not be loaded.'
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      [clientId]
+    );
+
+
+  useEffect(() => {
+    loadAllocation();
+  }, [loadAllocation]);
+
+
+  const draftTotal =
+    allocation
+      ? allocation.applicants.reduce(
+          (
+            total,
+            applicant
+          ) =>
+            total +
+            Number(
+              draftTargets[
+                applicant.id
+              ] || 0
+            ),
+          0
+        )
+      : 0;
+
+
+  const amountOver =
+    allocation
+      ? Math.max(
+          0,
+          draftTotal -
+            allocation.allowance
+        )
+      : 0;
+
+
+  const unallocated =
+    allocation
+      ? Math.max(
+          0,
+          allocation.allowance -
+            draftTotal
+        )
+      : 0;
+
+
+  const saveTargets =
+    async () => {
+      if (
+        !allocation ||
+        amountOver > 0
+      ) {
+        return;
+      }
+
+      setIsSaving(true);
+      setError('');
+      setSuccessMessage('');
+
+      try {
+        const accessToken =
+          await getAccessToken();
+
+        const response =
+          await fetch(
+            `/api/admin/clients/${clientId}/targets`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body:
+                JSON.stringify({
+                  targets:
+                    allocation.applicants.map(
+                      (
+                        applicant
+                      ) => ({
+                        applicantId:
+                          applicant.id,
+                        applicationTarget:
+                          Number(
+                            draftTargets[
+                              applicant.id
+                            ] || 0
+                          ),
+                      })
+                    ),
+                }),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Applicant targets could not be saved.'
+          );
+        }
+
+        applyAllocation(
+          result.allocation
+        );
+
+        setSuccessMessage(
+          'Applicant targets updated.'
+        );
+      } catch (
+        saveError
+      ) {
+        setError(
+          saveError?.message ||
+            'Applicant targets could not be saved.'
+        );
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+
+  const formatPeriodDate = (
+    value
+  ) => {
+    if (!value) {
+      return 'Not available';
+    }
+
+    return new Date(
+      `${value}T12:00:00`
+    ).toLocaleDateString(
+      'en-US',
+      {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }
+    );
+  };
+
+
+  if (isLoading) {
+    return (
+      <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:mx-8">
+        <div className="flex items-center gap-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-100 border-t-blue-600" />
+
+          <p className="text-sm font-medium text-slate-600">
+            Loading Applicant targets...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+
+  if (
+    error &&
+    !allocation
+  ) {
+    return (
+      <div className="mx-6 mb-7 rounded-3xl border border-red-200 bg-red-50 p-6 sm:mx-8">
+        <p className="text-sm font-semibold text-red-700">
+          {error}
+        </p>
+
+        <button
+          type="button"
+          onClick={
+            loadAllocation
+          }
+          className="mt-4 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+
+  if (!allocation) {
+    return null;
+  }
+
+
+  return (
+    <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">
+            Internal Operations
+          </p>
+
+          <h3 className="mt-2 text-xl font-bold text-slate-950">
+            Application Target Allocation
+          </h3>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Distribute this Client&apos;s
+            subscription-period workload
+            across the Applicants assigned
+            to them. These numbers are not
+            visible to the Client.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 lg:text-right">
+          <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+            Period allowance
+          </p>
+
+          <p className="mt-1 text-2xl font-bold text-blue-950">
+            {allocation.allowance}
+          </p>
+
+          <p className="mt-1 text-xs text-blue-700">
+            {formatPeriodDate(
+              allocation.periodStart
+            )}
+            {' – '}
+            {formatPeriodDate(
+              allocation.periodEnd
+            )}
+          </p>
+        </div>
+      </div>
+
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Allowance
+          </p>
+
+          <p className="mt-2 text-2xl font-bold text-slate-950">
+            {allocation.allowance}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-blue-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
+            Allocated
+          </p>
+
+          <p className="mt-2 text-2xl font-bold text-blue-950">
+            {draftTotal}
+          </p>
+        </div>
+
+        <div
+          className={cn(
+            'rounded-2xl p-4',
+            amountOver > 0
+              ? 'bg-red-50'
+              : 'bg-emerald-50'
+          )}
+        >
+          <p
+            className={cn(
+              'text-xs font-bold uppercase tracking-wide',
+              amountOver > 0
+                ? 'text-red-500'
+                : 'text-emerald-600'
+            )}
+          >
+            {amountOver > 0
+              ? 'Over allowance'
+              : 'Unallocated'}
+          </p>
+
+          <p
+            className={cn(
+              'mt-2 text-2xl font-bold',
+              amountOver > 0
+                ? 'text-red-800'
+                : 'text-emerald-800'
+            )}
+          >
+            {amountOver > 0
+              ? amountOver
+              : unallocated}
+          </p>
+        </div>
+      </div>
+
+
+      {amountOver > 0 && (
+        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          Targets exceed the Client&apos;s
+          subscription allowance by{' '}
+          {amountOver}{' '}
+          application
+          {amountOver === 1
+            ? ''
+            : 's'}.
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {successMessage}
+        </div>
+      )}
+
+
+      {allocation.applicants.length ===
+      0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-9 text-center">
+          <p className="font-semibold text-slate-700">
+            No Applicants are assigned to
+            this Client yet.
+          </p>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Assign an Applicant first, then
+            their period target can be
+            managed here.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Applicant
+                  </th>
+
+                  <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Completed
+                  </th>
+
+                  <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Remaining
+                  </th>
+
+                  <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Progress
+                  </th>
+
+                  <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Period Target
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {allocation.applicants.map(
+                  (
+                    applicant
+                  ) => {
+                    const draftTarget =
+                      Number(
+                        draftTargets[
+                          applicant.id
+                        ] || 0
+                      );
+
+                    const draftRemaining =
+                      Math.max(
+                        0,
+                        draftTarget -
+                          applicant.completed
+                      );
+
+                    const progress =
+                      draftTarget > 0
+                        ? Math.min(
+                            100,
+                            Math.round(
+                              (
+                                applicant.completed /
+                                draftTarget
+                              ) * 100
+                            )
+                          )
+                        : 0;
+
+                    return (
+                      <tr
+                        key={
+                          applicant.id
+                        }
+                        className="border-t border-slate-100"
+                      >
+                        <td className="px-5 py-4">
+                          <p className="font-semibold text-slate-900">
+                            {
+                              applicant.fullName
+                            }
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            {
+                              applicant.email
+                            }
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-4 text-sm font-semibold text-slate-800">
+                          {
+                            applicant.completed
+                          }
+                        </td>
+
+                        <td className="px-5 py-4 text-sm font-semibold text-slate-800">
+                          {
+                            draftRemaining
+                          }
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <div className="w-28">
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-blue-600"
+                                style={{
+                                  width:
+                                    `${progress}%`,
+                                }}
+                              />
+                            </div>
+
+                            <p className="mt-1.5 text-xs text-slate-500">
+                              {progress}%
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {canEdit ? (
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={
+                                draftTargets[
+                                  applicant.id
+                                ] ?? '0'
+                              }
+                              onChange={(
+                                event
+                              ) => {
+                                const value =
+                                  event
+                                    .target
+                                    .value;
+
+                                setDraftTargets(
+                                  (
+                                    current
+                                  ) => ({
+                                    ...current,
+                                    [
+                                      applicant.id
+                                    ]:
+                                      value,
+                                  })
+                                );
+
+                                setSuccessMessage(
+                                  ''
+                                );
+                              }}
+                              className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                            />
+                          ) : (
+                            <span className="text-sm font-bold text-slate-900">
+                              {
+                                applicant.target
+                              }
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+
+      {canEdit &&
+        allocation.applicants.length >
+          0 && (
+          <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-5 text-slate-500">
+              You may leave part of the
+              allowance unallocated. The
+              combined targets simply cannot
+              exceed{' '}
+              {allocation.allowance}.
+            </p>
+
+            <button
+              type="button"
+              onClick={
+                saveTargets
+              }
+              disabled={
+                isSaving ||
+                amountOver > 0
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FiCheckCircle />
+
+              {isSaving
+                ? 'Saving...'
+                : 'Save Targets'}
+            </button>
+          </div>
+        )}
+    </div>
+  );
+}
+
+
 export default function ClientManagementWorkspace({
   mode = 'admin',
 }) {
@@ -2120,6 +2767,14 @@ export default function ClientManagementWorkspace({
               </DetailItem>
             )}
           </div>
+
+          <TargetAllocationPanel
+            clientId={selectedClient.id}
+            canEdit={[
+              'admin',
+              'operations',
+            ].includes(mode)}
+          />
 
           <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7">
             <OnboardingTimeline
