@@ -174,6 +174,84 @@ async function loadTargetAllocation(
   }
 
 
+  let linkerAssignmentRows = [];
+
+  if (applicantIds.length > 0) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from(
+        'linker_applicant_assignments'
+      )
+      .select(`
+        id,
+        applicant_id,
+        linker_user_id,
+        assigned_at
+      `)
+      .in(
+        'applicant_id',
+        applicantIds
+      )
+      .eq(
+        'is_active',
+        true
+      );
+
+    if (error) {
+      throw new ApiError(
+        500,
+        'Applicant Linker coverage could not be loaded.'
+      );
+    }
+
+    linkerAssignmentRows =
+      data || [];
+  }
+
+
+  const linkerUserIds = [
+    ...new Set(
+      linkerAssignmentRows.map(
+        (assignment) =>
+          assignment.linker_user_id
+      )
+    ),
+  ];
+
+
+  let linkerProfiles = [];
+
+  if (linkerUserIds.length > 0) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        email,
+        account_status
+      `)
+      .in(
+        'id',
+        linkerUserIds
+      );
+
+    if (error) {
+      throw new ApiError(
+        500,
+        'Linker profiles could not be loaded.'
+      );
+    }
+
+    linkerProfiles =
+      data || [];
+  }
+
+
   const {
     data: targetRows,
     error: targetError,
@@ -241,6 +319,28 @@ async function loadTargetAllocation(
       )
     );
 
+  const linkerAssignmentsByApplicantId =
+    new Map(
+      linkerAssignmentRows.map(
+        (assignment) => [
+          assignment.applicant_id,
+          assignment,
+        ]
+      )
+    );
+
+
+  const linkerProfilesById =
+    new Map(
+      linkerProfiles.map(
+        (profile) => [
+          profile.id,
+          profile,
+        ]
+      )
+    );
+
+
   const targetsByApplicantId =
     new Map(
       (targetRows || []).map(
@@ -287,6 +387,18 @@ async function loadTargetAllocation(
             applicant.user_id
           );
 
+        const linkerAssignment =
+          linkerAssignmentsByApplicantId.get(
+            applicant.id
+          );
+
+        const linkerProfile =
+          linkerAssignment
+            ? linkerProfilesById.get(
+                linkerAssignment.linker_user_id
+              )
+            : null;
+
         const target =
           targetsByApplicantId.get(
             applicant.id
@@ -328,6 +440,28 @@ async function loadTargetAllocation(
           accountStatus:
             profile?.account_status ||
             'active',
+          linker:
+            linkerAssignment
+              ? {
+                  userId:
+                    linkerAssignment
+                      .linker_user_id,
+                  fullName:
+                    linkerProfile
+                      ?.full_name ||
+                    'Assigned Linker',
+                  email:
+                    linkerProfile
+                      ?.email || '',
+                  accountStatus:
+                    linkerProfile
+                      ?.account_status ||
+                    'unknown',
+                  assignedAt:
+                    linkerAssignment
+                      .assigned_at,
+                }
+              : null,
           target,
           completed,
           remaining,

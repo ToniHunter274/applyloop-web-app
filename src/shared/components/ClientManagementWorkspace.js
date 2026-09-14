@@ -1326,6 +1326,499 @@ function TargetAllocationPanel({
 }
 
 
+function ClientServiceTeamPanel({
+  clientId,
+}) {
+  const [
+    allocation,
+    setAllocation,
+  ] = useState(null);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState('');
+
+
+  const loadTeam =
+    useCallback(
+      async () => {
+        if (!clientId) {
+          return;
+        }
+
+        setIsLoading(true);
+        setError('');
+
+        try {
+          const accessToken =
+            await getAccessToken();
+
+          const response =
+            await fetch(
+              `/api/admin/clients/${clientId}/targets`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'The Client service team could not be loaded.'
+            );
+          }
+
+          setAllocation(
+            result.allocation
+          );
+        } catch (loadError) {
+          setError(
+            loadError?.message ||
+              'The Client service team could not be loaded.'
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      [clientId]
+    );
+
+
+  useEffect(() => {
+    loadTeam();
+  }, [loadTeam]);
+
+
+  if (isLoading) {
+    return (
+      <div className="mx-6 mb-7 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm sm:mx-8">
+        <div className="animate-pulse p-6 sm:p-7">
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="mt-3 h-7 w-48 rounded bg-slate-200" />
+          <div className="mt-7 grid gap-4 sm:grid-cols-3">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="h-24 rounded-2xl bg-slate-100"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  if (error) {
+    return (
+      <div className="mx-6 mb-7 rounded-3xl border border-red-200 bg-red-50 p-6 sm:mx-8">
+        <p className="text-sm font-bold text-red-700">
+          Service Team unavailable
+        </p>
+
+        <p className="mt-1 text-sm text-red-600">
+          {error}
+        </p>
+
+        <button
+          type="button"
+          onClick={loadTeam}
+          className="mt-4 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+
+  const applicants =
+    allocation?.applicants || [];
+
+  const coveredApplicants =
+    applicants.filter(
+      (applicant) =>
+        Boolean(applicant.linker)
+    );
+
+  const uncoveredApplicants =
+    applicants.filter(
+      (applicant) =>
+        !applicant.linker
+    );
+
+  const periodTarget =
+    applicants.reduce(
+      (total, applicant) =>
+        total +
+        Number(
+          applicant.target || 0
+        ),
+      0
+    );
+
+  const periodCompleted =
+    applicants.reduce(
+      (total, applicant) =>
+        total +
+        Number(
+          applicant.completed || 0
+        ),
+      0
+    );
+
+  const periodProgress =
+    periodTarget > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (
+              periodCompleted /
+              periodTarget
+            ) * 100
+          )
+        )
+      : 0;
+
+  const coveragePercent =
+    applicants.length > 0
+      ? Math.round(
+          (
+            coveredApplicants.length /
+            applicants.length
+          ) * 100
+        )
+      : 0;
+
+
+  return (
+    <div className="mx-6 mb-7 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm sm:mx-8">
+      <div className="relative overflow-hidden border-b border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 px-6 py-6 sm:px-7">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-200/30 blur-3xl" />
+
+        <div className="pointer-events-none absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-indigo-200/20 blur-3xl" />
+
+        <div className="relative">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+            Management View
+          </p>
+
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-slate-950">
+                Service Team
+              </h3>
+
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+                Monitor the Applicants serving this
+                Client, their Linker coverage and
+                current-period delivery.
+              </p>
+            </div>
+
+            <span
+              className={`inline-flex w-fit rounded-full px-3 py-1.5 text-xs font-bold ${
+                uncoveredApplicants.length > 0
+                  ? 'bg-amber-100 text-amber-700'
+                  : applicants.length > 0
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {uncoveredApplicants.length > 0
+                ? `${uncoveredApplicants.length} coverage warning${
+                    uncoveredApplicants.length === 1
+                      ? ''
+                      : 's'
+                  }`
+                : applicants.length > 0
+                  ? 'Team covered'
+                  : 'No team assigned'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+
+      <div className="p-6 sm:p-7">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Applicants
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-slate-950">
+              {applicants.length}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              assigned to this Client
+            </p>
+          </div>
+
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Linker Coverage
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-slate-950">
+              {coveragePercent}%
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              {coveredApplicants.length} of{' '}
+              {applicants.length} Applicants
+            </p>
+          </div>
+
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Period Progress
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-slate-950">
+              {periodProgress}%
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              {periodCompleted} / {periodTarget}{' '}
+              target
+            </p>
+          </div>
+
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Unallocated
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-slate-950">
+              {allocation?.unallocated || 0}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              of {allocation?.allowance || 0}{' '}
+              applications
+            </p>
+          </div>
+        </div>
+
+
+        {uncoveredApplicants.length > 0 && (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+            <p className="text-sm font-bold text-amber-900">
+              Management attention required
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              {uncoveredApplicants
+                .map(
+                  (applicant) =>
+                    applicant.fullName
+                )
+                .join(', ')}{' '}
+              {uncoveredApplicants.length === 1
+                ? 'does'
+                : 'do'}{' '}
+              not currently have an active Linker.
+              Assign Linker coverage from Linker
+              Management so opportunity sourcing is
+              clearly owned.
+            </p>
+          </div>
+        )}
+
+
+        {applicants.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+            <p className="font-bold text-slate-800">
+              No Applicants assigned
+            </p>
+
+            <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
+              Assign an Applicant to this Client
+              before monitoring team coverage,
+              targets and delivery.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px]">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    {[
+                      'APPLICANT',
+                      'LINKER',
+                      'WORKFORCE STATUS',
+                      'PERIOD TARGET',
+                      'DELIVERY',
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        className="px-5 py-4 text-left text-[11px] font-bold tracking-wide text-slate-500"
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {applicants.map(
+                    (applicant) => {
+                      const applicantHealthy =
+                        applicant.accountStatus ===
+                          'active' &&
+                        applicant.availability ===
+                          'available';
+
+                      return (
+                        <tr
+                          key={applicant.id}
+                          className="transition-colors hover:bg-slate-50/80"
+                        >
+                          <td className="px-5 py-4">
+                            <p className="text-sm font-bold text-slate-900">
+                              {applicant.fullName}
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {applicant.email}
+                            </p>
+                          </td>
+
+
+                          <td className="px-5 py-4">
+                            {applicant.linker ? (
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800">
+                                  {
+                                    applicant
+                                      .linker
+                                      .fullName
+                                  }
+                                </p>
+
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {
+                                    applicant
+                                      .linker
+                                      .email
+                                  }
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
+                                No Linker assigned
+                              </span>
+                            )}
+                          </td>
+
+
+                          <td className="px-5 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                                applicantHealthy
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}
+                            >
+                              {applicantHealthy
+                                ? 'Ready'
+                                : 'Needs attention'}
+                            </span>
+
+                            <p className="mt-2 text-[11px] text-slate-500">
+                              {
+                                applicant.accountStatus
+                              }{' '}
+                              ·{' '}
+                              {
+                                applicant.availability
+                              }
+                            </p>
+                          </td>
+
+
+                          <td className="px-5 py-4">
+                            <p className="text-sm font-bold text-slate-900">
+                              {applicant.target}
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {
+                                applicant.remaining
+                              }{' '}
+                              remaining
+                            </p>
+                          </td>
+
+
+                          <td className="min-w-[190px] px-5 py-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-semibold text-slate-700">
+                                {
+                                  applicant.completed
+                                }{' '}
+                                /{' '}
+                                {
+                                  applicant.target
+                                }
+                              </span>
+
+                              <span className="text-xs font-bold text-blue-700">
+                                {
+                                  applicant.progressPercent
+                                }
+                                %
+                              </span>
+                            </div>
+
+                            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 transition-all duration-700"
+                                style={{
+                                  width: `${Math.min(
+                                    100,
+                                    applicant.progressPercent ||
+                                      0
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 export default function ClientManagementWorkspace({
   mode = 'admin',
 }) {
@@ -2796,6 +3289,10 @@ export default function ClientManagementWorkspace({
               </DetailItem>
             )}
           </div>
+
+          <ClientServiceTeamPanel
+            clientId={selectedClient.id}
+          />
 
           <SubscriptionOperationsPanel
             clientId={selectedClient.id}
