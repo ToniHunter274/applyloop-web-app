@@ -55,7 +55,14 @@ async function getAssignments(req, res) {
   } = await supabase
     .from('client_job_requests')
     .select(
-      'client_id, status, created_at'
+      [
+        'id',
+        'client_id',
+        'status',
+        'reviewed_at',
+        'created_at',
+        'updated_at',
+      ].join(', ')
     )
     .eq(
       'submitted_by',
@@ -77,6 +84,175 @@ async function getAssignments(req, res) {
 
   const linkerRequests =
     linkerRequestRows || [];
+
+  const linkerRequestIds =
+    unique(
+      linkerRequests.map(
+        (request) => request.id
+      )
+    );
+
+  let sourcedApplicationRows = [];
+
+  if (linkerRequestIds.length > 0) {
+    const {
+      data: sourcedApplications,
+      error: sourcedApplicationsError,
+    } = await supabase
+      .from('applications')
+      .select(
+        [
+          'id',
+          'client_id',
+          'job_request_id',
+          'company',
+          'position',
+          'status',
+          'applied_at',
+          'job_url',
+        ].join(', ')
+      )
+      .in(
+        'job_request_id',
+        linkerRequestIds
+      )
+      .order('applied_at', {
+        ascending: false,
+      });
+
+    if (sourcedApplicationsError) {
+      console.error(
+        'Unable to load Linker-sourced application outcomes:',
+        sourcedApplicationsError
+      );
+
+      throw new ApiError(
+        500,
+        'Your Linker application outcomes could not be loaded.'
+      );
+    }
+
+    sourcedApplicationRows =
+      sourcedApplications || [];
+  }
+
+  const now =
+    Date.now();
+
+  const needsAttention =
+    linkerRequests.filter(
+      (request) => {
+        const isNew =
+          request.status === 'new';
+
+        const isInReview =
+          request.status ===
+          'in_review';
+
+        if (!isNew && !isInReview) {
+          return false;
+        }
+
+        const reference =
+          isInReview
+            ? request.reviewed_at ||
+              request.updated_at ||
+              request.created_at
+            : request.created_at;
+
+        const referenceTime =
+          new Date(reference).getTime();
+
+        if (
+          !Number.isFinite(
+            referenceTime
+          )
+        ) {
+          return false;
+        }
+
+        const ageHours =
+          (
+            now -
+            referenceTime
+          ) /
+          (
+            1000 *
+            60 *
+            60
+          );
+
+        return isNew
+          ? ageHours >= 24
+          : ageHours >= 48;
+      }
+    ).length;
+
+  const openOpportunities =
+    linkerRequests.filter(
+      (request) =>
+        request.status === 'new' ||
+        request.status ===
+          'in_review'
+    ).length;
+
+  const convertedApplications =
+    sourcedApplicationRows.length;
+
+  const conversionRate =
+    linkerRequests.length > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (
+              convertedApplications /
+              linkerRequests.length
+            ) * 100
+          )
+        )
+      : 0;
+
+  const sourcedInterviews =
+    sourcedApplicationRows.filter(
+      (application) =>
+        application.status ===
+        'Interview Scheduled'
+    ).length;
+
+  const sourcedOffers =
+    sourcedApplicationRows.filter(
+      (application) =>
+        application.status ===
+        'Offer Received'
+    ).length;
+
+  const sourcedRejected =
+    sourcedApplicationRows.filter(
+      (application) =>
+        application.status ===
+        'Rejected'
+    ).length;
+
+  const sourcedApplicationResults =
+    sourcedApplicationRows.map(
+      (application) => ({
+        id: application.id,
+        clientId:
+          application.client_id,
+        jobRequestId:
+          application.job_request_id,
+        company:
+          application.company,
+        position:
+          application.position,
+        status:
+          application.status,
+        appliedAt:
+          application.applied_at,
+        jobLink:
+          application.job_url || '',
+      })
+    );
 
   const todayStart =
     new Date();
@@ -122,6 +298,8 @@ async function getAssignments(req, res) {
       applicants: [],
       clients: [],
       applications: [],
+      sourcedApplications:
+        sourcedApplicationResults,
       summary: {
         assignedApplicants: 0,
         assignedClients: 0,
@@ -130,6 +308,16 @@ async function getAssignments(req, res) {
         linksSourced:
           linkerRequests.length,
         applicationInProgress,
+        convertedApplications,
+        conversionRate,
+        interviews:
+          sourcedInterviews,
+        offers:
+          sourcedOffers,
+        rejected:
+          sourcedRejected,
+        openOpportunities,
+        needsAttention,
       },
     });
   }
@@ -746,6 +934,8 @@ async function getAssignments(req, res) {
     clients: clientResults,
     applications:
       applicationResults,
+    sourcedApplications:
+      sourcedApplicationResults,
     summary: {
       assignedApplicants:
         applicantResults.length,
@@ -756,6 +946,16 @@ async function getAssignments(req, res) {
       linksSourced:
         linkerRequests.length,
       applicationInProgress,
+      convertedApplications,
+      conversionRate,
+      interviews:
+        sourcedInterviews,
+      offers:
+        sourcedOffers,
+      rejected:
+        sourcedRejected,
+      openOpportunities,
+      needsAttention,
     },
   });
 }

@@ -39,6 +39,7 @@ const emptyAssignmentData = {
   applicants: [],
   clients: [],
   applications: [],
+  sourcedApplications: [],
   summary: {
     assignedApplicants: 0,
     assignedClients: 0,
@@ -46,6 +47,13 @@ const emptyAssignmentData = {
     activeClients: 0,
     linksSourced: 0,
     applicationInProgress: 0,
+    convertedApplications: 0,
+    conversionRate: 0,
+    interviews: 0,
+    offers: 0,
+    rejected: 0,
+    openOpportunities: 0,
+    needsAttention: 0,
   },
 };
 
@@ -2706,7 +2714,6 @@ function PerformancePage({
   isLoading,
   error,
 }) {
-  const [ratingRevealed, setRatingRevealed] = useState(false);
   if (isLoading) {
     return <LoadingState />;
   }
@@ -2716,7 +2723,7 @@ function PerformancePage({
   }
 
   const applications =
-    data.applications || [];
+    data.sourcedApplications || [];
 
   const totalLinks =
     Number(
@@ -2724,67 +2731,41 @@ function PerformancePage({
     );
 
   const convertedLinks =
-    data.clients.reduce(
-      (total, client) =>
-        total +
-        Number(
-          client.completedLinks || 0
-        ),
-      0
+    Number(
+      data.summary
+        ?.convertedApplications || 0
+    );
+
+  const conversionRate =
+    Number(
+      data.summary?.conversionRate || 0
+    );
+
+  const totalInterviews =
+    Number(
+      data.summary?.interviews || 0
     );
 
   const totalOffers =
-    applications.filter(
-      (application) =>
-        application.status ===
-        'Offer Received'
-    ).length;
+    Number(
+      data.summary?.offers || 0
+    );
 
-  const averageQuality =
-    data.applicants.length
-      ? (
-          data.applicants.reduce(
-            (total, applicant) =>
-              total +
-              Number(
-                applicant.qualityRating ||
-                  0
-              ),
-            0
-          ) /
-          data.applicants.length
-        ).toFixed(1)
-      : '0.0';
+  const openOpportunities =
+    Number(
+      data.summary
+        ?.openOpportunities || 0
+    );
 
-  const conversionRate =
-    totalLinks > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (
-              convertedLinks /
-              totalLinks
-            ) * 100
-          )
-        )
-      : 0;
+  const needsAttention =
+    Number(
+      data.summary?.needsAttention || 0
+    );
 
-  const performanceLevel =
-    conversionRate >= 90
-      ? 'Diamond'
-      : conversionRate >= 75
-        ? 'Platinum'
-        : conversionRate >= 50
-          ? 'Gold'
-          : conversionRate >= 25
-            ? 'Silver'
-            : 'Bronze';
-
-  const linkerApplications =
-    applications.filter(
-      (application) =>
-        application.linkSource ===
-        'Linker'
+  const inReview =
+    Number(
+      data.summary
+        ?.applicationInProgress || 0
     );
 
   const getPeriodStats = (days) => {
@@ -2795,7 +2776,7 @@ function PerformancePage({
     );
 
     const periodApplications =
-      linkerApplications.filter(
+      applications.filter(
         (application) => {
           const date = new Date(
             application.appliedAt
@@ -2850,7 +2831,9 @@ function PerformancePage({
         }
       >
         <article>
-          <span>Total Links</span>
+          <span>
+            Opportunities Sourced
+          </span>
           <strong>{totalLinks}</strong>
           <small>
             Verified Linker submissions
@@ -2858,34 +2841,32 @@ function PerformancePage({
         </article>
 
         <article>
-          <span>Converted Links</span>
+          <span>
+            Converted Applications
+          </span>
           <strong>
             {convertedLinks}
           </strong>
           <small>
-            Recorded as applications
+            Applications from your links
           </small>
         </article>
 
         <article>
-          <span>Total Offers</span>
+          <span>Interviews</span>
+          <strong>
+            {totalInterviews}
+          </strong>
+          <small>
+            From Linker-sourced applications
+          </small>
+        </article>
+
+        <article>
+          <span>Offers</span>
           <strong>{totalOffers}</strong>
           <small>
-            Offers from assigned work
-          </small>
-        </article>
-
-        <article>
-          <span>Average Quality</span>
-          <strong>{ratingRevealed ? `${averageQuality}/5.0` : 'Concealed'}</strong>
-          <small>
-            <button
-              type="button"
-              onClick={() => setRatingRevealed((current) => !current)}
-              className="font-semibold text-blue-700 hover:text-blue-900"
-            >
-              {ratingRevealed ? 'Hide rating' : 'Show rating'}
-            </button>
+            From Linker-sourced applications
           </small>
         </article>
       </section>
@@ -2895,7 +2876,7 @@ function PerformancePage({
           styles.performanceLevel
         }
       >
-        <h2>Performance Level</h2>
+        <h2>Conversion Overview</h2>
 
         <div
           className={
@@ -2904,16 +2885,19 @@ function PerformancePage({
         >
           <div>
             <strong>
-              {performanceLevel}
+              {conversionRate}%
             </strong>
             <span>
-              {conversionRate}% link
-              conversion
+              {convertedLinks} of{' '}
+              {totalLinks} opportunities
+              converted
             </span>
           </div>
 
           <small>
-            {convertedLinks} converted
+            {openOpportunities} open
+            {' · '}
+            {needsAttention} need attention
           </small>
         </div>
 
@@ -2935,26 +2919,17 @@ function PerformancePage({
             styles.performanceLabels
           }
         >
-          {[
-            'Bronze',
-            'Silver',
-            'Gold',
-            'Platinum',
-            'Diamond',
-          ].map((level) => (
-            <span
-              key={level}
-              className={
-                level ===
-                performanceLevel
-                  ? styles
-                      .performanceCurrent
-                  : undefined
-              }
-            >
-              {level}
-            </span>
-          ))}
+          <span>
+            {inReview} in review
+          </span>
+
+          <span>
+            {totalInterviews} interviews
+          </span>
+
+          <span>
+            {totalOffers} offers
+          </span>
         </div>
       </section>
 
@@ -2974,7 +2949,7 @@ function PerformancePage({
                 <dl>
                   <div>
                     <dt>
-                      Links Processed
+                      Applications
                     </dt>
                     <dd>
                       {values.total}
@@ -2983,7 +2958,7 @@ function PerformancePage({
 
                   <div>
                     <dt>
-                      Successful Outcomes
+                      Interview / Offer
                     </dt>
                     <dd>
                       {values.successful}
@@ -2991,7 +2966,7 @@ function PerformancePage({
                   </div>
 
                   <div>
-                    <dt>Declined</dt>
+                    <dt>Rejected</dt>
                     <dd>
                       {values.declined}
                     </dd>
@@ -3351,7 +3326,10 @@ export default function LinkerPortal() {
         if (
           !Array.isArray(result.applicants) ||
           !Array.isArray(result.clients) ||
-          !Array.isArray(result.applications)
+          !Array.isArray(result.applications) ||
+          !Array.isArray(
+            result.sourcedApplications
+          )
         ) {
           throw new Error(
             'The assignment response could not be verified.'
@@ -3366,6 +3344,8 @@ export default function LinkerPortal() {
               result.clients,
             applications:
               result.applications,
+            sourcedApplications:
+              result.sourcedApplications,
             summary: {
               assignedApplicants:
                 Number(
@@ -3401,6 +3381,48 @@ export default function LinkerPortal() {
                 Number(
                   result.summary
                     ?.applicationInProgress ||
+                    0
+                ),
+              convertedApplications:
+                Number(
+                  result.summary
+                    ?.convertedApplications ||
+                    0
+                ),
+              conversionRate:
+                Number(
+                  result.summary
+                    ?.conversionRate ||
+                    0
+                ),
+              interviews:
+                Number(
+                  result.summary
+                    ?.interviews ||
+                    0
+                ),
+              offers:
+                Number(
+                  result.summary
+                    ?.offers ||
+                    0
+                ),
+              rejected:
+                Number(
+                  result.summary
+                    ?.rejected ||
+                    0
+                ),
+              openOpportunities:
+                Number(
+                  result.summary
+                    ?.openOpportunities ||
+                    0
+                ),
+              needsAttention:
+                Number(
+                  result.summary
+                    ?.needsAttention ||
                     0
                 ),
             },
