@@ -161,6 +161,7 @@ async function loadApplication(
     .select(`
       id,
       client_id,
+      job_request_id,
       company,
       position,
       location,
@@ -240,6 +241,9 @@ async function getApplication(
         application.id,
       clientId:
         application.client_id,
+      jobRequestId:
+        application.job_request_id ||
+        null,
       company:
         application.company,
       position:
@@ -532,6 +536,7 @@ async function updateApplication(
     .select(`
       id,
       client_id,
+      job_request_id,
       company,
       position,
       location,
@@ -575,6 +580,9 @@ async function updateApplication(
         application.id,
       clientId:
         application.client_id,
+      jobRequestId:
+        application.job_request_id ||
+        null,
       status:
         application.status,
       linkSource:

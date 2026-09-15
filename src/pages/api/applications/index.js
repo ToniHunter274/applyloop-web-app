@@ -137,6 +137,9 @@ function formatApplication(
         .toUpperCase()}`,
     clientId:
       application.client_id,
+    jobRequestId:
+      application.job_request_id ||
+      null,
     client:
       clientName ||
       'Client',
@@ -627,6 +630,7 @@ async function listApplications(
     .select(`
       id,
       client_id,
+      job_request_id,
       company,
       position,
       location,
@@ -1069,6 +1073,13 @@ async function createApplication(
     );
   }
 
+  const responseApplication = {
+    ...application,
+    job_request_id:
+      jobRequestId ||
+      null,
+  };
+
   const {
     data: clientProfile,
   } = await supabase
@@ -1085,7 +1096,7 @@ async function createApplication(
       'Application recorded successfully.',
     application:
       formatApplication(
-        application,
+        responseApplication,
         clientProfile?.full_name
       ),
   });
