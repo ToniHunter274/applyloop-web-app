@@ -26,6 +26,11 @@ export default function AdminPortal() {
   } = useAuth();
 
   const [section, setSection] = useState('clients');
+
+  const [
+    workforceContext,
+    setWorkforceContext,
+  ] = useState(null);
   const [
     applicantRefreshKey,
     setApplicantRefreshKey,
@@ -220,8 +225,69 @@ export default function AdminPortal() {
           </header>
 
           <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
+            {workforceContext &&
+              section !== 'clients' && (
+              <div className="mb-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-5 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-600">
+                      Management Context
+                    </p>
+
+                    <p className="mt-1 text-sm font-bold text-slate-900">
+                      {workforceContext.clientName ||
+                        'Client service team'}
+                    </p>
+
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      {workforceContext.applicantName
+                        ? `Focus: ${workforceContext.applicantName}. `
+                        : ''}
+                      {workforceContext.reason ===
+                      'linker-coverage'
+                        ? 'Resolve missing Linker coverage for this Applicant.'
+                        : workforceContext.reason ===
+                            'applicant-health'
+                          ? 'Review this Applicant’s workforce status before continuing Client work.'
+                          : 'Manage the Applicants serving this Client.'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSection(
+                        'clients'
+                      );
+                      setWorkforceContext(
+                        null
+                      );
+                    }}
+                    className="inline-flex flex-shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-50"
+                  >
+                    Back to Client Management
+                  </button>
+                </div>
+              </div>
+            )}
+
             {section === 'clients' ? (
-              <ClientManagementWorkspace mode="admin" />
+              <ClientManagementWorkspace
+                mode="admin"
+                onAdminIntervention={(
+                  targetSection,
+                  context
+                ) => {
+                  setWorkforceContext({
+                    targetSection,
+                    ...context,
+                  });
+
+                  setSection(
+                    targetSection
+                  );
+                }}
+              />
             ) : section === 'linkers' ? (
               <LinkerManagementPage />
             ) : (

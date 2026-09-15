@@ -1028,7 +1028,10 @@ function TargetAllocationPanel({
 
 
   return (
-    <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7">
+    <div
+      id={`client-target-allocation-${clientId}`}
+      className="mx-6 mb-7 scroll-mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7"
+    >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">
@@ -1375,7 +1378,30 @@ function ClientServiceTeamPanel({
   isLoading,
   error,
   onRetry,
+  clientId,
+  clientName,
+  onAdminIntervention,
 }) {
+  const intervene = (
+    section,
+    context = {}
+  ) => {
+    if (
+      typeof onAdminIntervention !==
+      'function'
+    ) {
+      return;
+    }
+
+    onAdminIntervention(
+      section,
+      {
+        clientId,
+        clientName,
+        ...context,
+      }
+    );
+  };
   if (
     isLoading &&
     !allocation
@@ -1599,6 +1625,88 @@ function ClientServiceTeamPanel({
         </div>
 
 
+        {typeof onAdminIntervention ===
+          'function' && (
+          <div className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="mr-auto min-w-[180px] px-2 py-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                Management intervention
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Act on workforce issues without
+                entering the operational workflow.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                intervene(
+                  'applicants',
+                  {
+                    reason:
+                      'client-team',
+                  }
+                )
+              }
+              className="rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-50"
+            >
+              Manage Applicant Team
+            </button>
+
+            {uncoveredApplicants.length >
+              0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  intervene(
+                    'linkers',
+                    {
+                      reason:
+                        'linker-coverage',
+                      applicantId:
+                        uncoveredApplicants[
+                          0
+                        ]?.id,
+                      applicantName:
+                        uncoveredApplicants[
+                          0
+                        ]?.fullName,
+                    }
+                  )
+                }
+                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-100"
+              >
+                Manage Linker Coverage
+              </button>
+            )}
+
+            {(allocation?.unallocated ||
+              0) > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  document
+                    .getElementById(
+                      `client-target-allocation-${clientId}`
+                    )
+                    ?.scrollIntoView({
+                      behavior:
+                        'smooth',
+                      block:
+                        'start',
+                    });
+                }}
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100"
+              >
+                Adjust Targets
+              </button>
+            )}
+          </div>
+        )}
+
+
         {uncoveredApplicants.length > 0 && (
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
             <p className="text-sm font-bold text-amber-900">
@@ -1648,6 +1756,7 @@ function ClientServiceTeamPanel({
                       'WORKFORCE STATUS',
                       'PERIOD TARGET',
                       'DELIVERY',
+                      'ACTION',
                     ].map((heading) => (
                       <th
                         key={heading}
@@ -1783,6 +1892,54 @@ function ClientServiceTeamPanel({
                               />
                             </div>
                           </td>
+
+                          <td className="px-5 py-4">
+                            {!applicant.linker ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  intervene(
+                                    'linkers',
+                                    {
+                                      reason:
+                                        'linker-coverage',
+                                      applicantId:
+                                        applicant.id,
+                                      applicantName:
+                                        applicant.fullName,
+                                    }
+                                  )
+                                }
+                                className="whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800 transition hover:bg-amber-100"
+                              >
+                                Manage Linker
+                              </button>
+                            ) : !applicantHealthy ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  intervene(
+                                    'applicants',
+                                    {
+                                      reason:
+                                        'applicant-health',
+                                      applicantId:
+                                        applicant.id,
+                                      applicantName:
+                                        applicant.fullName,
+                                    }
+                                  )
+                                }
+                                className="whitespace-nowrap rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-700 transition hover:bg-blue-100"
+                              >
+                                Review Applicant
+                              </button>
+                            ) : (
+                              <span className="text-[11px] font-semibold text-emerald-600">
+                                No action needed
+                              </span>
+                            )}
+                          </td>
                         </tr>
                       );
                     }
@@ -1800,7 +1957,9 @@ function ClientServiceTeamPanel({
 
 function ClientServiceManagementSections({
   clientId,
+  clientName,
   canEdit = false,
+  onAdminIntervention,
 }) {
   const {
     allocation,
@@ -1820,6 +1979,11 @@ function ClientServiceManagementSections({
         isLoading={isLoading}
         error={loadError}
         onRetry={loadAllocation}
+        clientId={clientId}
+        clientName={clientName}
+        onAdminIntervention={
+          onAdminIntervention
+        }
       />
 
       <SubscriptionOperationsPanel
@@ -1843,6 +2007,7 @@ function ClientServiceManagementSections({
 
 export default function ClientManagementWorkspace({
   mode = 'admin',
+  onAdminIntervention = null,
 }) {
   const router = useRouter();
 
@@ -3315,10 +3480,16 @@ export default function ClientManagementWorkspace({
           <ClientServiceManagementSections
             key={selectedClient.id}
             clientId={selectedClient.id}
+            clientName={
+              selectedClient.fullName
+            }
             canEdit={[
               'admin',
               'operations',
             ].includes(mode)}
+            onAdminIntervention={
+              onAdminIntervention
+            }
           />
 
           <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:mx-8 sm:p-7">
