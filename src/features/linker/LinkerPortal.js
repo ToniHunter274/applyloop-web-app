@@ -45,7 +45,7 @@ const emptyAssignmentData = {
     linksFoundToday: 0,
     activeClients: 0,
     linksSourced: 0,
-    pendingReview: 0,
+    applicationInProgress: 0,
   },
 };
 
@@ -210,9 +210,9 @@ function DashboardPage({
       'All Linker submissions',
     ],
     [
-      'Pending Review',
-      data.summary.pendingReview,
-      'Awaiting Applicant action',
+      'Application in Progress',
+      data.summary.applicationInProgress,
+      'Applicant is working on these links',
     ],
   ];
 
@@ -1978,6 +1978,70 @@ function JobLinksPage({ data }) {
   const clientNames = new Map(
     data.clients.map((client) => [client.id, client.fullName])
   );
+
+  const applicationsByJobRequestId =
+    new Map(
+      data.applications
+        .filter(
+          (application) =>
+            application.jobRequestId
+        )
+        .map(
+          (application) => [
+            application.jobRequestId,
+            application,
+          ]
+        )
+    );
+
+  const getRequestDisplayStatus =
+    (request) => {
+      if (request.status === 'new') {
+        return 'Sent';
+      }
+
+      if (
+        request.status ===
+        'in_review'
+      ) {
+        return 'Application in Progress';
+      }
+
+      if (
+        request.status ===
+        'converted'
+      ) {
+        return (
+          applicationsByJobRequestId.get(
+            request.id
+          )?.status ||
+          'Application Recorded'
+        );
+      }
+
+      if (
+        request.status ===
+        'dismissed'
+      ) {
+        return 'Closed';
+      }
+
+      if (
+        request.status ===
+        'withdrawn'
+      ) {
+        return 'Withdrawn';
+      }
+
+      return String(
+        request.status ||
+          'Sent'
+      ).replace(
+        /_/g,
+        ' '
+      );
+    };
+
   const term = search.trim().toLowerCase();
   const visibleRequests = requests.filter((request) => {
     const matchesStatus =
@@ -2019,7 +2083,7 @@ function JobLinksPage({ data }) {
 
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Job-link status">
           {[
-            ['active', 'Awaiting Applicant'],
+            ['active', 'In Progress'],
             ['withdrawn', 'Withdrawn'],
             ['completed', 'Completed'],
             ['all', 'All'],
@@ -2072,23 +2136,9 @@ function JobLinksPage({ data }) {
                     </p>
                   </div>
                   <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600">
-                    {request.status === 'new'
-                      ? 'Sent'
-                      : request.status === 'in_review'
-                        ? 'In Review'
-                        : request.status === 'converted'
-                          ? 'Application Recorded'
-                          : request.status === 'dismissed'
-                            ? 'Closed'
-                            : request.status === 'withdrawn'
-                              ? 'Withdrawn'
-                              : String(
-                                  request.status ||
-                                    'Sent'
-                                ).replace(
-                                  /_/g,
-                                  ' '
-                                )}
+                    {getRequestDisplayStatus(
+                      request
+                    )}
                   </span>
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
@@ -3347,10 +3397,10 @@ export default function LinkerPortal() {
                     ?.linksSourced ||
                     0
                 ),
-              pendingReview:
+              applicationInProgress:
                 Number(
                   result.summary
-                    ?.pendingReview ||
+                    ?.applicationInProgress ||
                     0
                 ),
             },

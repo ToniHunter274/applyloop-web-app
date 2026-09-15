@@ -97,12 +97,11 @@ async function getAssignments(req, res) {
         todayStart.getTime()
     ).length;
 
-  const pendingReview =
+  const applicationInProgress =
     linkerRequests.filter(
       (request) =>
-        ['new', 'in_review'].includes(
-          request.status
-        )
+        request.status ===
+        'in_review'
     ).length;
 
   const applicantIds =
@@ -130,7 +129,7 @@ async function getAssignments(req, res) {
         activeClients: 0,
         linksSourced:
           linkerRequests.length,
-        pendingReview,
+        applicationInProgress,
       },
     });
   }
@@ -363,6 +362,7 @@ async function getAssignments(req, res) {
         [
           'id',
           'client_id',
+          'job_request_id',
           'company',
           'position',
           'status',
@@ -706,6 +706,9 @@ async function getAssignments(req, res) {
         id: application.id,
         clientId:
           application.client_id,
+        jobRequestId:
+          application.job_request_id ||
+          null,
         clientName:
           clientNamesById.get(
             application.client_id
@@ -752,7 +755,7 @@ async function getAssignments(req, res) {
       activeClients,
       linksSourced:
         linkerRequests.length,
-      pendingReview,
+      applicationInProgress,
     },
   });
 }
