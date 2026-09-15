@@ -29,6 +29,47 @@ function formatDate(value) {
   });
 }
 
+function getRequestSourceLabel(request) {
+  if (request.requestSource === 'linker') {
+    return 'Sourced by Linker';
+  }
+
+  if (request.requestSource === 'client') {
+    return 'Added by you';
+  }
+
+  return 'Shared opportunity';
+}
+
+function getRequestDisplayStatus(request) {
+  if (request.status === 'new') {
+    return 'Sent';
+  }
+
+  if (request.status === 'in_review') {
+    return 'Application in Progress';
+  }
+
+  if (request.status === 'converted') {
+    return (
+      request.applicationStatus ||
+      'Application Recorded'
+    );
+  }
+
+  if (request.status === 'dismissed') {
+    return 'Closed';
+  }
+
+  if (request.status === 'withdrawn') {
+    return 'Withdrawn';
+  }
+
+  return String(
+    request.status || 'Sent'
+  ).replace(/_/g, ' ');
+}
+
 export default function ClientJobLinks() {
   const [requests, setRequests] = useState([]);
   const [view, setView] = useState('active');
@@ -101,7 +142,13 @@ export default function ClientJobLinks() {
             : request.status === view);
       const matchesSearch =
         !term ||
-        [request.jobLink, request.comment, request.status].some((value) =>
+        [
+          request.jobLink,
+          request.comment,
+          request.status,
+          getRequestDisplayStatus(request),
+          getRequestSourceLabel(request),
+        ].some((value) =>
           String(value || '').toLowerCase().includes(term)
         );
 
@@ -112,6 +159,7 @@ export default function ClientJobLinks() {
   const withdrawRequest = async (request) => {
     if (
       withdrawingId ||
+      request.requestSource !== 'client' ||
       !['new', 'in_review'].includes(request.status) ||
       !window.confirm(
         'Withdraw this job link? The Applicant will no longer be able to start an application from it.'
@@ -159,10 +207,10 @@ export default function ClientJobLinks() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">
-            My Job Links
+            Job Links
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Submit opportunities and follow each link without mixing them with applications.
+            View opportunities added by you or sourced by your Linker and follow their application progress.
           </p>
         </div>
         <button
@@ -180,7 +228,7 @@ export default function ClientJobLinks() {
 
       <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Job-link status">
         {[
-          ['active', 'Active'],
+          ['active', 'In Progress'],
           ['withdrawn', 'Withdrawn'],
           ['completed', 'Completed'],
           ['all', 'All'],
@@ -228,7 +276,7 @@ export default function ClientJobLinks() {
                     <FiLink />
                   </span>
                   <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {String(request.status || 'new').replace(/_/g, ' ')}
+                    {getRequestDisplayStatus(request)}
                   </span>
                 </div>
                 <a
@@ -244,6 +292,9 @@ export default function ClientJobLinks() {
                     ? `Withdrawn ${formatDate(request.withdrawnAt)}`
                     : `Submitted ${formatDate(request.createdAt)}`}
                 </p>
+                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {getRequestSourceLabel(request)}
+                </p>
                 {request.comment && (
                   <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                     {request.comment}
@@ -258,7 +309,8 @@ export default function ClientJobLinks() {
                   >
                     Open Job <FiExternalLink />
                   </a>
-                  {['new', 'in_review'].includes(request.status) && (
+                  {request.requestSource === 'client' &&
+                    ['new', 'in_review'].includes(request.status) && (
                     <button
                       type="button"
                       disabled={Boolean(withdrawingId)}

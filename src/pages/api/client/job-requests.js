@@ -161,13 +161,13 @@ export default async function handler(req, res) {
           job_url,
           comment,
           status,
+          request_source,
           converted_application_id,
           reviewed_at,
           created_at,
           updated_at
         `)
         .eq('client_id', client.id)
-        .eq('request_source', 'client')
         .order('created_at', {
           ascending: false,
         })
@@ -180,22 +180,83 @@ export default async function handler(req, res) {
         );
       }
 
+      const requestIds = (requestRows || []).map(
+        (request) => request.id
+      );
+
+      let applicationsByJobRequestId =
+        new Map();
+
+      if (requestIds.length) {
+        const {
+          data: applicationRows,
+          error: applicationsError,
+        } = await supabase
+          .from('applications')
+          .select(`
+            id,
+            job_request_id,
+            status
+          `)
+          .eq('client_id', client.id)
+          .in('job_request_id', requestIds);
+
+        if (applicationsError) {
+          throw new ApiError(
+            500,
+            'Application progress for your job links could not be loaded.'
+          );
+        }
+
+        applicationsByJobRequestId =
+          new Map(
+            (applicationRows || [])
+              .filter(
+                (application) =>
+                  application.job_request_id
+              )
+              .map(
+                (application) => [
+                  application.job_request_id,
+                  application,
+                ]
+              )
+          );
+      }
+
       return res.status(200).json({
         requests: (requestRows || []).map(
-          (request) => ({
-            id: request.id,
-            jobLink: request.job_url,
-            comment: request.comment,
-            status: request.status,
-            convertedApplicationId:
-              request.converted_application_id,
-            reviewedAt:
-              request.reviewed_at,
-            createdAt:
-              request.created_at,
-            updatedAt:
-              request.updated_at,
-          })
+          (request) => {
+            const linkedApplication =
+              applicationsByJobRequestId.get(
+                request.id
+              );
+
+            return {
+              id: request.id,
+              jobLink: request.job_url,
+              comment: request.comment,
+              status: request.status,
+              requestSource:
+                request.request_source ||
+                null,
+              convertedApplicationId:
+                request.converted_application_id,
+              linkedApplicationId:
+                linkedApplication?.id ||
+                request.converted_application_id ||
+                null,
+              applicationStatus:
+                linkedApplication?.status ||
+                null,
+              reviewedAt:
+                request.reviewed_at,
+              createdAt:
+                request.created_at,
+              updatedAt:
+                request.updated_at,
+            };
+          }
         ),
       });
     }
@@ -289,6 +350,7 @@ export default async function handler(req, res) {
         jobLink: request.job_url,
         comment: request.comment,
         status: request.status,
+        requestSource: 'client',
         createdAt: request.created_at,
       },
     });
