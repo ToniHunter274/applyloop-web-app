@@ -651,24 +651,133 @@ function MetricCard({ label, value, tone }) {
   );
 }
 
-function TargetAllocationPanel({
-  clientId,
-  canEdit = false,
-}) {
+function useClientAllocation(clientId) {
   const [
     allocation,
     setAllocation,
   ] = useState(null);
 
   const [
-    draftTargets,
-    setDraftTargets,
-  ] = useState({});
-
-  const [
     isLoading,
     setIsLoading,
   ] = useState(true);
+
+  const [
+    loadError,
+    setLoadError,
+  ] = useState('');
+
+
+  const loadAllocation =
+    useCallback(
+      async () => {
+        if (!clientId) {
+          return;
+        }
+
+        setIsLoading(true);
+        setLoadError('');
+
+        try {
+          const accessToken =
+            await getAccessToken();
+
+          const response =
+            await fetch(
+              `/api/admin/clients/${clientId}/targets`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Client allocation could not be loaded.'
+            );
+          }
+
+          setAllocation(
+            result.allocation
+          );
+        } catch (loadFailure) {
+          setLoadError(
+            loadFailure?.message ||
+              'Client allocation could not be loaded.'
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      [clientId]
+    );
+
+
+  useEffect(() => {
+    loadAllocation();
+  }, [loadAllocation]);
+
+
+  useEffect(() => {
+    const handleSubscriptionUpdate =
+      (event) => {
+        if (
+          !event.detail?.clientId ||
+          event.detail.clientId ===
+            clientId
+        ) {
+          loadAllocation();
+        }
+      };
+
+    window.addEventListener(
+      'applyloop:subscription-updated',
+      handleSubscriptionUpdate
+    );
+
+    return () => {
+      window.removeEventListener(
+        'applyloop:subscription-updated',
+        handleSubscriptionUpdate
+      );
+    };
+  }, [
+    clientId,
+    loadAllocation,
+  ]);
+
+
+  return {
+    allocation,
+    setAllocation,
+    isLoading,
+    loadError,
+    loadAllocation,
+  };
+}
+
+
+function TargetAllocationPanel({
+  clientId,
+  canEdit = false,
+  allocation,
+  setAllocation,
+  isLoading,
+  loadError,
+  loadAllocation,
+}) {
+  const [
+    draftTargets,
+    setDraftTargets,
+  ] = useState({});
 
   const [
     isSaving,
@@ -711,93 +820,25 @@ function TargetAllocationPanel({
   };
 
 
-  const loadAllocation =
-    useCallback(
-      async () => {
-        if (!clientId) {
-          return;
-        }
-
-        setIsLoading(true);
-        setError('');
-        setSuccessMessage('');
-
-        try {
-          const accessToken =
-            await getAccessToken();
-
-          const response =
-            await fetch(
-              `/api/admin/clients/${clientId}/targets`,
-              {
-                headers: {
-                  Authorization:
-                    `Bearer ${accessToken}`,
-                },
-              }
-            );
-
-          const result =
-            await response
-              .json()
-              .catch(() => ({}));
-
-          if (!response.ok) {
-            throw new Error(
-              result.error ||
-                'Applicant targets could not be loaded.'
-            );
-          }
-
-          applyAllocation(
-            result.allocation
-          );
-        } catch (
-          loadError
-        ) {
-          setError(
-            loadError?.message ||
-              'Applicant targets could not be loaded.'
-          );
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [clientId]
-    );
-
-
   useEffect(() => {
-    loadAllocation();
-  }, [loadAllocation]);
+    if (!allocation) {
+      setDraftTargets({});
+      return;
+    }
 
-  useEffect(() => {
-    const handleSubscriptionUpdate =
-      (event) => {
-        if (
-          !event.detail?.clientId ||
-          event.detail.clientId ===
-            clientId
-        ) {
-          loadAllocation();
-        }
-      };
-
-    window.addEventListener(
-      'applyloop:subscription-updated',
-      handleSubscriptionUpdate
+    setDraftTargets(
+      Object.fromEntries(
+        allocation.applicants.map(
+          (applicant) => [
+            applicant.id,
+            String(
+              applicant.target || 0
+            ),
+          ]
+        )
+      )
     );
-
-    return () => {
-      window.removeEventListener(
-        'applyloop:subscription-updated',
-        handleSubscriptionUpdate
-      );
-    };
-  }, [
-    clientId,
-    loadAllocation,
-  ]);
+  }, [allocation]);
 
 
   const draftTotal =
@@ -939,7 +980,10 @@ function TargetAllocationPanel({
   };
 
 
-  if (isLoading) {
+  if (
+    isLoading &&
+    !allocation
+  ) {
     return (
       <div className="mx-6 mb-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:mx-8">
         <div className="flex items-center gap-3">
@@ -955,13 +999,13 @@ function TargetAllocationPanel({
 
 
   if (
-    error &&
+    loadError &&
     !allocation
   ) {
     return (
       <div className="mx-6 mb-7 rounded-3xl border border-red-200 bg-red-50 p-6 sm:mx-8">
         <p className="text-sm font-semibold text-red-700">
-          {error}
+          {loadError}
         </p>
 
         <button
@@ -1327,83 +1371,15 @@ function TargetAllocationPanel({
 
 
 function ClientServiceTeamPanel({
-  clientId,
+  allocation,
+  isLoading,
+  error,
+  onRetry,
 }) {
-  const [
-    allocation,
-    setAllocation,
-  ] = useState(null);
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
-
-  const [
-    error,
-    setError,
-  ] = useState('');
-
-
-  const loadTeam =
-    useCallback(
-      async () => {
-        if (!clientId) {
-          return;
-        }
-
-        setIsLoading(true);
-        setError('');
-
-        try {
-          const accessToken =
-            await getAccessToken();
-
-          const response =
-            await fetch(
-              `/api/admin/clients/${clientId}/targets`,
-              {
-                headers: {
-                  Authorization:
-                    `Bearer ${accessToken}`,
-                },
-              }
-            );
-
-          const result =
-            await response
-              .json()
-              .catch(() => ({}));
-
-          if (!response.ok) {
-            throw new Error(
-              result.error ||
-                'The Client service team could not be loaded.'
-            );
-          }
-
-          setAllocation(
-            result.allocation
-          );
-        } catch (loadError) {
-          setError(
-            loadError?.message ||
-              'The Client service team could not be loaded.'
-          );
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [clientId]
-    );
-
-
-  useEffect(() => {
-    loadTeam();
-  }, [loadTeam]);
-
-
-  if (isLoading) {
+  if (
+    isLoading &&
+    !allocation
+  ) {
     return (
       <div className="mx-6 mb-7 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm sm:mx-8">
         <div className="animate-pulse p-6 sm:p-7">
@@ -1423,7 +1399,10 @@ function ClientServiceTeamPanel({
   }
 
 
-  if (error) {
+  if (
+    error &&
+    !allocation
+  ) {
     return (
       <div className="mx-6 mb-7 rounded-3xl border border-red-200 bg-red-50 p-6 sm:mx-8">
         <p className="text-sm font-bold text-red-700">
@@ -1436,7 +1415,7 @@ function ClientServiceTeamPanel({
 
         <button
           type="button"
-          onClick={loadTeam}
+          onClick={onRetry}
           className="mt-4 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100"
         >
           Try again
@@ -1815,6 +1794,49 @@ function ClientServiceTeamPanel({
         )}
       </div>
     </div>
+  );
+}
+
+
+function ClientServiceManagementSections({
+  clientId,
+  canEdit = false,
+}) {
+  const {
+    allocation,
+    setAllocation,
+    isLoading,
+    loadError,
+    loadAllocation,
+  } = useClientAllocation(
+    clientId
+  );
+
+
+  return (
+    <>
+      <ClientServiceTeamPanel
+        allocation={allocation}
+        isLoading={isLoading}
+        error={loadError}
+        onRetry={loadAllocation}
+      />
+
+      <SubscriptionOperationsPanel
+        clientId={clientId}
+        canEdit={canEdit}
+      />
+
+      <TargetAllocationPanel
+        clientId={clientId}
+        canEdit={canEdit}
+        allocation={allocation}
+        setAllocation={setAllocation}
+        isLoading={isLoading}
+        loadError={loadError}
+        loadAllocation={loadAllocation}
+      />
+    </>
   );
 }
 
@@ -3290,19 +3312,8 @@ export default function ClientManagementWorkspace({
             )}
           </div>
 
-          <ClientServiceTeamPanel
-            clientId={selectedClient.id}
-          />
-
-          <SubscriptionOperationsPanel
-            clientId={selectedClient.id}
-            canEdit={[
-              'admin',
-              'operations',
-            ].includes(mode)}
-          />
-
-          <TargetAllocationPanel
+          <ClientServiceManagementSections
+            key={selectedClient.id}
             clientId={selectedClient.id}
             canEdit={[
               'admin',
