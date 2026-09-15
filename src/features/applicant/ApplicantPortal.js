@@ -643,7 +643,11 @@ function Dashboard({
   );
 }
 
-function JobLinksPage({ clients, workshopHref }) {
+function JobLinksPage({
+  clients,
+  workshopHref,
+  onOpenApplication,
+}) {
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
@@ -934,6 +938,24 @@ function JobLinksPage({ clients, workshopHref }) {
                         Start Application
                       </Link>
                     )}
+
+                    {request.status === 'converted' &&
+                      request.convertedApplicationId && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenApplication?.({
+                              id:
+                                request.convertedApplicationId,
+                              clientId:
+                                request.clientId,
+                            })
+                          }
+                          className="rounded-xl bg-[#1E50C3] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1A45A7]"
+                        >
+                          Open Application
+                        </button>
+                      )}
                   </div>
                 </div>
               </article>
@@ -4467,6 +4489,15 @@ export default function ApplicantPortal() {
           'Application recorded in the client database.'
         );
 
+        if (
+          jobRequestId &&
+          result.application
+        ) {
+          openApplication(
+            result.application
+          );
+        }
+
         return true;
       } catch (error) {
         setToast(
@@ -4514,6 +4545,9 @@ export default function ApplicantPortal() {
           getApplicantRoute(
             '/applicant/workshop'
           )
+        }
+        onOpenApplication={
+          openApplication
         }
       />
     );
