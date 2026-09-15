@@ -2994,7 +2994,7 @@ export function ApplicantsManagementPage({
                         'ASSIGNED CLIENTS',
                         'STATUS',
                         'ACTIVE TASKS',
-                        'QUALITY RATING',
+                        'CLIENT RATING',
                         'COMPLETION RATE',
                         'ACTION',
                       ].map((heading) => (
@@ -3032,6 +3032,15 @@ export function ApplicantsManagementPage({
                                 applicant.qualityRating ||
                                   0
                               )
+                            )
+                          );
+
+                        const ratingCount =
+                          Math.max(
+                            0,
+                            Number(
+                              applicant.ratingCount ||
+                                0
                             )
                           );
 
@@ -3223,17 +3232,33 @@ export function ApplicantsManagementPage({
                             </td>
 
                             <td className="px-5 py-5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-sm font-bold text-slate-900">
-                                  {qualityRating.toFixed(
-                                    1
-                                  )}
-                                </span>
+                              {ratingCount > 0 ? (
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-bold text-slate-900">
+                                      {qualityRating.toFixed(
+                                        1
+                                      )}
+                                    </span>
 
-                                <span className="text-base text-amber-500">
-                                  ★
+                                    <span className="text-base text-amber-500">
+                                      ★
+                                    </span>
+                                  </div>
+
+                                  <span className="mt-1 block text-[11px] text-slate-500">
+                                    {ratingCount}{' '}
+                                    Client rating
+                                    {ratingCount === 1
+                                      ? ''
+                                      : 's'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs font-medium text-slate-400">
+                                  No ratings yet
                                 </span>
-                              </div>
+                              )}
                             </td>
 
                             <td className="min-w-[190px] px-5 py-5">
@@ -5580,6 +5605,13 @@ function WorkerPerformanceModal({
     )
   );
 
+  const ratingCount = Math.max(
+    0,
+    Number(
+      applicant.ratingCount || 0
+    )
+  );
+
   const initials = String(
     applicant.fullName || 'Applicant'
   )
@@ -5640,10 +5672,16 @@ function WorkerPerformanceModal({
         'text-emerald-700',
     },
     {
-      label: 'Quality Rating',
-      value: `${qualityRating.toFixed(
-        1
-      )}/5.0`,
+      label:
+        ratingCount > 0
+          ? `Client Rating (${ratingCount})`
+          : 'Client Rating',
+      value:
+        ratingCount > 0
+          ? `${qualityRating.toFixed(
+              1
+            )}/5.0`
+          : 'Not rated',
       icon: HiOutlineLightBulb,
       card:
         'border-amber-200 bg-amber-50/70',
