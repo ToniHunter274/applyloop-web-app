@@ -5,6 +5,9 @@ import {
 import {
   getClientServiceState,
 } from '../../../lib/subscriptions/clientServiceState';
+import {
+  findDuplicateJobLink,
+} from '../../../lib/jobs/jobLinkDeduplication';
 
 const APPLICATION_STATUSES =
   new Set([
@@ -846,6 +849,102 @@ async function createApplication(
   // Client requests use the conversion RPC, which preserves Client source.
   const linkSource = 'Applicant';
 
+  const directJobUrl =
+    jobRequestId
+      ? ''
+      : String(
+          req.body?.jobUrl ||
+          ''
+        ).trim();
+
+  if (
+    !jobRequestId &&
+    directJobUrl
+  ) {
+    if (directJobUrl.length > 2000) {
+      throw new PortalApiError(
+        400,
+        'The job link is too long.'
+      );
+    }
+
+    let parsedJobUrl;
+
+    try {
+      parsedJobUrl =
+        new URL(
+          directJobUrl
+        );
+    } catch {
+      throw new PortalApiError(
+        400,
+        'Enter a valid job posting URL.'
+      );
+    }
+
+    if (
+      ![
+        'http:',
+        'https:',
+      ].includes(
+        parsedJobUrl.protocol
+      )
+    ) {
+      throw new PortalApiError(
+        400,
+        'Enter a valid HTTP or HTTPS job posting URL.'
+      );
+    }
+
+    let duplicateCheck;
+
+    try {
+      duplicateCheck =
+        await findDuplicateJobLink({
+          supabase,
+          clientId,
+          jobLink:
+            directJobUrl,
+        });
+    } catch (error) {
+      console.error(
+        'Unable to check Applicant-sourced job duplication:',
+        error
+      );
+
+      throw new PortalApiError(
+        500,
+        'The job link could not be checked for duplicates.'
+      );
+    }
+
+    if (
+      duplicateCheck.type ===
+        'application' ||
+      (
+        duplicateCheck.type ===
+          'job_request' &&
+        duplicateCheck.status ===
+          'converted'
+      )
+    ) {
+      throw new PortalApiError(
+        409,
+        'This job has already been recorded as an Application for this Client.'
+      );
+    }
+
+    if (
+      duplicateCheck.type ===
+        'job_request'
+    ) {
+      throw new PortalApiError(
+        409,
+        'This opportunity already exists in Job Links for this Client. Start the Application from Job Links so its original source is preserved.'
+      );
+    }
+  }
+
   const preferences =
     getStringArrayInput(
       req.body?.preferences,
@@ -943,10 +1042,7 @@ async function createApplication(
           p_link_source:
             linkSource,
           p_job_url:
-            String(
-              req.body?.jobUrl ||
-              ''
-            ).trim() ||
+            directJobUrl ||
             null,
         };
 

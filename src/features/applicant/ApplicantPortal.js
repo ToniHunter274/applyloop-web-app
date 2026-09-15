@@ -772,7 +772,7 @@ function JobLinksPage({
             className={styles.primaryButton}
           >
             <FiBriefcase />
-            Open Workshop
+            Start New Application
           </Link>
         }
       />
@@ -2173,18 +2173,15 @@ function WorkshopPage({
                   setTailoredResumePreviewUrl('');
                   setTailoredResumeFingerprint('');
                   setResumeGenerationError('');
-                }
-
-                if (
-                  recorded &&
-                  activeJobRequestId
-                ) {
-                  setActiveJobRequestId('');
                   setCompanyName('');
                   setPosition('');
                   setJobLocation('');
                   setJobUrl('');
                   setJobDescription('');
+
+                  if (activeJobRequestId) {
+                    setActiveJobRequestId('');
+                  }
                 }
               }}
             >
@@ -2340,6 +2337,23 @@ function WorkshopPage({
             </Link>
           </div>
         )}
+
+        {selectedClient &&
+          !activeJobRequestId && (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-purple-100 bg-purple-50 px-5 py-4 dark:border-purple-900/40 dark:bg-purple-900/20">
+              <FiBriefcase className="mt-0.5 shrink-0 text-purple-600" />
+
+              <div>
+                <strong className="text-sm text-gray-900 dark:text-white">
+                  Applicant-Sourced Application
+                </strong>
+
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Use this mode when you found the opportunity yourself. Add the job details below and ApplyLoop will record the Application with Applicant as its source.
+                </p>
+              </div>
+            </div>
+          )}
 
         {activeJobRequestId && (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 dark:border-green-900/40 dark:bg-green-900/20">
