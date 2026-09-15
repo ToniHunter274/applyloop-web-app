@@ -89,10 +89,11 @@ const OWNER_NAV_ITEMS = [
 ];
 
 const OPERATIONS_NAV_ITEMS = [
+  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },
   { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
   { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
-  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },
 ];
+
 
 const OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));
 
@@ -101,7 +102,7 @@ const PAGE_META = {
   'client-management': ['Client Management', 'Manage all client accounts, subscriptions, and assignments'],
   'applicants-management': ['Applicants Management', 'Manage workers, assign workload, and track productivity'],
   'chief-applicants': ['Chief Applicants', 'Manage workers, assign workload, and track productivity'],
-  'application-operations': ['Application Operations', 'Main operational control panel for all applications'],
+  'application-operations': ['Application Operations', 'Monitor opportunities, applications, feedback, and workflow exceptions'],
   'subscription-revenue': ['Subscription & Revenue', 'Financial management dashboard and revenue analytics'],
   'prompt-system': ['Prompt System', 'Manage prompt configurations and workflow templates'],
   'analytics-reports': ['Analytics & Reports', 'Explore platform metrics and exported reports'],
@@ -4126,7 +4127,160 @@ function ChiefApplicantsPage({ openChiefStats }) {
 function OperationsStatusCard({ label, value, tone }) {
   return <div className={styles.operationsStatusCard}><div><span className={cn(styles.statusDot, styles[`statusDot_${tone}`])} />{label}</div><strong className={tone === 'red' ? styles.redText : ''}>{value}</strong></div>;
 }
+
+function formatOperationsAge(value) {
+  const hours = Math.max(
+    0,
+    Number(value) || 0
+  );
+
+  if (hours < 24) {
+    return `${hours}h`;
+  }
+
+  const days =
+    Math.floor(hours / 24);
+
+  const remainingHours =
+    hours % 24;
+
+  return remainingHours
+    ? `${days}d ${remainingHours}h`
+    : `${days}d`;
+}
+
+function formatOpportunityStatus(value) {
+  return String(value || 'unknown')
+    .replace(/_/g, ' ')
+    .replace(
+      /\b\w/g,
+      (letter) =>
+        letter.toUpperCase()
+    );
+}
+
+function OperationsOpportunityTable({
+  opportunities,
+  emptyTitle,
+  emptyText,
+  showAttention = false,
+}) {
+  if (opportunities.length === 0) {
+    return (
+      <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+        <FiFileText className="h-9 w-9 text-slate-300" />
+
+        <h3 className="mt-4 text-lg font-bold text-slate-900">
+          {emptyTitle}
+        </h3>
+
+        <p className="mt-2 max-w-md text-sm text-slate-500">
+          {emptyText}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>CLIENT / ROLE</th>
+            <th>APPLICANT / QUEUE</th>
+            <th>STATUS</th>
+            <th>SOURCE</th>
+            <th>AGE</th>
+
+            {showAttention ? (
+              <th>ATTENTION</th>
+            ) : null}
+          </tr>
+        </thead>
+
+        <tbody>
+          {opportunities.map(
+            (opportunity) => (
+              <tr key={opportunity.id}>
+                <td>
+                  <div className="min-w-[220px]">
+                    <strong className="block text-sm text-slate-900">
+                      {opportunity.client}
+                    </strong>
+
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {opportunity.company ||
+                        'Opportunity'}
+                      {' — '}
+                      {opportunity.position ||
+                        'Role not specified'}
+                    </span>
+                  </div>
+                </td>
+
+                <td>
+                  {opportunity.applicant ||
+                    'Client queue'}
+                </td>
+
+                <td>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full px-3 py-1.5 text-xs font-bold',
+                      opportunity.status ===
+                        'converted'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : opportunity.status ===
+                            'in_review'
+                          ? 'bg-blue-50 text-blue-700'
+                          : opportunity.status ===
+                              'new'
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    {formatOpportunityStatus(
+                      opportunity.status
+                    )}
+                  </span>
+                </td>
+
+                <td>
+                  <span className="text-sm font-medium text-slate-700">
+                    {opportunity.originLabel ||
+                      'Shared Opportunity'}
+                  </span>
+                </td>
+
+                <td>
+                  {formatOperationsAge(
+                    opportunity.ageHours
+                  )}
+                </td>
+
+                {showAttention ? (
+                  <td>
+                    <span className="block min-w-[230px] text-sm font-medium text-amber-700">
+                      {opportunity.attentionReason ||
+                        'Review this opportunity.'}
+                    </span>
+                  </td>
+                ) : null}
+              </tr>
+            )
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ApplicationOperationsPage() {
+  const [
+    opportunities,
+    setOpportunities,
+  ] = useState([]);
+
   const [
     applications,
     setApplications,
@@ -4141,6 +4295,10 @@ function ApplicationOperationsPage() {
     summary,
     setSummary,
   ] = useState({
+    totalOpportunities: 0,
+    newOpportunities: 0,
+    inReviewOpportunities: 0,
+    opportunitiesNeedingAttention: 0,
     totalApplications: 0,
     submitted: 0,
     waiting: 0,
@@ -4155,7 +4313,7 @@ function ApplicationOperationsPage() {
   const [
     activeTab,
     setActiveTab,
-  ] = useState('applications');
+  ] = useState('attention');
 
   const [
     search,
@@ -4221,6 +4379,10 @@ function ApplicationOperationsPage() {
             return;
           }
 
+          setOpportunities(
+            result.opportunities || []
+          );
+
           setApplications(
             result.applications || []
           );
@@ -4285,6 +4447,48 @@ function ApplicationOperationsPage() {
       applications,
       normalizedSearch,
     ]);
+
+  const visibleOpportunities =
+    useMemo(() => {
+      if (!normalizedSearch) {
+        return opportunities;
+      }
+
+      return opportunities.filter(
+        (opportunity) =>
+          [
+            opportunity.client,
+            opportunity.applicant,
+            opportunity.company,
+            opportunity.position,
+            opportunity.location,
+            opportunity.status,
+            opportunity.originLabel,
+            opportunity.attentionReason,
+          ]
+            .filter(Boolean)
+            .some((value) =>
+              String(value)
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                )
+            )
+      );
+    }, [
+      normalizedSearch,
+      opportunities,
+    ]);
+
+  const attentionOpportunities =
+    useMemo(
+      () =>
+        visibleOpportunities.filter(
+          (opportunity) =>
+            opportunity.needsAttention
+        ),
+      [visibleOpportunities]
+    );
 
   const visibleConversations =
     useMemo(() => {
@@ -4354,6 +4558,39 @@ function ApplicationOperationsPage() {
           styles.statsGridFiveMini
         }
       >
+        <OperationsStatusCard
+          label="TOTAL OPPORTUNITIES"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.totalOpportunities ||
+                    0
+                )
+          }
+          tone="blue"
+        />
+
+        <OperationsStatusCard
+          label="NEEDS ATTENTION"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.opportunitiesNeedingAttention ||
+                    0
+                )
+          }
+          tone={
+            Number(
+              summary.opportunitiesNeedingAttention ||
+                0
+            ) > 0
+              ? 'red'
+              : 'green'
+          }
+        />
+
         <OperationsStatusCard
           label="TOTAL APPLICATIONS"
           value={
@@ -4444,6 +4681,48 @@ function ApplicationOperationsPage() {
               type="button"
               onClick={() =>
                 setActiveTab(
+                  'attention'
+                )
+              }
+              className={cn(
+                'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                activeTab ===
+                  'attention'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              Needs Attention (
+              {summary.opportunitiesNeedingAttention ||
+                0}
+              )
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab(
+                  'opportunities'
+                )
+              }
+              className={cn(
+                'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                activeTab ===
+                  'opportunities'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              Opportunities (
+              {summary.totalOpportunities ||
+                0}
+              )
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab(
                   'applications'
                 )
               }
@@ -4500,7 +4779,13 @@ function ApplicationOperationsPage() {
                 activeTab ===
                 'feedback'
                   ? 'Search feedback by Client, Applicant, company, role, or message'
-                  : 'Search applications by Client, Applicant, company, role, or status'
+                  : activeTab ===
+                      'applications'
+                    ? 'Search applications by Client, Applicant, company, role, or status'
+                    : activeTab ===
+                        'attention'
+                      ? 'Search opportunities needing attention'
+                      : 'Search opportunities by Client, Applicant, role, source, or status'
               }
               className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
             />
@@ -4635,6 +4920,25 @@ function ApplicationOperationsPage() {
               </table>
             </div>
           )
+        ) : activeTab ===
+          'attention' ? (
+          <OperationsOpportunityTable
+            opportunities={
+              attentionOpportunities
+            }
+            emptyTitle="No opportunities need attention"
+            emptyText="New and in-review opportunities will appear here when they cross the monitoring thresholds."
+            showAttention
+          />
+        ) : activeTab ===
+          'opportunities' ? (
+          <OperationsOpportunityTable
+            opportunities={
+              visibleOpportunities
+            }
+            emptyTitle="No matching opportunities"
+            emptyText="Client- and Linker-sourced opportunities will appear here as Job Links enter the workflow."
+          />
         ) : (
           <>
             <div className="grid gap-4 border-b border-slate-200 py-5 sm:grid-cols-3">
@@ -4651,7 +4955,7 @@ function ApplicationOperationsPage() {
 
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
-                  Awaiting Linker
+                  Response needed
                 </p>
 
                 <strong className="mt-2 block text-2xl text-amber-800">
@@ -4758,7 +5062,7 @@ function ApplicationOperationsPage() {
                             >
                               {conversation.status ===
                               'pending'
-                                ? 'Awaiting Linker'
+                                ? 'Response needed'
                                 : 'Responded'}
                             </span>
                           </td>
@@ -4845,7 +5149,7 @@ function ApplicationOperationsPage() {
                     >
                       {selectedConversation.status ===
                       'pending'
-                        ? 'Awaiting Linker'
+                        ? 'Response needed'
                         : 'Responded'}
                     </span>
                   </div>
@@ -5998,7 +6302,7 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
   const router = useRouter();
   const isOperations = portalRole === USER_ROLES.OPERATIONS;
   const basePath = isOperations ? '/operations' : '/owner';
-  const defaultSection = isOperations ? 'client-management' : 'dashboard';
+  const defaultSection = isOperations ? 'application-operations' : 'dashboard';
   const requestedSection = getSection(router, defaultSection);
   const section = isOperations && !OPERATIONS_SECTIONS.has(requestedSection) ? defaultSection : requestedSection;
   const detail = getDetail(router);

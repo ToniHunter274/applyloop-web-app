@@ -117,16 +117,58 @@ export default async function handler(
     const applications =
       applicationRows || [];
 
-    if (applications.length === 0) {
+    const {
+      data: opportunityRows,
+      error: opportunitiesError,
+    } = await supabase
+      .from('client_job_requests')
+      .select(`
+        id,
+        client_id,
+        target_applicant_id,
+        job_url,
+        job_company,
+        job_position,
+        job_location,
+        status,
+        request_source,
+        converted_application_id,
+        reviewed_at,
+        created_at,
+        updated_at
+      `)
+      .order('created_at', {
+        ascending: false,
+      });
+
+    if (opportunitiesError) {
+      throw new ApiError(
+        500,
+        'Opportunities could not be loaded.'
+      );
+    }
+
+    const opportunities =
+      opportunityRows || [];
+
+    if (
+      applications.length === 0 &&
+      opportunities.length === 0
+    ) {
       res.setHeader(
         'Cache-Control',
         'no-store'
       );
 
       return res.status(200).json({
+        opportunities: [],
         applications: [],
         conversations: [],
         summary: {
+          totalOpportunities: 0,
+          newOpportunities: 0,
+          inReviewOpportunities: 0,
+          opportunitiesNeedingAttention: 0,
           totalApplications: 0,
           submitted: 0,
           waiting: 0,
@@ -146,12 +188,16 @@ export default async function handler(
           application.id
       );
 
-    const clientIds = unique(
-      applications.map(
+    const clientIds = unique([
+      ...applications.map(
         (application) =>
           application.client_id
-      )
-    );
+      ),
+      ...opportunities.map(
+        (opportunity) =>
+          opportunity.client_id
+      ),
+    ]);
 
     const applicantUserIds =
       unique(
@@ -161,40 +207,51 @@ export default async function handler(
         )
       );
 
-    const jobRequestIds =
+    const opportunityApplicantIds =
       unique(
-        applications.map(
-          (application) =>
-            application.job_request_id
+        opportunities.map(
+          (opportunity) =>
+            opportunity.target_applicant_id
         )
       );
 
-    let jobRequests = [];
+    let opportunityApplicants = [];
 
-    if (jobRequestIds.length > 0) {
+    if (
+      opportunityApplicantIds.length > 0
+    ) {
       const {
         data,
         error,
       } = await supabase
-        .from('client_job_requests')
-        .select(`
-          id,
-          request_source
-        `)
+        .from('applicants')
+        .select('id, user_id')
         .in(
           'id',
-          jobRequestIds
+          opportunityApplicantIds
         );
 
       if (error) {
         throw new ApiError(
           500,
-          'Opportunity sources could not be loaded.'
+          'Opportunity Applicants could not be loaded.'
         );
       }
 
-      jobRequests = data || [];
+      opportunityApplicants =
+        data || [];
     }
+
+    const opportunityApplicantUserIds =
+      unique(
+        opportunityApplicants.map(
+          (applicant) =>
+            applicant.user_id
+        )
+      );
+
+    const jobRequests =
+      opportunities;
 
     let clients = [];
 
@@ -220,33 +277,39 @@ export default async function handler(
       clients = data || [];
     }
 
-    const {
-      data: messageRows,
-      error: messagesError,
-    } = await supabase
-      .from('application_messages')
-      .select(`
-        id,
-        application_id,
-        sender_user_id,
-        subject,
-        message,
-        created_at
-      `)
-      .in(
-        'application_id',
-        applicationIds
-      )
-      .eq('visibility', 'client')
-      .order('created_at', {
-        ascending: true,
-      });
+    let messageRows = [];
 
-    if (messagesError) {
-      throw new ApiError(
-        500,
-        'Application feedback could not be loaded.'
-      );
+    if (applicationIds.length > 0) {
+      const {
+        data,
+        error,
+      } = await supabase
+        .from('application_messages')
+        .select(`
+          id,
+          application_id,
+          sender_user_id,
+          subject,
+          message,
+          created_at
+        `)
+        .in(
+          'application_id',
+          applicationIds
+        )
+        .eq('visibility', 'client')
+        .order('created_at', {
+          ascending: true,
+        });
+
+      if (error) {
+        throw new ApiError(
+          500,
+          'Application feedback could not be loaded.'
+        );
+      }
+
+      messageRows = data || [];
     }
 
     const clientUserIds =
@@ -268,6 +331,7 @@ export default async function handler(
     const profileIds = unique([
       ...clientUserIds,
       ...applicantUserIds,
+      ...opportunityApplicantUserIds,
       ...messageSenderIds,
     ]);
 
@@ -327,6 +391,16 @@ export default async function handler(
         )
       );
 
+    const opportunityApplicantsById =
+      new Map(
+        opportunityApplicants.map(
+          (applicant) => [
+            applicant.id,
+            applicant,
+          ]
+        )
+      );
+
     const messagesByApplication =
       new Map();
 
@@ -345,6 +419,159 @@ export default async function handler(
         );
       }
     );
+
+    const now =
+      Date.now();
+
+    const formattedOpportunities =
+      opportunities.map(
+        (opportunity) => {
+          const client =
+            clientsById.get(
+              opportunity.client_id
+            );
+
+          const targetedApplicant =
+            opportunityApplicantsById.get(
+              opportunity.target_applicant_id
+            );
+
+          const origin =
+            opportunity.request_source ===
+            'linker'
+              ? 'linker'
+              : opportunity.request_source ===
+                  'client'
+                ? 'client'
+                : 'shared';
+
+          const originLabel =
+            origin === 'linker'
+              ? 'Linker Sourced'
+              : origin === 'client'
+                ? 'Client Added'
+                : 'Shared Opportunity';
+
+          const attentionReference =
+            opportunity.status ===
+            'in_review'
+              ? opportunity.reviewed_at ||
+                opportunity.updated_at ||
+                opportunity.created_at
+              : opportunity.created_at;
+
+          const referenceTime =
+            new Date(
+              attentionReference
+            ).getTime();
+
+          const ageHours =
+            Number.isFinite(
+              referenceTime
+            )
+              ? Math.max(
+                  0,
+                  Math.floor(
+                    (
+                      now -
+                      referenceTime
+                    ) /
+                      (
+                        1000 *
+                        60 *
+                        60
+                      )
+                  )
+                )
+              : 0;
+
+          const needsAttention =
+            (
+              opportunity.status ===
+                'new' &&
+              ageHours >= 24
+            ) ||
+            (
+              opportunity.status ===
+                'in_review' &&
+              ageHours >= 48
+            );
+
+          let attentionReason = '';
+
+          if (
+            opportunity.status ===
+              'new' &&
+            ageHours >= 24
+          ) {
+            attentionReason =
+              'Waiting for Applicant review for 24+ hours.';
+          } else if (
+            opportunity.status ===
+              'in_review' &&
+            ageHours >= 48
+          ) {
+            attentionReason =
+              'In review for 48+ hours without conversion.';
+          }
+
+          return {
+            id:
+              opportunity.id,
+            clientId:
+              opportunity.client_id,
+            targetApplicantId:
+              opportunity.target_applicant_id ||
+              null,
+            convertedApplicationId:
+              opportunity.converted_application_id ||
+              null,
+            origin,
+            originLabel,
+            client:
+              client
+                ? getProfileName(
+                    profilesById,
+                    client.user_id,
+                    'Client'
+                  )
+                : 'Client',
+            applicant:
+              targetedApplicant
+                ? getProfileName(
+                    profilesById,
+                    targetedApplicant.user_id,
+                    'Applicant'
+                  )
+                : 'Client queue',
+            company:
+              opportunity.job_company ||
+              '',
+            position:
+              opportunity.job_position ||
+              '',
+            location:
+              opportunity.job_location ||
+              '',
+            jobUrl:
+              opportunity.job_url ||
+              '',
+            status:
+              opportunity.status,
+            reviewedAt:
+              opportunity.reviewed_at ||
+              null,
+            createdAt:
+              opportunity.created_at,
+            updatedAt:
+              opportunity.updated_at ||
+              opportunity.created_at,
+            ageHours,
+            needsAttention,
+            attentionReason,
+          };
+        }
+      );
 
     const formattedApplications =
       applications.map(
@@ -533,6 +760,25 @@ export default async function handler(
         );
 
     const summary = {
+      totalOpportunities:
+        formattedOpportunities.length,
+      newOpportunities:
+        formattedOpportunities.filter(
+          (opportunity) =>
+            opportunity.status ===
+            'new'
+        ).length,
+      inReviewOpportunities:
+        formattedOpportunities.filter(
+          (opportunity) =>
+            opportunity.status ===
+            'in_review'
+        ).length,
+      opportunitiesNeedingAttention:
+        formattedOpportunities.filter(
+          (opportunity) =>
+            opportunity.needsAttention
+        ).length,
       totalApplications:
         formattedApplications.length,
       submitted:
@@ -587,6 +833,8 @@ export default async function handler(
     );
 
     return res.status(200).json({
+      opportunities:
+        formattedOpportunities,
       applications:
         formattedApplications,
       conversations,
