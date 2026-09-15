@@ -289,11 +289,18 @@ export default function AdminPortal() {
                 }}
               />
             ) : section === 'linkers' ? (
-              <LinkerManagementPage />
+              <LinkerManagementPage
+                managementContext={
+                  workforceContext
+                }
+              />
             ) : (
               <ApplicantsManagementPage
                 mode="admin"
                 refreshKey={applicantRefreshKey}
+                managementContext={
+                  workforceContext
+                }
                 openAddApplicant={() =>
                   setApplicantModal({
                     open: true,

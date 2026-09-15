@@ -425,6 +425,8 @@ function AssignmentModal({
   linker,
   onClose,
   onChanged,
+  focusApplicantId = null,
+  focusApplicantName = '',
 }) {
   const [applicants, setApplicants] =
     useState([]);
@@ -501,11 +503,20 @@ function AssignmentModal({
           .trim()
           .toLowerCase();
 
+      const candidates =
+        focusApplicantId
+          ? applicants.filter(
+              (applicant) =>
+                applicant.id ===
+                focusApplicantId
+            )
+          : applicants;
+
       if (!query) {
-        return applicants;
+        return candidates;
       }
 
-      return applicants.filter(
+      return candidates.filter(
         (applicant) =>
           [
             applicant.fullName,
@@ -520,7 +531,11 @@ function AssignmentModal({
               .includes(query)
           )
       );
-    }, [applicants, search]);
+    }, [
+      applicants,
+      search,
+      focusApplicantId,
+    ]);
 
   const assignApplicant =
     async (applicant) => {
@@ -662,6 +677,26 @@ function AssignmentModal({
       }
     >
       <div className="p-6 sm:p-8">
+        {focusApplicantId && (
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-blue-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
+              Coverage intervention
+            </p>
+
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              Assign{' '}
+              {focusApplicantName ||
+                'this Applicant'}{' '}
+              to {linker.fullName}
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-slate-600">
+              Only the Applicant requiring Linker
+              coverage is shown below.
+            </p>
+          </div>
+        )}
+
         <div className="relative">
           <FiSearch className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -798,7 +833,9 @@ function AssignmentModal({
   );
 }
 
-export default function LinkerManagementPage() {
+export default function LinkerManagementPage({
+  managementContext = null,
+}) {
   const [linkers, setLinkers] =
     useState([]);
 
@@ -823,6 +860,23 @@ export default function LinkerManagementPage() {
 
   const [refreshKey, setRefreshKey] =
     useState(0);
+
+  const focusApplicantId =
+    managementContext?.reason ===
+      'linker-coverage'
+      ? managementContext.applicantId
+      : null;
+
+  const focusApplicantName =
+    managementContext?.reason ===
+      'linker-coverage'
+      ? managementContext.applicantName
+      : '';
+
+  const isCoverageIntervention =
+    Boolean(
+      focusApplicantId
+    );
 
   useEffect(() => {
     let cancelled = false;
@@ -931,6 +985,35 @@ export default function LinkerManagementPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl">
+      {isCoverageIntervention && (
+        <div className="mb-6 rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-blue-50 p-5 shadow-sm sm:p-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700">
+            Linker coverage required
+          </p>
+
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-950">
+                Choose a Linker for{' '}
+                {focusApplicantName ||
+                  'this Applicant'}
+              </h2>
+
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+                Select an active Linker below. Their
+                Applicant assignment window will open
+                already focused on the worker who needs
+                coverage.
+              </p>
+            </div>
+
+            <span className="inline-flex w-fit rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">
+              Action required
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">
@@ -1116,10 +1199,21 @@ export default function LinkerManagementPage() {
                               linker
                             )
                           }
-                          className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
+                          disabled={
+                            isCoverageIntervention &&
+                            linker.accountStatus !==
+                              'active'
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                         >
                           <FiLink className="h-4 w-4" />
-                          Manage Applicants
+
+                          {isCoverageIntervention
+                            ? linker.accountStatus ===
+                              'active'
+                              ? 'Assign Applicant'
+                              : 'Linker inactive'
+                            : 'Manage Applicants'}
                         </button>
                       </td>
                     </tr>
@@ -1147,6 +1241,12 @@ export default function LinkerManagementPage() {
       {assignmentLinker && (
         <AssignmentModal
           linker={assignmentLinker}
+          focusApplicantId={
+            focusApplicantId
+          }
+          focusApplicantName={
+            focusApplicantName
+          }
           onClose={() =>
             setAssignmentLinker(
               null

@@ -1604,6 +1604,7 @@ export function ApplicantsManagementPage({
   onPasswordReset,
   refreshKey,
   mode = 'owner',
+  managementContext = null,
 }) {
   const router = useRouter();
   const [applicants, setApplicants] = useState([]);
@@ -1704,6 +1705,40 @@ export function ApplicantsManagementPage({
     setChatError,
   ] = useState('');
 
+  const contextClientId =
+    managementContext?.clientId ||
+    null;
+
+  const contextClientName =
+    managementContext?.clientName ||
+    '';
+
+  const focusApplicantId =
+    managementContext?.reason ===
+      'applicant-health'
+      ? managementContext.applicantId
+      : null;
+
+  const focusApplicantName =
+    managementContext?.reason ===
+      'applicant-health'
+      ? managementContext.applicantName
+      : '';
+
+  const isClientTeamContext =
+    managementContext?.reason ===
+      'client-team' &&
+    Boolean(
+      contextClientId
+    );
+
+  const isApplicantReviewContext =
+    managementContext?.reason ===
+      'applicant-health' &&
+    Boolean(
+      focusApplicantId
+    );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1766,40 +1801,124 @@ export function ApplicantsManagementPage({
     const normalizedSearch =
       search.trim().toLowerCase();
 
-    if (!normalizedSearch) {
-      return applicants;
+    let candidates =
+      focusApplicantId
+        ? applicants.filter(
+            (applicant) =>
+              applicant.id ===
+              focusApplicantId
+          )
+        : applicants;
+
+    if (normalizedSearch) {
+      candidates = candidates.filter(
+        (applicant) =>
+          [
+            applicant.fullName,
+            applicant.email,
+            applicant.phone,
+            applicant.assignedTeam,
+            (
+              applicant.assignedClients ||
+              []
+            )
+              .map(
+                (client) =>
+                  client.fullName
+              )
+              .join(' '),
+          ].some((value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(
+                normalizedSearch
+              )
+          )
+      );
     }
 
-    return applicants.filter(
-      (applicant) =>
-        [
-          applicant.fullName,
-          applicant.email,
-          applicant.phone,
-          applicant.assignedTeam,
-          (applicant.assignedClients || [])
-            .map(
-              (client) =>
-                client.fullName
-            )
-            .join(' '),
-        ].some((value) =>
-          String(value || '')
-            .toLowerCase()
-            .includes(normalizedSearch)
-        )
+    if (
+      !contextClientId ||
+      focusApplicantId
+    ) {
+      return candidates;
+    }
+
+    const getContextRank = (
+      applicant
+    ) => {
+      const servesClient =
+        (
+          applicant.assignedClients ||
+          []
+        ).some(
+          (client) =>
+            client.id ===
+            contextClientId
+        );
+
+      if (servesClient) {
+        return 0;
+      }
+
+      if (
+        applicant.accountStatus ===
+          'active' &&
+        applicant.availability ===
+          'available'
+      ) {
+        return 1;
+      }
+
+      return 2;
+    };
+
+    return [...candidates].sort(
+      (left, right) => {
+        const rankDifference =
+          getContextRank(left) -
+          getContextRank(right);
+
+        if (rankDifference !== 0) {
+          return rankDifference;
+        }
+
+        return String(
+          left.fullName || ''
+        ).localeCompare(
+          String(
+            right.fullName || ''
+          )
+        );
+      }
     );
-  }, [applicants, search]);
+  }, [
+    applicants,
+    search,
+    contextClientId,
+    focusApplicantId,
+  ]);
 
   const visibleAssignmentClients = useMemo(() => {
     const normalizedSearch =
-      assignmentSearch.trim().toLowerCase();
+      assignmentSearch
+        .trim()
+        .toLowerCase();
+
+    const candidates =
+      contextClientId
+        ? assignmentClients.filter(
+            (client) =>
+              client.id ===
+              contextClientId
+          )
+        : assignmentClients;
 
     if (!normalizedSearch) {
-      return assignmentClients;
+      return candidates;
     }
 
-    return assignmentClients.filter(
+    return candidates.filter(
       (client) =>
         [
           client.fullName,
@@ -1810,12 +1929,15 @@ export function ApplicantsManagementPage({
         ].some((value) =>
           String(value || '')
             .toLowerCase()
-            .includes(normalizedSearch)
+            .includes(
+              normalizedSearch
+            )
         )
     );
   }, [
     assignmentClients,
     assignmentSearch,
+    contextClientId,
   ]);
 
   const openAssignmentModal = async (
@@ -2651,6 +2773,66 @@ export function ApplicantsManagementPage({
             'pt-6 sm:pt-8'
         )}
       >
+        {(isClientTeamContext ||
+          isApplicantReviewContext) && (
+          <div
+            className={cn(
+              'mb-6 rounded-3xl border p-5 shadow-sm sm:p-6',
+              isApplicantReviewContext
+                ? 'border-amber-200 bg-gradient-to-br from-amber-50 via-white to-blue-50'
+                : 'border-blue-200 bg-gradient-to-br from-blue-50 via-white to-indigo-50'
+            )}
+          >
+            <p
+              className={cn(
+                'text-[10px] font-bold uppercase tracking-[0.18em]',
+                isApplicantReviewContext
+                  ? 'text-amber-700'
+                  : 'text-blue-700'
+              )}
+            >
+              {isApplicantReviewContext
+                ? 'Applicant review required'
+                : 'Client team management'}
+            </p>
+
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-950">
+                  {isApplicantReviewContext
+                    ? `Review ${
+                        focusApplicantName ||
+                        'this Applicant'
+                      }`
+                    : `Manage Applicants for ${
+                        contextClientName ||
+                        'this Client'
+                      }`}
+                </h2>
+
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                  {isApplicantReviewContext
+                    ? 'This Applicant was flagged from the Client service-team view. Review their workforce status and Client assignment below.'
+                    : 'Applicants already serving this Client appear first. Available Applicants remain visible so Admin can add or replace coverage without losing the Client context.'}
+                </p>
+              </div>
+
+              <span
+                className={cn(
+                  'inline-flex w-fit rounded-full px-3 py-1.5 text-xs font-bold',
+                  isApplicantReviewContext
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-blue-100 text-blue-700'
+                )}
+              >
+                {isApplicantReviewContext
+                  ? 'Review required'
+                  : 'Team control'}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
@@ -2852,10 +3034,46 @@ export function ApplicantsManagementPage({
                             )
                           );
 
+                        const servesContextClient =
+                          Boolean(
+                            contextClientId &&
+                              (
+                                applicant.assignedClients ||
+                                []
+                              ).some(
+                                (client) =>
+                                  client.id ===
+                                  contextClientId
+                              )
+                          );
+
+                        const isFocusedApplicant =
+                          Boolean(
+                            focusApplicantId &&
+                              applicant.id ===
+                                focusApplicantId
+                          );
+
+                        const assignmentActionDisabled =
+                          !servesContextClient &&
+                          (
+                            applicant.accountStatus ===
+                              'suspended' ||
+                            applicant.availability !==
+                              'available'
+                          );
+
                         return (
                           <tr
                             key={applicant.id}
-                            className="border-b border-slate-100 transition-colors hover:bg-slate-50/80"
+                            className={cn(
+                              'border-b border-slate-100 transition-colors hover:bg-slate-50/80',
+                              isFocusedApplicant &&
+                                'bg-amber-50/70 outline outline-1 -outline-offset-1 outline-amber-200',
+                              !isFocusedApplicant &&
+                                servesContextClient &&
+                                'bg-blue-50/50'
+                            )}
                           >
                             <td className="px-5 py-5">
                               <button
@@ -2913,6 +3131,21 @@ export function ApplicantsManagementPage({
                                   <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
                                     View as Applicant
                                     <FiExternalLink className="h-3 w-3" />
+                                  </span>
+                                )}
+
+                                {isFocusedApplicant && (
+                                  <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800">
+                                    Review required
+                                  </span>
+                                )}
+
+                                {!isFocusedApplicant &&
+                                  servesContextClient && (
+                                  <span className="mt-2 inline-flex max-w-[180px] rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700">
+                                    Serving{' '}
+                                    {contextClientName ||
+                                      'Client'}
                                   </span>
                                 )}
 
@@ -3032,32 +3265,43 @@ export function ApplicantsManagementPage({
                                     )
                                   }
                                   disabled={
-                                    applicant.accountStatus ===
-                                      'suspended' ||
-                                    applicant.availability !==
-                                      'available'
+                                    assignmentActionDisabled
                                   }
                                   title={
-                                    applicant.accountStatus ===
-                                    'suspended'
-                                      ? 'Reactivate this applicant before assigning another client'
-                                      : applicant.availability !==
-                                          'available'
-                                        ? 'Set this applicant to Available before assigning another client'
-                                        : 'Assign client'
+                                    servesContextClient
+                                      ? `Manage ${
+                                          contextClientName ||
+                                          'this Client'
+                                        } assignment`
+                                      : applicant.accountStatus ===
+                                          'suspended'
+                                        ? 'Reactivate this applicant before assigning another client'
+                                        : applicant.availability !==
+                                            'available'
+                                          ? 'Set this applicant to Available before assigning another client'
+                                          : contextClientId
+                                            ? `Add ${
+                                                contextClientName ||
+                                                'this Client'
+                                              }`
+                                            : 'Assign client'
                                   }
                                   className={cn(
                                     'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition',
-                                    applicant.accountStatus ===
-                                      'suspended' ||
-                                    applicant.availability !==
-                                      'available'
+                                    assignmentActionDisabled
                                       ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
-                                      : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
+                                      : servesContextClient
+                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100'
+                                        : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
                                   )}
                                 >
                                   <FiPlus className="h-3.5 w-3.5" />
-                                  Assign
+
+                                  {contextClientId
+                                    ? servesContextClient
+                                      ? 'Manage Client'
+                                      : 'Add to Client'
+                                    : 'Assign'}
                                 </button>
 
                                 <button
