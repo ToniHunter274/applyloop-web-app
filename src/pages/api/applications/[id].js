@@ -172,6 +172,7 @@ async function loadApplication(
       preferences,
       job_url,
       resume_name,
+      tailored_resume_text,
       cover_letter_name,
       feedback,
       job_details,
@@ -269,6 +270,9 @@ async function getApplication(
         '',
       resumeName:
         application.resume_name ||
+        '',
+      tailoredResumeText:
+        application.tailored_resume_text ||
         '',
       coverLetterName:
         application.cover_letter_name ||
@@ -547,6 +551,7 @@ async function updateApplication(
       preferences,
       job_url,
       resume_name,
+      tailored_resume_text,
       cover_letter_name,
       feedback,
       job_details,

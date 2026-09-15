@@ -921,15 +921,6 @@ function JobLinksPage({
                   </div>
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <a
-                      href={request.jobLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                    >
-                      Open Job
-                      <FiExternalLink />
-                    </a>
                     {['new', 'in_review'].includes(request.status) && (
                       <Link
                         href={getWorkshopLink(request)}
@@ -1527,6 +1518,20 @@ function ApplicationDetail({ application, onBack }) {
         />
       </div>
 
+      {application.tailoredResumeText && (
+        <section className={styles.copySection}>
+          <h3>
+            Resume Used for This Application
+          </h3>
+
+          <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/30">
+            <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-gray-700 dark:text-gray-300">
+              {application.tailoredResumeText}
+            </pre>
+          </div>
+        </section>
+      )}
+
       <section className={styles.copySection}>
         <h3>Job Details</h3>
         <ul>
@@ -1649,6 +1654,10 @@ function WorkshopPage({
   const [
     tailoredResume,
     setTailoredResume,
+  ] = useState('');
+  const [
+    tailoredResumePreviewUrl,
+    setTailoredResumePreviewUrl,
   ] = useState('');
   const [
     tailoredResumeFingerprint,
@@ -1794,6 +1803,7 @@ function WorkshopPage({
 
     setResumeStatus('');
     setTailoredResume('');
+    setTailoredResumePreviewUrl('');
     setTailoredResumeFingerprint('');
     setResumeGenerationError('');
 
@@ -1885,6 +1895,7 @@ function WorkshopPage({
     setJobDescription('');
     setResumeStatus('');
     setTailoredResume('');
+    setTailoredResumePreviewUrl('');
     setTailoredResumeFingerprint('');
     setResumeGenerationError('');
     setActiveJobRequestId('');
@@ -2023,6 +2034,7 @@ function WorkshopPage({
 
       setIsGeneratingTailoredResume(true);
       setResumeGenerationError('');
+      setTailoredResumePreviewUrl('');
 
       try {
         const accessToken =
@@ -2066,11 +2078,26 @@ function WorkshopPage({
           );
         }
 
+        if (
+          result.mode === 'placeholder' &&
+          result.resumeUrl
+        ) {
+          setTailoredResume('');
+          setTailoredResumeFingerprint('');
+          setTailoredResumePreviewUrl(
+            result.resumeUrl
+          );
+          setResumeGenerationError('');
+          return;
+        }
+
         if (!result.resumeText) {
           throw new Error(
             'The resume generator returned an empty result.'
           );
         }
+
+        setTailoredResumePreviewUrl('');
 
         setTailoredResume(
           result.resumeText
@@ -2135,8 +2162,18 @@ function WorkshopPage({
                     jobLocation,
                     jobUrl,
                     jobDescription,
-                    activeJobRequestId
+                    activeJobRequestId,
+                    tailoredResumeIsCurrent
+                      ? tailoredResume
+                      : ''
                   );
+
+                if (recorded) {
+                  setTailoredResume('');
+                  setTailoredResumePreviewUrl('');
+                  setTailoredResumeFingerprint('');
+                  setResumeGenerationError('');
+                }
 
                 if (
                   recorded &&
@@ -2439,6 +2476,21 @@ function WorkshopPage({
               }
               placeholder="https://..."
             />
+
+            {/^https?:\/\//i.test(
+              jobUrl.trim()
+            ) && (
+              <div className="mt-2 flex justify-end">
+                <a
+                  href={jobUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3] transition hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:hover:bg-blue-900/30"
+                >
+                  Open Job ↗
+                </a>
+              </div>
+            )}
           </div>
 
           <div className={styles.field}>
@@ -2469,7 +2521,7 @@ function WorkshopPage({
                 </div>
 
                 <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 dark:text-gray-400">
-                  Generate a job-specific version from the Client&apos;s existing resume and this job description. The master resume remains unchanged.
+                  Generate a job-specific version from the Client&apos;s existing resume. For now, this button displays the Client&apos;s submitted resume as a temporary preview.
                 </p>
               </div>
 
@@ -2485,7 +2537,9 @@ function WorkshopPage({
                   ? 'Generating...'
                   : tailoredResume
                     ? 'Regenerate Tailored Resume'
-                    : 'Generate Tailored Resume'}
+                    : tailoredResumePreviewUrl
+                      ? 'Refresh Resume Preview'
+                      : 'Generate Tailored Resume'}
               </button>
             </div>
 
@@ -2510,6 +2564,48 @@ function WorkshopPage({
               </div>
             )}
           </div>
+
+          {tailoredResumePreviewUrl && (
+            <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FiCheckCircle className="text-green-600" />
+
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                      Resume Preview
+                    </h3>
+                  </div>
+
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Temporary preview of the Client&apos;s submitted resume. Real AI tailoring will replace this later.
+                  </p>
+                </div>
+
+                <a
+                  href={tailoredResumePreviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3] transition hover:bg-gray-50"
+                >
+                  Open Resume
+                  <FiExternalLink />
+                </a>
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                <iframe
+                  src={tailoredResumePreviewUrl}
+                  title="Client resume preview"
+                  className="h-[720px] w-full bg-white"
+                />
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                This temporary preview is not saved as a tailored resume when the Application is recorded.
+              </p>
+            </section>
+          )}
 
           {tailoredResume && (
             <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
@@ -4219,7 +4315,8 @@ export default function ApplicantPortal() {
       jobLocation,
       jobUrl,
       jobDescription,
-      jobRequestId = ''
+      jobRequestId = '',
+      tailoredResumeText = ''
     ) => {
       const company =
         String(
@@ -4368,6 +4465,12 @@ export default function ApplicantPortal() {
                   description
                     ? [description]
                     : [],
+                tailoredResumeText:
+                  String(
+                    tailoredResumeText ||
+                      ''
+                  ).trim() ||
+                  undefined,
               }),
             }
           );

@@ -177,15 +177,6 @@ export default async function handler(
       );
     }
 
-    if (
-      !process.env.OPENAI_API_KEY
-    ) {
-      throw new PortalApiError(
-        503,
-        'Tailored resume generation is not configured yet.'
-      );
-    }
-
     const {
       data: applicant,
       error: applicantError,
@@ -430,6 +421,16 @@ export default async function handler(
         500,
         'The Client resume could not be prepared for tailoring.'
       );
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(200).json({
+        mode: 'placeholder',
+        resumeUrl:
+          signedUrlData.signedUrl,
+        message:
+          'Showing the Client submitted resume as a temporary preview until AI tailoring is configured.',
+      });
     }
 
     const instructions = `

@@ -181,6 +181,9 @@ function formatApplication(
     resume:
       application.resume_name ||
       'N/A',
+    tailoredResumeText:
+      application.tailored_resume_text ||
+      '',
     coverLetter:
       application.cover_letter_name ||
       'N/A',
@@ -641,6 +644,7 @@ async function listApplications(
       preferences,
       job_url,
       resume_name,
+      tailored_resume_text,
       cover_letter_name,
       feedback,
       job_details,
@@ -866,6 +870,14 @@ async function createApplication(
       'Other details'
     );
 
+  const tailoredResumeText =
+    String(
+      req.body?.tailoredResumeText ||
+      ''
+    )
+      .trim()
+      .slice(0, 50000);
+
   const commonRpcParams = {
     p_applicant_id:
       applicant.id,
@@ -909,6 +921,9 @@ async function createApplication(
       qualities,
     p_other_details:
       otherDetails,
+    p_tailored_resume_text:
+      tailoredResumeText ||
+      null,
   };
 
   const rpcName =
@@ -1077,6 +1092,9 @@ async function createApplication(
     ...application,
     job_request_id:
       jobRequestId ||
+      null,
+    tailored_resume_text:
+      tailoredResumeText ||
       null,
   };
 
