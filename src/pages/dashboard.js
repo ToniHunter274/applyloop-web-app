@@ -354,6 +354,7 @@ export default function Dashboard() {
         app.status,
         app.location,
         app.linkSource,
+        app.originLabel,
       ];
 
       return searchableValues.some(
@@ -375,6 +376,9 @@ export default function Dashboard() {
       applicationSummary.totalApplications || 0
     )
   );
+  const submittedCount = applications.filter(
+    app => app.status === 'Submitted'
+  ).length;
   const waitingCount = applications.filter(
     app => app.status === 'Waiting'
   ).length;
@@ -395,6 +399,85 @@ export default function Dashboard() {
     { label: 'UPCOMING INTERVIEWS', count: interviewCount, filterKey: 'Interview Scheduled', icon: FiCalendar, color: 'text-sky-500 bg-sky-50 dark:bg-sky-900/20' },
     { label: 'OFFERS RECEIVED', count: offeredCount, filterKey: 'Offer Received', icon: FiMessageSquare, color: 'text-green-500 bg-green-50 dark:bg-green-900/20' }
   ];
+
+  const sourceCounts =
+    applications.reduce(
+      (counts, application) => {
+        const key =
+          application.origin ||
+          'shared';
+
+        if (
+          Object.prototype
+            .hasOwnProperty.call(
+              counts,
+              key
+            )
+        ) {
+          counts[key] += 1;
+        } else {
+          counts.shared += 1;
+        }
+
+        return counts;
+      },
+      {
+        linker: 0,
+        client: 0,
+        applicant: 0,
+        shared: 0,
+      }
+    );
+
+  const pipelineStages = [
+    {
+      label: 'Submitted',
+      count: submittedCount,
+    },
+    {
+      label: 'Waiting',
+      count: waitingCount,
+    },
+    {
+      label: 'Interview',
+      count: interviewCount,
+    },
+    {
+      label: 'Offer',
+      count: offeredCount,
+    },
+  ];
+
+  const sourceStages = [
+    {
+      label: 'Linker Sourced',
+      count: sourceCounts.linker,
+      note:
+        'Opportunities found by your Linker',
+    },
+    {
+      label: 'Client Added',
+      count: sourceCounts.client,
+      note:
+        'Job links added by you',
+    },
+    {
+      label: 'Applicant Sourced',
+      count: sourceCounts.applicant,
+      note:
+        'Jobs found independently by your Applicant',
+    },
+  ];
+
+  if (sourceCounts.shared > 0) {
+    sourceStages.push({
+      label: 'Shared Opportunity',
+      count: sourceCounts.shared,
+      note:
+        'Older or unclassified shared opportunities',
+    });
+  }
+
 
   // Pagination config
   const ITEMS_PER_PAGE = 5;
@@ -447,6 +530,89 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      <section className="grid gap-5 lg:grid-cols-2 mb-8">
+        <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+          <div className="mb-5">
+            <h2 className="text-base font-bold text-gray-950 dark:text-white">
+              Application Pipeline
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              Follow how your recorded applications are progressing.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 sm:gap-3">
+            {pipelineStages.map(
+              (stage, index) => (
+                <div
+                  key={stage.label}
+                  className="relative rounded-xl border border-gray-100 bg-gray-50 px-2 py-4 text-center dark:border-gray-700 dark:bg-gray-900/40 sm:px-3"
+                >
+                  <strong className="block text-xl font-extrabold text-gray-950 dark:text-white sm:text-2xl">
+                    {stage.count}
+                  </strong>
+
+                  <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:text-[11px]">
+                    {stage.label}
+                  </span>
+
+                  {index <
+                    pipelineStages.length -
+                      1 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-gray-300 sm:block"
+                    >
+                      →
+                    </span>
+                  )}
+                </div>
+              )
+            )}
+          </div>
+
+          <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
+            Rejected applications remain visible in your main dashboard metrics and application history.
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+          <div className="mb-5">
+            <h2 className="text-base font-bold text-gray-950 dark:text-white">
+              Application Sources
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              See where your recorded job opportunities came from.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {sourceStages.map(
+              (source) => (
+                <div
+                  key={source.label}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3 dark:border-gray-700"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {source.label}
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {source.note}
+                    </p>
+                  </div>
+
+                  <strong className="shrink-0 text-xl font-extrabold text-[#1E50C3]">
+                    {source.count}
+                  </strong>
+                </div>
+              )
+            )}
+          </div>
+        </article>
+      </section>
 
       {/* Important Updates */}
       <div className="bg-white dark:bg-gray-800 border border-[#1E50C3] rounded-2xl p-6 md:p-8 mb-8 shadow-sm">

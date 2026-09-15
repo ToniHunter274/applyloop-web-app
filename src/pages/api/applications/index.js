@@ -128,10 +128,63 @@ function getDashboardStatus(status) {
   return 'Pending';
 }
 
+function getApplicationOrigin(
+  application,
+  jobRequest
+) {
+  if (!application.job_request_id) {
+    return {
+      origin: 'applicant',
+      originLabel:
+        'Applicant Sourced',
+    };
+  }
+
+  if (
+    jobRequest?.client_id ===
+      application.client_id &&
+    jobRequest?.request_source ===
+      'linker'
+  ) {
+    return {
+      origin: 'linker',
+      originLabel:
+        'Linker Sourced',
+    };
+  }
+
+  if (
+    jobRequest?.client_id ===
+      application.client_id &&
+    jobRequest?.request_source ===
+      'client'
+  ) {
+    return {
+      origin: 'client',
+      originLabel:
+        'Client Added',
+    };
+  }
+
+  return {
+    origin: 'shared',
+    originLabel:
+      'Shared Opportunity',
+  };
+}
+
 function formatApplication(
   application,
-  clientName = ''
+  clientName = '',
+  jobRequest = null
 ) {
+  const {
+    origin,
+    originLabel,
+  } = getApplicationOrigin(
+    application,
+    jobRequest
+  );
   return {
     id: application.id,
     number:
@@ -143,6 +196,8 @@ function formatApplication(
     jobRequestId:
       application.job_request_id ||
       null,
+    origin,
+    originLabel,
     client:
       clientName ||
       'Client',
@@ -691,6 +746,61 @@ async function listApplications(
     );
   }
 
+  const jobRequestIds = [
+    ...new Set(
+      (
+        applicationRows ||
+        []
+      )
+        .map(
+          (application) =>
+            application.job_request_id
+        )
+        .filter(Boolean)
+    ),
+  ];
+
+  let jobRequestsById =
+    new Map();
+
+  if (jobRequestIds.length > 0) {
+    const {
+      data: jobRequestRows,
+      error: jobRequestsError,
+    } = await supabase
+      .from('client_job_requests')
+      .select(
+        [
+          'id',
+          'client_id',
+          'request_source',
+        ].join(', ')
+      )
+      .in('id', jobRequestIds);
+
+    if (jobRequestsError) {
+      console.error(
+        'Unable to resolve Application origins:',
+        jobRequestsError
+      );
+
+      throw new PortalApiError(
+        500,
+        'Application sources could not be loaded.'
+      );
+    }
+
+    jobRequestsById =
+      new Map(
+        (jobRequestRows || []).map(
+          (request) => [
+            request.id,
+            request,
+          ]
+        )
+      );
+  }
+
   const clientIds = [
     ...new Set(
       (
@@ -719,7 +829,10 @@ async function listApplications(
           application,
           clientNames.get(
             application.client_id
-          )
+          ),
+          jobRequestsById.get(
+            application.job_request_id
+          ) || null
         )
     );
 
