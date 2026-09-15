@@ -91,6 +91,7 @@ const OWNER_NAV_ITEMS = [
 const OPERATIONS_NAV_ITEMS = [
   { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
   { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
+  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },
 ];
 
 const OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));
@@ -4100,50 +4101,787 @@ function ChiefApplicantsPage({ openChiefStats }) {
 function OperationsStatusCard({ label, value, tone }) {
   return <div className={styles.operationsStatusCard}><div><span className={cn(styles.statusDot, styles[`statusDot_${tone}`])} />{label}</div><strong className={tone === 'red' ? styles.redText : ''}>{value}</strong></div>;
 }
-function ApplicationOperationsPage({ openAddApplicant, openReassign, openForcePriority, openEscalate }) {
+function ApplicationOperationsPage() {
+  const [
+    applications,
+    setApplications,
+  ] = useState([]);
+
+  const [
+    conversations,
+    setConversations,
+  ] = useState([]);
+
+  const [
+    summary,
+    setSummary,
+  ] = useState({
+    totalApplications: 0,
+    submitted: 0,
+    waiting: 0,
+    interviews: 0,
+    offers: 0,
+    rejected: 0,
+    feedbackConversations: 0,
+    feedbackPending: 0,
+    feedbackResolved: 0,
+  });
+
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState('applications');
+
+  const [
+    search,
+    setSearch,
+  ] = useState('');
+
+  const [
+    selectedConversationId,
+    setSelectedConversationId,
+  ] = useState('');
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
+    loadError,
+    setLoadError,
+  ] = useState('');
+
+  const [
+    refreshKey,
+    setRefreshKey,
+  ] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOperations =
+      async () => {
+        setIsLoading(true);
+        setLoadError('');
+
+        try {
+          const token =
+            await getOwnerAccessToken();
+
+          const response =
+            await fetch(
+              '/api/admin/application-operations',
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Application operations could not be loaded.'
+            );
+          }
+
+          if (cancelled) {
+            return;
+          }
+
+          setApplications(
+            result.applications || []
+          );
+
+          setConversations(
+            result.conversations || []
+          );
+
+          setSummary(
+            result.summary || {}
+          );
+        } catch (error) {
+          if (!cancelled) {
+            setLoadError(
+              error?.message ||
+                'Application operations could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+    loadOperations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const normalizedSearch =
+    search.trim().toLowerCase();
+
+  const visibleApplications =
+    useMemo(() => {
+      if (!normalizedSearch) {
+        return applications;
+      }
+
+      return applications.filter(
+        (application) =>
+          [
+            application.client,
+            application.applicant,
+            application.company,
+            application.position,
+            application.status,
+            application.originLabel,
+          ]
+            .filter(Boolean)
+            .some((value) =>
+              String(value)
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                )
+            )
+      );
+    }, [
+      applications,
+      normalizedSearch,
+    ]);
+
+  const visibleConversations =
+    useMemo(() => {
+      if (!normalizedSearch) {
+        return conversations;
+      }
+
+      return conversations.filter(
+        (conversation) =>
+          [
+            conversation.client,
+            conversation.applicant,
+            conversation.company,
+            conversation.position,
+            conversation.latestMessage,
+            conversation.applicationStatus,
+          ]
+            .filter(Boolean)
+            .some((value) =>
+              String(value)
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                )
+            )
+      );
+    }, [
+      conversations,
+      normalizedSearch,
+    ]);
+
+  const selectedConversation =
+    useMemo(
+      () =>
+        conversations.find(
+          (conversation) =>
+            conversation.id ===
+            selectedConversationId
+        ) || null,
+      [
+        conversations,
+        selectedConversationId,
+      ]
+    );
+
   return (
     <>
-      <PageHeader section="application-operations" action={<ActionButton icon={FiUserPlus} onClick={openAddApplicant}>Add New Applicant</ActionButton>} />
-      <div className={styles.statsGridFiveMini}>
-        <OperationsStatusCard label="IN PROGRESS" value="124" tone="blue" />
-        <OperationsStatusCard label="IN REVIEW" value="42" tone="orange" />
-        <OperationsStatusCard label="SUBMITTED" value="567" tone="green" />
-        <OperationsStatusCard label="DELAYED" value="8" tone="red" />
-        <OperationsStatusCard label="CRITICAL" value="3" tone="red" />
+      <PageHeader
+        section="application-operations"
+        action={
+          <ActionButton
+            icon={FiRefreshCw}
+            onClick={() =>
+              setRefreshKey(
+                (current) =>
+                  current + 1
+              )
+            }
+          >
+            Refresh
+          </ActionButton>
+        }
+      />
+
+      <div
+        className={
+          styles.statsGridFiveMini
+        }
+      >
+        <OperationsStatusCard
+          label="TOTAL APPLICATIONS"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.totalApplications ||
+                    0
+                )
+          }
+          tone="blue"
+        />
+
+        <OperationsStatusCard
+          label="SUBMITTED"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.submitted ||
+                    0
+                )
+          }
+          tone="green"
+        />
+
+        <OperationsStatusCard
+          label="WAITING"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.waiting ||
+                    0
+                )
+          }
+          tone="orange"
+        />
+
+        <OperationsStatusCard
+          label="INTERVIEWS"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.interviews ||
+                    0
+                )
+          }
+          tone="blue"
+        />
+
+        <OperationsStatusCard
+          label="FEEDBACK PENDING"
+          value={
+            isLoading
+              ? '—'
+              : String(
+                  summary.feedbackPending ||
+                    0
+                )
+          }
+          tone={
+            Number(
+              summary.feedbackPending ||
+                0
+            ) > 0
+              ? 'red'
+              : 'green'
+          }
+        />
       </div>
+
       <Card>
-        <SearchFilters placeholder="Search clients by name, plan, or team..." filters={['All Plans', 'All Statuses']} />
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>CLIENT NAME</th><th>APPLICANT</th><th>CHIEF APPLICANT</th><th>SUBMISSIONS</th><th>DEADLINE</th><th>QUALITY</th><th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {operations.map((item) => (
-              <tr key={`${item.client}-${item.deadline}-${item.quality}`}>
-                <td className={styles.nameCell}>{item.client}</td>
-                <td>{item.applicant}</td>
-                <td>{item.chief}</td>
-                <td><StatusBadge value={item.status} /></td>
-                <td>{item.deadline}</td>
-                <td><StatusBadge value={item.quality} /></td>
-                <td>
-                  <div className={styles.actionIcons}>
-                    <button onClick={openReassign}><FiRefreshCw /></button>
-                    <button onClick={openForcePriority}><FiClock /></button>
-                    <button onClick={openEscalate}><FiAlertTriangle /></button>
+        <div className="flex flex-col gap-5 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">
+              Application Workflow Monitor
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Monitor live applications and Client feedback without taking over the Linker workflow.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab(
+                  'applications'
+                )
+              }
+              className={cn(
+                'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                activeTab ===
+                  'applications'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              Applications (
+              {summary.totalApplications ||
+                0}
+              )
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab(
+                  'feedback'
+                )
+              }
+              className={cn(
+                'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                activeTab ===
+                  'feedback'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              Feedback Monitor (
+              {summary.feedbackConversations ||
+                0}
+              )
+            </button>
+          </div>
+        </div>
+
+        <div className="border-b border-slate-200 py-5">
+          <label className="relative block">
+            <FiSearch className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+
+            <input
+              type="search"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder={
+                activeTab ===
+                'feedback'
+                  ? 'Search feedback by Client, Applicant, company, role, or message'
+                  : 'Search applications by Client, Applicant, company, role, or status'
+              }
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+        </div>
+
+        {loadError ? (
+          <div className="my-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {loadError}
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="flex min-h-[360px] flex-col items-center justify-center">
+            <div className="h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+            <p className="mt-4 text-sm font-medium text-slate-600">
+              Loading application operations...
+            </p>
+          </div>
+        ) : activeTab ===
+          'applications' ? (
+          visibleApplications.length ===
+          0 ? (
+            <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+              <FiFileText className="h-9 w-9 text-slate-300" />
+
+              <h3 className="mt-4 text-lg font-bold text-slate-900">
+                No matching applications
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Applications will appear here as they are recorded.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table
+                className={
+                  styles.table
+                }
+              >
+                <thead>
+                  <tr>
+                    <th>CLIENT / ROLE</th>
+                    <th>APPLICANT</th>
+                    <th>STATUS</th>
+                    <th>ORIGIN</th>
+                    <th>APPLIED</th>
+                    <th>CLIENT FEEDBACK</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {visibleApplications.map(
+                    (application) => (
+                      <tr
+                        key={
+                          application.id
+                        }
+                      >
+                        <td>
+                          <div className="min-w-[210px]">
+                            <strong className="block text-sm text-slate-900">
+                              {
+                                application.client
+                              }
+                            </strong>
+
+                            <span className="mt-1 block text-xs text-slate-500">
+                              {
+                                application.company
+                              }{' '}
+                              —{' '}
+                              {
+                                application.position
+                              }
+                            </span>
+                          </div>
+                        </td>
+
+                        <td>
+                          {
+                            application.applicant
+                          }
+                        </td>
+
+                        <td>
+                          <StatusBadge
+                            value={
+                              application.status
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <span className="text-sm font-medium text-slate-700">
+                            {application.originLabel ||
+                              (application.jobRequestId
+                                ? 'Shared Opportunity'
+                                : 'Applicant Sourced')}
+                          </span>
+                        </td>
+
+                        <td>
+                          {application.appliedAt
+                            ? formatOwnerRelativeTime(
+                                application.appliedAt
+                              )
+                            : 'Not recorded'}
+                        </td>
+
+                        <td>
+                          <span
+                            className={cn(
+                              'inline-flex min-w-[38px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-bold',
+                              application.feedbackCount >
+                                0
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-slate-100 text-slate-500'
+                            )}
+                          >
+                            {
+                              application.feedbackCount
+                            }
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          <>
+            <div className="grid gap-4 border-b border-slate-200 py-5 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Conversations
+                </p>
+
+                <strong className="mt-2 block text-2xl text-slate-950">
+                  {summary.feedbackConversations ||
+                    0}
+                </strong>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                  Awaiting Linker
+                </p>
+
+                <strong className="mt-2 block text-2xl text-amber-800">
+                  {summary.feedbackPending ||
+                    0}
+                </strong>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                  Responded
+                </p>
+
+                <strong className="mt-2 block text-2xl text-emerald-800">
+                  {summary.feedbackResolved ||
+                    0}
+                </strong>
+              </div>
+            </div>
+
+            {visibleConversations.length ===
+            0 ? (
+              <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+                <FiMessageSquare className="h-9 w-9 text-slate-300" />
+
+                <h3 className="mt-4 text-lg font-bold text-slate-900">
+                  No Client feedback yet
+                </h3>
+
+                <p className="mt-2 max-w-md text-sm text-slate-500">
+                  Client feedback conversations will appear here once feedback is submitted on an Application.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table
+                  className={
+                    styles.table
+                  }
+                >
+                  <thead>
+                    <tr>
+                      <th>CLIENT / APPLICATION</th>
+                      <th>APPLICANT</th>
+                      <th>APPLICATION STATUS</th>
+                      <th>FEEDBACK STATE</th>
+                      <th>LATEST MESSAGE</th>
+                      <th>UPDATED</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {visibleConversations.map(
+                      (conversation) => (
+                        <tr
+                          key={
+                            conversation.id
+                          }
+                        >
+                          <td>
+                            <div className="min-w-[220px]">
+                              <strong className="block text-sm text-slate-900">
+                                {
+                                  conversation.client
+                                }
+                              </strong>
+
+                              <span className="mt-1 block text-xs text-slate-500">
+                                {
+                                  conversation.company
+                                }{' '}
+                                —{' '}
+                                {
+                                  conversation.position
+                                }
+                              </span>
+                            </div>
+                          </td>
+
+                          <td>
+                            {
+                              conversation.applicant
+                            }
+                          </td>
+
+                          <td>
+                            <StatusBadge
+                              value={
+                                conversation.applicationStatus
+                              }
+                            />
+                          </td>
+
+                          <td>
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-3 py-1.5 text-xs font-bold',
+                                conversation.status ===
+                                  'pending'
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-emerald-50 text-emerald-700'
+                              )}
+                            >
+                              {conversation.status ===
+                              'pending'
+                                ? 'Awaiting Linker'
+                                : 'Responded'}
+                            </span>
+                          </td>
+
+                          <td>
+                            <p className="max-w-[280px] truncate text-sm text-slate-600">
+                              {
+                                conversation.latestMessage
+                              }
+                            </p>
+                          </td>
+
+                          <td>
+                            {formatOwnerRelativeTime(
+                              conversation.latestAt
+                            )}
+                          </td>
+
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedConversationId(
+                                  (
+                                    current
+                                  ) =>
+                                    current ===
+                                    conversation.id
+                                      ? ''
+                                      : conversation.id
+                                )
+                              }
+                              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                            >
+                              {selectedConversationId ===
+                              conversation.id
+                                ? 'Hide'
+                                : 'View'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {selectedConversation && (
+              <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="border-b border-slate-200 bg-white px-5 py-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-950">
+                        {
+                          selectedConversation.client
+                        }{' '}
+                        ·{' '}
+                        {
+                          selectedConversation.company
+                        }{' '}
+                        —{' '}
+                        {
+                          selectedConversation.position
+                        }
+                      </h3>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        Applicant:{' '}
+                        {
+                          selectedConversation.applicant
+                        }
+                      </p>
+                    </div>
+
+                    <span
+                      className={cn(
+                        'inline-flex w-fit rounded-full px-3 py-1.5 text-xs font-bold',
+                        selectedConversation.status ===
+                          'pending'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-emerald-50 text-emerald-700'
+                      )}
+                    >
+                      {selectedConversation.status ===
+                      'pending'
+                        ? 'Awaiting Linker'
+                        : 'Responded'}
+                    </span>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+
+                <div className="space-y-3 p-5">
+                  {selectedConversation.messages.map(
+                    (message) => (
+                      <div
+                        key={message.id}
+                        className="rounded-xl border border-slate-200 bg-white p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <strong className="text-sm text-slate-900">
+                              {
+                                message.sender
+                                  ?.name
+                              }
+                            </strong>
+
+                            <span className="ml-2 text-xs font-medium capitalize text-slate-400">
+                              {
+                                message.sender
+                                  ?.role
+                              }
+                            </span>
+                          </div>
+
+                          <span className="text-xs text-slate-400">
+                            {formatOwnerRelativeTime(
+                              message.createdAt
+                            )}
+                          </span>
+                        </div>
+
+                        {message.subject && (
+                          <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                            {
+                              message.subject
+                            }
+                          </p>
+                        )}
+
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                          {
+                            message.message
+                          }
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            )}
+          </>
+        )}
       </Card>
     </>
   );
 }
-
 function SubscriptionRevenuePage({ openManagePlans, openEditSubscription }) {
   return (
     <>
@@ -5325,7 +6063,7 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
       />
     );
     if (section === 'chief-applicants') return <ChiefApplicantsPage openChiefStats={() => openModal('chiefStats')} />;
-    if (section === 'application-operations') return <ApplicationOperationsPage openAddApplicant={() => openModal('addApplicant')} openReassign={() => openModal('reassign')} openForcePriority={() => openModal('forcePriority')} openEscalate={() => openModal('escalate')} />;
+    if (section === 'application-operations') return <ApplicationOperationsPage />;
     if (section === 'subscription-revenue') return <SubscriptionRevenuePage openManagePlans={() => openModal('managePlans')} openEditSubscription={() => openModal('editSubscription')} />;
     if (section === 'prompt-system') return <PromptSystemPage />;
     if (section === 'analytics-reports') return <AnalyticsReportsPage />;
