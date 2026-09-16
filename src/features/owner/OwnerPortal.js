@@ -101,7 +101,7 @@ const PAGE_META = {
   dashboard: ['Dashboard', 'Mission Control - Complete visibility and control over your platform'],
   'client-management': ['Client Management', 'Manage all client accounts, subscriptions, and assignments'],
   'applicants-management': ['Applicants Management', 'Manage workers, assign workload, and track productivity'],
-  'chief-applicants': ['Chief Applicants', 'Review Chief Applicant coverage, assigned clients, and application workload'],
+  'chief-applicants': ['Chief Applicants', 'Review Chief Applicant teams, supervised Applicants, and application workload'],
   'application-operations': ['Application Operations', 'Monitor opportunities, applications, feedback, and workflow exceptions'],
   'subscription-revenue': ['Subscription & Revenue', 'Financial management dashboard and revenue analytics'],
   'prompt-system': ['Prompt System', 'Manage prompt configurations and workflow templates'],
@@ -4099,9 +4099,9 @@ function ChiefApplicantsPage() {
       summary: {
         totalChiefs: 0,
         activeChiefs: 0,
-        assignedClients: 0,
-        unassignedClients: 0,
-        teamApplicants: 0,
+        assignedApplicants: 0,
+        unassignedApplicants: 0,
+        coveredClients: 0,
         applications: 0,
       },
       chiefs: [],
@@ -4234,21 +4234,21 @@ function ChiefApplicantsPage() {
             />
 
             <StatCard
-              label="ASSIGNED CLIENTS"
+              label="SUPERVISED APPLICANTS"
               value={
-                summary.assignedClients ||
+                summary.assignedApplicants ||
                 0
               }
               note={`${
-                summary.unassignedClients ||
+                summary.unassignedApplicants ||
                 0
               } unassigned`}
             />
 
             <StatCard
-              label="TEAM APPLICANTS"
+              label="CLIENT COVERAGE"
               value={
-                summary.teamApplicants ||
+                summary.coveredClients ||
                 0
               }
               note=""
@@ -4283,8 +4283,8 @@ function ChiefApplicantsPage() {
 
                 <p>
                   Chief Applicant
-                  accounts and Client
-                  assignments will
+                  accounts and Applicant
+                  supervision assignments will
                   appear here once
                   configured.
                 </p>
@@ -4385,7 +4385,7 @@ function ChiefApplicantsPage() {
                       >
                         <MetricMini
                           tone="blue"
-                          title="Clients"
+                          title="Client Coverage"
                           value={
                             chief.clientCount
                           }
@@ -4417,7 +4417,7 @@ function ChiefApplicantsPage() {
                         }
                       >
                         <div>
-                          Assigned Clients
+                          Client Coverage
                           <strong>
                             {clientNames ||
                               'None'}

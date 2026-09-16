@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { FiBriefcase, FiLink, FiLogOut } from 'react-icons/fi';
+import {
+  FiBriefcase,
+  FiLink,
+  FiLogOut,
+  FiUsers,
+} from 'react-icons/fi';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
 import LinkerManagementPage from './LinkerManagementPage';
+import ChiefApplicantManagementPage from './ChiefApplicantManagementPage';
 import {
   AddNewApplicantModal,
   ApplicantsManagementPage,
@@ -152,6 +158,22 @@ export default function AdminPortal() {
 
             <button
               type="button"
+              onClick={() => {
+                setSection('chief-applicants');
+                setWorkforceContext(null);
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
+                section === 'chief-applicants'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <FiUsers className="h-5 w-5" />
+              <span>Chief Applicants</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setSection('linkers')}
               className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
                 section === 'linkers'
@@ -226,7 +248,9 @@ export default function AdminPortal() {
 
           <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
             {workforceContext &&
-              section !== 'clients' && (
+              ['applicants', 'linkers'].includes(
+                section
+              ) && (
               <div className="mb-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-5 shadow-sm">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -294,6 +318,8 @@ export default function AdminPortal() {
                   workforceContext
                 }
               />
+            ) : section === 'chief-applicants' ? (
+              <ChiefApplicantManagementPage />
             ) : (
               <ApplicantsManagementPage
                 mode="admin"
