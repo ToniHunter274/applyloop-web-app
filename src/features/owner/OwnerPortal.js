@@ -47,7 +47,7 @@ import CustomSelect from '../../shared/components/CustomSelect';
 import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
 import styles from './OwnerPortal.module.css';
 import { AxisBarChart, AxisLineChart, AxisMultiLineChart, ConversionFunnelChart } from './OwnerCharts';
-import { AnalyticsReportsPage, ClientDetailsPage, EscalationsIssuesPage, PromptSystemPage, SettingsPage } from './OwnerExtraPages';
+import { ClientDetailsPage, EscalationsIssuesPage, PromptSystemPage, SettingsPage } from './OwnerExtraPages';
 
 const cn = (...values) => values.filter(Boolean).join(' ');
 
@@ -105,7 +105,7 @@ const PAGE_META = {
   'application-operations': ['Application Operations', 'Monitor opportunities, applications, feedback, and workflow exceptions'],
   'subscription-revenue': ['Subscription & Revenue', 'Financial management dashboard and revenue analytics'],
   'prompt-system': ['Prompt System', 'Manage prompt configurations and workflow templates'],
-  'analytics-reports': ['Analytics & Reports', 'Explore platform metrics and exported reports'],
+  'analytics-reports': ['Analytics & Reports', 'Review real opportunity sources and application outcomes across ApplyLoop'],
   'payroll-system': ['Payroll System', 'Track worker payments based on applications completed'],
   'escalations-issues': ['Escalations & Issues', 'Review operational escalations and urgent account issues'],
   settings: ['Settings', 'Manage workspace settings and platform rules'],
@@ -4275,6 +4275,527 @@ function OperationsOpportunityTable({
   );
 }
 
+function OwnerAnalyticsReportsPage() {
+  const [
+    intelligence,
+    setIntelligence,
+  ] = useState({
+    summary: {
+      totalClients: 0,
+      activeClients: 0,
+      totalOpportunities: 0,
+      convertedOpportunities: 0,
+      openOpportunities: 0,
+      needsAttention: 0,
+      opportunityConversionRate: 0,
+      totalApplications: 0,
+      submitted: 0,
+      waiting: 0,
+      interviews: 0,
+      offers: 0,
+      rejected: 0,
+      interviewRate: 0,
+      offerRate: 0,
+    },
+    sources: [],
+  });
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
+    loadError,
+    setLoadError,
+  ] = useState('');
+
+  const [
+    refreshKey,
+    setRefreshKey,
+  ] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadIntelligence =
+      async () => {
+        setIsLoading(true);
+        setLoadError('');
+
+        try {
+          const token =
+            await getOwnerAccessToken();
+
+          const response =
+            await fetch(
+              '/api/admin/owner-intelligence',
+              {
+                cache: 'no-store',
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (
+            !response.ok ||
+            !result.summary ||
+            !Array.isArray(
+              result.sources
+            )
+          ) {
+            throw new Error(
+              result.error ||
+                'Owner intelligence could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setIntelligence({
+              summary:
+                result.summary,
+              sources:
+                result.sources,
+            });
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setLoadError(
+              error?.message ||
+                'Owner intelligence could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+    loadIntelligence();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const summary =
+    intelligence.summary || {};
+
+  const value = (resolved) =>
+    isLoading
+      ? '—'
+      : resolved;
+
+  const metricCards = [
+    {
+      label: 'ACTIVE CLIENTS',
+      value: value(
+        Number(
+          summary.activeClients || 0
+        )
+      ),
+      note: `${Number(
+        summary.totalClients || 0
+      )} total client records`,
+    },
+    {
+      label: 'OPPORTUNITIES',
+      value: value(
+        Number(
+          summary.totalOpportunities ||
+            0
+        )
+      ),
+      note: `${Number(
+        summary.openOpportunities ||
+          0
+      )} currently open`,
+    },
+    {
+      label: 'APPLICATIONS',
+      value: value(
+        Number(
+          summary.totalApplications ||
+            0
+        )
+      ),
+      note:
+        'All recorded application sources',
+    },
+    {
+      label: 'INTERVIEWS',
+      value: value(
+        Number(
+          summary.interviews || 0
+        )
+      ),
+      note: `${Number(
+        summary.interviewRate || 0
+      )}% of recorded applications`,
+    },
+    {
+      label: 'OFFERS',
+      value: value(
+        Number(
+          summary.offers || 0
+        )
+      ),
+      note: `${Number(
+        summary.offerRate || 0
+      )}% of recorded applications`,
+    },
+    {
+      label: 'NEEDS ATTENTION',
+      value: value(
+        Number(
+          summary.needsAttention ||
+            0
+        )
+      ),
+      note:
+        'Opportunity aging signals',
+    },
+  ];
+
+  const visibleSources =
+    intelligence.sources.filter(
+      (source) =>
+        source.source !== 'shared' ||
+        Number(
+          source.opportunities || 0
+        ) > 0 ||
+        Number(
+          source.applications || 0
+        ) > 0
+    );
+
+  return (
+    <>
+      <PageHeader
+        section="analytics-reports"
+        action={
+          <ActionButton
+            icon={FiRefreshCw}
+            onClick={() =>
+              setRefreshKey(
+                (current) =>
+                  current + 1
+              )
+            }
+          >
+            Refresh
+          </ActionButton>
+        }
+      />
+
+      {loadError && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          {loadError}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {metricCards.map(
+          (card) => (
+            <article
+              key={card.label}
+              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                {card.label}
+              </p>
+
+              <strong className="mt-3 block text-3xl font-extrabold text-slate-950">
+                {card.value}
+              </strong>
+
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                {card.note}
+              </p>
+            </article>
+          )
+        )}
+      </div>
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-2">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">
+              Opportunity Health
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Platform-wide movement from shared opportunities into recorded applications.
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {[
+              [
+                'Total Opportunities',
+                summary.totalOpportunities,
+              ],
+              [
+                'Converted Opportunities',
+                summary.convertedOpportunities,
+              ],
+              [
+                'Open Opportunities',
+                summary.openOpportunities,
+              ],
+              [
+                'Needs Attention',
+                summary.needsAttention,
+              ],
+            ].map(
+              ([label, count]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3"
+                >
+                  <span className="text-sm font-medium text-slate-600">
+                    {label}
+                  </span>
+
+                  <strong className="text-lg text-slate-950">
+                    {isLoading
+                      ? '—'
+                      : Number(
+                          count || 0
+                        )}
+                  </strong>
+                </div>
+              )
+            )}
+          </div>
+
+          <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+              Opportunity Conversion
+            </p>
+
+            <div className="mt-2 flex items-end justify-between gap-4">
+              <strong className="text-3xl font-extrabold text-blue-950">
+                {isLoading
+                  ? '—'
+                  : `${Number(
+                      summary
+                        .opportunityConversionRate ||
+                        0
+                    )}%`}
+              </strong>
+
+              <span className="text-right text-xs text-blue-700">
+                Linked Applications /
+                Opportunities
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">
+              Application Outcomes
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Current status distribution across every recorded Application.
+            </p>
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {[
+              [
+                'Submitted',
+                summary.submitted,
+              ],
+              [
+                'Waiting',
+                summary.waiting,
+              ],
+              [
+                'Interviews',
+                summary.interviews,
+              ],
+              [
+                'Offers',
+                summary.offers,
+              ],
+              [
+                'Rejected',
+                summary.rejected,
+              ],
+              [
+                'All Applications',
+                summary.totalApplications,
+              ],
+            ].map(
+              ([label, count]) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-slate-100 px-4 py-4"
+                >
+                  <strong className="block text-2xl font-extrabold text-slate-950">
+                    {isLoading
+                      ? '—'
+                      : Number(
+                          count || 0
+                        )}
+                  </strong>
+
+                  <span className="mt-1 block text-xs font-medium text-slate-500">
+                    {label}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+
+          <p className="mt-5 text-xs leading-5 text-slate-500">
+            Applicant-sourced Applications enter directly at the Application stage, so Application totals are intentionally not treated as a strict continuation of the Opportunity funnel.
+          </p>
+        </article>
+      </div>
+
+      <article className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <h2 className="text-lg font-bold text-slate-950">
+            Source Outcomes
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Compare factual outcomes by canonical sourcing channel.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-4 sm:px-6">
+                  Source
+                </th>
+                <th className="px-4 py-4">
+                  Opportunities
+                </th>
+                <th className="px-4 py-4">
+                  Applications
+                </th>
+                <th className="px-4 py-4">
+                  Interviews
+                </th>
+                <th className="px-4 py-4">
+                  Offers
+                </th>
+                <th className="px-4 py-4">
+                  Rejected
+                </th>
+                <th className="px-4 py-4">
+                  Opportunity Conversion
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100">
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-6 py-12 text-center text-sm text-slate-500"
+                  >
+                    Loading platform intelligence...
+                  </td>
+                </tr>
+              ) : visibleSources.length ? (
+                visibleSources.map(
+                  (source) => (
+                    <tr
+                      key={source.source}
+                      className="text-slate-700"
+                    >
+                      <td className="px-5 py-4 font-semibold text-slate-950 sm:px-6">
+                        {source.label}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        {source.opportunities ===
+                        null
+                          ? '—'
+                          : Number(
+                              source.opportunities ||
+                                0
+                            )}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        {Number(
+                          source.applications ||
+                            0
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        {Number(
+                          source.interviews ||
+                            0
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        {Number(
+                          source.offers || 0
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        {Number(
+                          source.rejected || 0
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4 font-semibold text-slate-950">
+                        {source.conversionRate ===
+                        null
+                          ? '—'
+                          : `${Number(
+                              source.conversionRate ||
+                                0
+                            )}%`}
+                      </td>
+                    </tr>
+                  )
+                )
+              ) : (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-6 py-12 text-center text-sm text-slate-500"
+                  >
+                    No source-attributed workflow data is available yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 text-xs leading-5 text-slate-500 sm:px-6">
+          Linker Sourced and Client Added conversion rates use Opportunities as their denominator. Applicant Sourced Applications have no Opportunity denominator because they enter the workflow directly.
+        </div>
+      </article>
+    </>
+  );
+}
+
 function ApplicationOperationsPage() {
   const [
     opportunities,
@@ -6408,7 +6929,7 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
     if (section === 'application-operations') return <ApplicationOperationsPage />;
     if (section === 'subscription-revenue') return <SubscriptionRevenuePage openManagePlans={() => openModal('managePlans')} openEditSubscription={() => openModal('editSubscription')} />;
     if (section === 'prompt-system') return <PromptSystemPage />;
-    if (section === 'analytics-reports') return <AnalyticsReportsPage />;
+    if (section === 'analytics-reports') return <OwnerAnalyticsReportsPage />;
     if (section === 'payroll-system') return <PayrollSystemPage openPaymentHistory={() => openModal('paymentHistory')} />;
     if (section === 'escalations-issues') return <EscalationsIssuesPage />;
     if (section === 'settings') return <SettingsPage />;
