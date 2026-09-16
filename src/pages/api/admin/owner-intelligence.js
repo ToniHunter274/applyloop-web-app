@@ -328,12 +328,33 @@ export default async function handler(
     const linkedOpportunityIds =
       new Set(
         applications
+          .filter(
+            (application) => {
+              if (
+                !application
+                  .job_request_id
+              ) {
+                return false;
+              }
+
+              const request =
+                requestsById.get(
+                  application
+                    .job_request_id
+                );
+
+              return (
+                request &&
+                request.client_id ===
+                  application.client_id
+              );
+            }
+          )
           .map(
             (application) =>
               application
                 .job_request_id
           )
-          .filter(Boolean)
       );
 
     const totalApplications =
@@ -406,8 +427,8 @@ export default async function handler(
               stats.opportunities;
 
             const hasOpportunityBase =
-              typeof opportunitiesCount ===
-              'number';
+              source === 'linker' ||
+              source === 'client';
 
             return {
               source,
