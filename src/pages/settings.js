@@ -821,22 +821,32 @@ export default function Settings() {
 
               {/* Profile Image */}
               <div className="flex items-center gap-6">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256"
-                  alt="Profile"
-                  className="w-16 h-16 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                />
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full border border-gray-200 bg-slate-100 text-lg font-bold text-slate-700 dark:border-gray-700 dark:bg-gray-700 dark:text-gray-100"
+                  aria-label="Profile initials"
+                >
+                  {(profile.fullName || 'Client')
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((part) =>
+                      part
+                        .charAt(0)
+                        .toUpperCase()
+                    )
+                    .join('')}
+                </div>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={!isEditingProfile}
+                  disabled
+                  title="Profile image updates are not available yet."
                   className={`px-5 py-2.5 text-sm font-semibold border rounded-xl transition-all ${
                     isEditingProfile
                       ? 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
                       : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed dark:bg-gray-900 dark:text-gray-600 dark:border-gray-700'
                   }`}
                 >
-                  Update Profile Image
+                  Profile image updates unavailable
                 </button>
               </div>
 
@@ -1955,8 +1965,7 @@ export default function Settings() {
               <div className="pt-8 border-t border-gray-100 dark:border-gray-700">
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Delete Account</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-3xl">
-                  We&apos;re sorry to see you go. Deleting your account will permanently remove your profile,
-                  applications, and stored data from our system. You can reactivate your account within 14 days.
+                  Account deletion is not available in-app yet. Contact ApplyLoop Support if you need help closing your account.
                 </p>
 
                 <div className="flex items-center gap-3 mb-6">
@@ -1965,6 +1974,7 @@ export default function Settings() {
                     type="checkbox"
                     checked={deleteConfirmed}
                     onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                    disabled
                     className="w-4 h-4 text-[#1E50C3] border-gray-300 rounded focus:ring-[#1E50C3]"
                   />
                   <label htmlFor="deleteConfirm" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
@@ -1996,7 +2006,7 @@ export default function Settings() {
                         : 'bg-red-300 cursor-not-allowed'
                     }`}
                   >
-                    Delete Account
+                    Deletion unavailable
                   </button>
                   <button
                     type="button"
