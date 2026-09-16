@@ -101,7 +101,7 @@ const PAGE_META = {
   dashboard: ['Dashboard', 'Mission Control - Complete visibility and control over your platform'],
   'client-management': ['Client Management', 'Manage all client accounts, subscriptions, and assignments'],
   'applicants-management': ['Applicants Management', 'Manage workers, assign workload, and track productivity'],
-  'chief-applicants': ['Chief Applicants', 'Manage workers, assign workload, and track productivity'],
+  'chief-applicants': ['Chief Applicants', 'Review Chief Applicant coverage, assigned clients, and application workload'],
   'application-operations': ['Application Operations', 'Monitor opportunities, applications, feedback, and workflow exceptions'],
   'subscription-revenue': ['Subscription & Revenue', 'Financial management dashboard and revenue analytics'],
   'prompt-system': ['Prompt System', 'Manage prompt configurations and workflow templates'],
@@ -433,12 +433,6 @@ function getOwnerDashboardFeed(
 
 const applicants = [];
 
-const chiefs = [
-  { initials: 'MW', name: 'Marcus Williams', team: 'Team Alpha', teamSize: 45, completion: 92, accuracy: 96, onTime: 94, reviewed: '1,245' },
-  { initials: 'JC', name: 'Jasmine Carter', team: 'Team Beta', teamSize: 38, completion: 88, accuracy: 93, onTime: 90, reviewed: '1,032' },
-  { initials: 'RD', name: 'Ravi Desai', team: 'Team Gamma', teamSize: 52, completion: 95, accuracy: 98, onTime: 97, reviewed: '1,487' },
-  { initials: 'RD', name: 'James Anderson', team: 'Team Delta', teamSize: 42, completion: 90, accuracy: 94, onTime: 89, reviewed: '1,878' },
-];
 
 const operations = [
   { client: 'Maya Patel', applicant: 'Olabanji David', chief: 'Raya Dava', status: 'Submitted', deadline: '2026-05-23', quality: 'Approved' },
@@ -4099,30 +4093,348 @@ export function ApplicantsManagementPage({
   );
 }
 
-function ChiefApplicantsPage({ openChiefStats }) {
+function ChiefApplicantsPage() {
+  const [chiefData, setChiefData] =
+    useState({
+      summary: {
+        totalChiefs: 0,
+        activeChiefs: 0,
+        assignedClients: 0,
+        unassignedClients: 0,
+        teamApplicants: 0,
+        applications: 0,
+      },
+      chiefs: [],
+    });
+
+  const [
+    isLoadingChiefs,
+    setIsLoadingChiefs,
+  ] = useState(true);
+
+  const [
+    chiefsError,
+    setChiefsError,
+  ] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadChiefApplicants =
+      async () => {
+        setIsLoadingChiefs(true);
+        setChiefsError('');
+
+        try {
+          const accessToken =
+            await getOwnerAccessToken();
+
+          const response =
+            await fetch(
+              '/api/admin/chief-applicants',
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Chief Applicant coverage could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setChiefData({
+              summary:
+                result.summary || {},
+              chiefs:
+                result.chiefs || [],
+            });
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setChiefsError(
+              error?.message ||
+                'Chief Applicant coverage could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingChiefs(
+              false
+            );
+          }
+        }
+      };
+
+    loadChiefApplicants();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const summary =
+    chiefData.summary || {};
+
+  const chiefRecords =
+    chiefData.chiefs || [];
+
   return (
     <>
-      <PageHeader section="chief-applicants" action={<ActionButton icon={FiUserPlus}>Add Chief Applicant</ActionButton>} />
-      <div className={styles.statsGridFour}>
-        <StatCard label="TOTAL CHIEFS" value="45" note="" />
-        <StatCard label="AVG TEAM SIZE" value="44" note="" />
-        <StatCard label="AVG ACCURACY" value="95.6%" note="" />
-        <StatCard label="TOTAL REVIEWED" value="5,366" note="" />
-      </div>
-      <div className={styles.chiefGrid}>
-        {chiefs.map((chief) => (
-          <Card key={chief.name} className={styles.chiefCard}>
-            <div className={styles.chiefTop}><div className={styles.chiefIdentity}><AvatarCircle initials={chief.initials} /><div><h3>{chief.name}</h3><p>{chief.team}</p></div><FaRegGem className={styles.gem} /></div><div className={styles.teamSize}>Team Size <strong>{chief.teamSize}</strong></div></div>
-            <div className={styles.chiefMetrics}><MetricMini tone="blue" title="Completion" value={`${chief.completion}%`} /><MetricMini tone="green" title="Accuracy" value={`${chief.accuracy}%`} /><MetricMini tone="purple" title="On-Time" value={`${chief.onTime}%`} /></div>
-            <div className={styles.barStack}><label>Team Completion Rate <span>{chief.completion}%</span></label><ProgressBar value={chief.completion} tone="blue" /><label>Approval Accuracy <span>{chief.accuracy}%</span></label><ProgressBar value={chief.accuracy} tone="green" /><label>Deadline Compliance <span>{chief.onTime}%</span></label><ProgressBar value={chief.onTime} tone="purple" /></div>
-            <div className={styles.chiefFooter}><div>Tasks Reviewed <strong>{chief.reviewed}</strong></div><button className={styles.ghostMini} onClick={openChiefStats}>View Team</button></div>
-          </Card>
-        ))}
-      </div>
+      <PageHeader
+        section="chief-applicants"
+      />
+
+      {isLoadingChiefs ? (
+        <Card
+          className={
+            styles.chiefCard
+          }
+        >
+          <p>
+            Loading Chief Applicant
+            coverage...
+          </p>
+        </Card>
+      ) : chiefsError ? (
+        <Card
+          className={
+            styles.chiefCard
+          }
+        >
+          <p>{chiefsError}</p>
+        </Card>
+      ) : (
+        <>
+          <div
+            className={
+              styles.statsGridFour
+            }
+          >
+            <StatCard
+              label="TOTAL CHIEFS"
+              value={
+                summary.totalChiefs ||
+                0
+              }
+              note={`${
+                summary.activeChiefs ||
+                0
+              } active`}
+            />
+
+            <StatCard
+              label="ASSIGNED CLIENTS"
+              value={
+                summary.assignedClients ||
+                0
+              }
+              note={`${
+                summary.unassignedClients ||
+                0
+              } unassigned`}
+            />
+
+            <StatCard
+              label="TEAM APPLICANTS"
+              value={
+                summary.teamApplicants ||
+                0
+              }
+              note=""
+            />
+
+            <StatCard
+              label="APPLICATIONS"
+              value={
+                summary.applications ||
+                0
+              }
+              note=""
+            />
+          </div>
+
+          <div
+            className={
+              styles.chiefGrid
+            }
+          >
+            {chiefRecords.length ===
+            0 ? (
+              <Card
+                className={
+                  styles.chiefCard
+                }
+              >
+                <h3>
+                  No Chief Applicants
+                  configured
+                </h3>
+
+                <p>
+                  Chief Applicant
+                  accounts and Client
+                  assignments will
+                  appear here once
+                  configured.
+                </p>
+              </Card>
+            ) : (
+              chiefRecords.map(
+                (chief) => {
+                  const initials =
+                    String(
+                      chief.fullName ||
+                        'Chief Applicant'
+                    )
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map(
+                        (part) =>
+                          part[0]
+                      )
+                      .join('')
+                      .toUpperCase();
+
+                  const clientNames =
+                    (
+                      chief
+                        .assignedClients ||
+                      []
+                    )
+                      .map(
+                        (client) =>
+                          client.fullName
+                      )
+                      .filter(Boolean)
+                      .join(', ');
+
+                  return (
+                    <Card
+                      key={chief.id}
+                      className={
+                        styles.chiefCard
+                      }
+                    >
+                      <div
+                        className={
+                          styles.chiefTop
+                        }
+                      >
+                        <div
+                          className={
+                            styles.chiefIdentity
+                          }
+                        >
+                          <AvatarCircle
+                            initials={
+                              initials ||
+                              'CA'
+                            }
+                          />
+
+                          <div>
+                            <h3>
+                              {
+                                chief.fullName
+                              }
+                            </h3>
+
+                            <p>
+                              {chief.email ||
+                                'No email'}
+                            </p>
+                          </div>
+
+                          <FaRegGem
+                            className={
+                              styles.gem
+                            }
+                          />
+                        </div>
+
+                        <div
+                          className={
+                            styles.teamSize
+                          }
+                        >
+                          Team Size
+                          <strong>
+                            {
+                              chief.teamSize
+                            }
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div
+                        className={
+                          styles.chiefMetrics
+                        }
+                      >
+                        <MetricMini
+                          tone="blue"
+                          title="Clients"
+                          value={
+                            chief.clientCount
+                          }
+                        />
+
+                        <MetricMini
+                          tone="green"
+                          title="Applications"
+                          value={
+                            chief.applicationCount
+                          }
+                        />
+
+                        <MetricMini
+                          tone="purple"
+                          title="Account"
+                          value={
+                            chief.accountStatus ===
+                            'active'
+                              ? 'Active'
+                              : 'Inactive'
+                          }
+                        />
+                      </div>
+
+                      <div
+                        className={
+                          styles.chiefFooter
+                        }
+                      >
+                        <div>
+                          Assigned Clients
+                          <strong>
+                            {clientNames ||
+                              'None'}
+                          </strong>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                }
+              )
+            )}
+          </div>
+        </>
+      )}
     </>
   );
 }
-
 
 function OperationsStatusCard({ label, value, tone }) {
   return <div className={styles.operationsStatusCard}><div><span className={cn(styles.statusDot, styles[`statusDot_${tone}`])} />{label}</div><strong className={tone === 'red' ? styles.redText : ''}>{value}</strong></div>;
@@ -6925,7 +7237,7 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
         refreshKey={applicantRefreshKey}
       />
     );
-    if (section === 'chief-applicants') return <ChiefApplicantsPage openChiefStats={() => openModal('chiefStats')} />;
+    if (section === 'chief-applicants') return <ChiefApplicantsPage />;
     if (section === 'application-operations') return <ApplicationOperationsPage />;
     if (section === 'subscription-revenue') return <SubscriptionRevenuePage openManagePlans={() => openModal('managePlans')} openEditSubscription={() => openModal('editSubscription')} />;
     if (section === 'prompt-system') return <PromptSystemPage />;
