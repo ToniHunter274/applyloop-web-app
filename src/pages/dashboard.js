@@ -79,6 +79,8 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showPipeline, setShowPipeline] = useState(false);
+  const [showSources, setShowSources] = useState(false);
   const [updateSlideIndex, setUpdateSlideIndex] = useState(0);
   const [announcements, setAnnouncements] = useState([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
@@ -531,87 +533,141 @@ export default function Dashboard() {
         })}
       </div>
 
-      <section className="grid gap-5 lg:grid-cols-2 mb-8">
-        <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-          <div className="mb-5">
-            <h2 className="text-base font-bold text-gray-950 dark:text-white">
-              Application Pipeline
-            </h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              Follow how your recorded applications are progressing.
-            </p>
-          </div>
+      <section className="mb-8">
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            aria-expanded={showPipeline}
+            onClick={() =>
+              setShowPipeline(
+                (current) => !current
+              )
+            }
+            className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+              showPipeline
+                ? 'border-[#1E50C3] bg-blue-50 text-[#1E50C3] dark:bg-blue-900/20'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-[#1E50C3] hover:text-[#1E50C3] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+            }`}
+          >
+            {showPipeline
+              ? 'Hide Pipeline'
+              : 'View Pipeline'}
+          </button>
 
-          <div className="grid grid-cols-4 gap-2 sm:gap-3">
-            {pipelineStages.map(
-              (stage, index) => (
-                <div
-                  key={stage.label}
-                  className="relative rounded-xl border border-gray-100 bg-gray-50 px-2 py-4 text-center dark:border-gray-700 dark:bg-gray-900/40 sm:px-3"
-                >
-                  <strong className="block text-xl font-extrabold text-gray-950 dark:text-white sm:text-2xl">
-                    {stage.count}
-                  </strong>
+          <button
+            type="button"
+            aria-expanded={showSources}
+            onClick={() =>
+              setShowSources(
+                (current) => !current
+              )
+            }
+            className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+              showSources
+                ? 'border-[#1E50C3] bg-blue-50 text-[#1E50C3] dark:bg-blue-900/20'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-[#1E50C3] hover:text-[#1E50C3] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+            }`}
+          >
+            {showSources
+              ? 'Hide Sources'
+              : 'View Sources'}
+          </button>
+        </div>
 
-                  <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:text-[11px]">
-                    {stage.label}
-                  </span>
+        {(showPipeline || showSources) && (
+          <div
+            className={`mt-4 grid gap-5 ${
+              showPipeline && showSources
+                ? 'lg:grid-cols-2'
+                : ''
+            }`}
+          >
+            {showPipeline && (
+              <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+                <div className="mb-5">
+                  <h2 className="text-base font-bold text-gray-950 dark:text-white">
+                    Application Pipeline
+                  </h2>
+                  <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                    Follow how your recorded applications are progressing.
+                  </p>
+                </div>
 
-                  {index <
-                    pipelineStages.length -
-                      1 && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-gray-300 sm:block"
-                    >
-                      →
-                    </span>
+                <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                  {pipelineStages.map(
+                    (stage, index) => (
+                      <div
+                        key={stage.label}
+                        className="relative rounded-xl border border-gray-100 bg-gray-50 px-2 py-4 text-center dark:border-gray-700 dark:bg-gray-900/40 sm:px-3"
+                      >
+                        <strong className="block text-xl font-extrabold text-gray-950 dark:text-white sm:text-2xl">
+                          {stage.count}
+                        </strong>
+
+                        <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:text-[11px]">
+                          {stage.label}
+                        </span>
+
+                        {index <
+                          pipelineStages.length -
+                            1 && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-gray-300 sm:block"
+                          >
+                            →
+                          </span>
+                        )}
+                      </div>
+                    )
                   )}
                 </div>
-              )
+
+                <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
+                  Rejected applications remain visible in your main dashboard metrics and application history.
+                </p>
+              </article>
             )}
-          </div>
 
-          <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
-            Rejected applications remain visible in your main dashboard metrics and application history.
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-          <div className="mb-5">
-            <h2 className="text-base font-bold text-gray-950 dark:text-white">
-              Application Sources
-            </h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              See where your recorded job opportunities came from.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {sourceStages.map(
-              (source) => (
-                <div
-                  key={source.label}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3 dark:border-gray-700"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {source.label}
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      {source.note}
-                    </p>
-                  </div>
-
-                  <strong className="shrink-0 text-xl font-extrabold text-[#1E50C3]">
-                    {source.count}
-                  </strong>
+            {showSources && (
+              <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+                <div className="mb-5">
+                  <h2 className="text-base font-bold text-gray-950 dark:text-white">
+                    Application Sources
+                  </h2>
+                  <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                    See where your recorded job opportunities came from.
+                  </p>
                 </div>
-              )
+
+                <div className="space-y-3">
+                  {sourceStages.map(
+                    (source) => (
+                      <div
+                        key={source.label}
+                        className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3 dark:border-gray-700"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {source.label}
+                          </p>
+
+                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            {source.note}
+                          </p>
+                        </div>
+
+                        <strong className="shrink-0 text-xl font-extrabold text-[#1E50C3]">
+                          {source.count}
+                        </strong>
+                      </div>
+                    )
+                  )}
+                </div>
+              </article>
             )}
           </div>
-        </article>
+        )}
       </section>
 
       {/* Important Updates */}
