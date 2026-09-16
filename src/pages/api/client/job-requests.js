@@ -1,7 +1,10 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireClient } from '../../../lib/auth/requireClient';
 import { getClientServiceState } from '../../../lib/subscriptions/clientServiceState';
-import { findDuplicateJobLink } from '../../../lib/jobs/jobLinkDeduplication';
+import {
+  findDuplicateJobLink,
+  normalizeJobLink,
+} from '../../../lib/jobs/jobLinkDeduplication';
 
 function validateJobUrl(value) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -171,7 +174,7 @@ export default async function handler(req, res) {
         .order('created_at', {
           ascending: false,
         })
-        .limit(20);
+        .limit(100);
 
       if (requestsError) {
         throw new ApiError(
@@ -275,25 +278,20 @@ export default async function handler(req, res) {
       );
     }
 
-    const jobUrl = validateJobUrl(
-      req.body?.jobLink
-    );
+    const rawJobLinks =
+      Array.isArray(req.body?.jobLinks)
+        ? req.body.jobLinks
+        : req.body?.jobLink !== undefined
+          ? [req.body.jobLink]
+          : [];
 
-    const duplicateCheck =
-      await findDuplicateJobLink({
-        supabase,
-        clientId: client.id,
-        jobLink: jobUrl,
-      });
-
-    if (duplicateCheck.type) {
+    if (
+      rawJobLinks.length < 1 ||
+      rawJobLinks.length > 20
+    ) {
       throw new ApiError(
-        409,
-        duplicateCheck.type === 'application'
-          ? 'This job link has already been recorded as an application.'
-          : `This job link already exists with status “${String(
-              duplicateCheck.status || 'active'
-            ).replace(/_/g, ' ')}”.`
+        400,
+        'Submit between 1 and 20 job links at a time.'
       );
     }
 
@@ -301,58 +299,331 @@ export default async function handler(req, res) {
       req.body?.comment
     );
 
-    const {
-      data: request,
-      error: requestError,
-    } = await supabase
-      .from('client_job_requests')
-      .insert({
-        client_id: client.id,
-        submitted_by: profile.id,
-        job_url: jobUrl,
-        normalized_job_url:
-          duplicateCheck.normalizedJobLink,
-        comment,
-        status: 'new',
-        request_source: 'client',
-      })
-      .select(`
-        id,
-        job_url,
-        comment,
-        status,
-        created_at
-      `)
-      .single();
+    const results = [];
+    const createdRequests = [];
+    const batchNormalizedLinks = new Set();
 
-    if (requestError || !request) {
-      if (
-        String(requestError?.message || '')
-          .toLowerCase()
-          .includes('duplicate job link')
-      ) {
-        throw new ApiError(
-          409,
-          'This job link has already been submitted.'
+    for (const rawJobLink of rawJobLinks) {
+      let jobUrl;
+      let normalizedJobLink;
+
+      try {
+        jobUrl = validateJobUrl(
+          rawJobLink
         );
+
+        normalizedJobLink =
+          normalizeJobLink(
+            jobUrl
+          );
+      } catch (validationError) {
+        results.push({
+          jobLink:
+            typeof rawJobLink ===
+            'string'
+              ? rawJobLink.trim()
+              : '',
+          status: 'invalid',
+          message:
+            validationError instanceof
+            ApiError
+              ? validationError.message
+              : 'Please enter a valid job link.',
+        });
+
+        continue;
       }
 
+      if (
+        batchNormalizedLinks.has(
+          normalizedJobLink
+        )
+      ) {
+        results.push({
+          jobLink: jobUrl,
+          status: 'duplicate',
+          reason: 'repeated',
+          message:
+            'This link was repeated in the links you pasted.',
+        });
+
+        continue;
+      }
+
+      batchNormalizedLinks.add(
+        normalizedJobLink
+      );
+
+      let duplicateCheck;
+
+      try {
+        duplicateCheck =
+          await findDuplicateJobLink({
+            supabase,
+            clientId:
+              client.id,
+            jobLink: jobUrl,
+          });
+      } catch {
+        results.push({
+          jobLink: jobUrl,
+          status: 'error',
+          message:
+            'This link could not be checked for duplicates.',
+        });
+
+        continue;
+      }
+
+      if (duplicateCheck.type) {
+        results.push({
+          jobLink: jobUrl,
+          status: 'duplicate',
+          reason:
+            duplicateCheck.type ===
+            'application'
+              ? 'application'
+              : 'existing',
+          message:
+            duplicateCheck.type ===
+            'application'
+              ? 'This link is already connected to an application.'
+              : 'This link is already in ApplyLoop.',
+        });
+
+        continue;
+      }
+
+      const {
+        data: request,
+        error: requestError,
+      } = await supabase
+        .from(
+          'client_job_requests'
+        )
+        .insert({
+          client_id: client.id,
+          submitted_by:
+            profile.id,
+          job_url: jobUrl,
+          normalized_job_url:
+            duplicateCheck
+              .normalizedJobLink,
+          comment,
+          status: 'new',
+          request_source:
+            'client',
+        })
+        .select(`
+          id,
+          job_url,
+          comment,
+          status,
+          created_at
+        `)
+        .single();
+
+      if (requestError || !request) {
+        const duplicateInsert =
+          String(
+            requestError?.message ||
+              ''
+          )
+            .toLowerCase()
+            .includes(
+              'duplicate job link'
+            );
+
+        results.push({
+          jobLink: jobUrl,
+          status:
+            duplicateInsert
+              ? 'duplicate'
+              : 'error',
+          reason:
+            duplicateInsert
+              ? 'existing'
+              : 'failed',
+          message:
+            duplicateInsert
+              ? 'This link is already in ApplyLoop.'
+              : 'This link could not be sent.',
+        });
+
+        continue;
+      }
+
+      const formattedRequest = {
+        id: request.id,
+        jobLink:
+          request.job_url,
+        comment:
+          request.comment,
+        status:
+          request.status,
+        requestSource:
+          'client',
+        createdAt:
+          request.created_at,
+      };
+
+      createdRequests.push(
+        formattedRequest
+      );
+
+      results.push({
+        jobLink: jobUrl,
+        status: 'created',
+        message:
+          'Job link added successfully.',
+        request:
+          formattedRequest,
+      });
+    }
+
+    const repeatedCount =
+      results.filter(
+        (result) =>
+          result.status ===
+            'duplicate' &&
+          result.reason ===
+            'repeated'
+      ).length;
+
+    const existingCount =
+      results.filter(
+        (result) =>
+          result.status ===
+            'duplicate' &&
+          [
+            'existing',
+            'application',
+          ].includes(
+            result.reason
+          )
+      ).length;
+
+    const duplicateCount =
+      repeatedCount +
+      existingCount;
+
+    const invalidCount =
+      results.filter(
+        (result) =>
+          result.status ===
+          'invalid'
+      ).length;
+
+    const failedCount =
+      results.filter(
+        (result) =>
+          result.status ===
+          'error'
+      ).length;
+
+    const summary = {
+      submitted:
+        rawJobLinks.length,
+      created:
+        createdRequests.length,
+      duplicates:
+        duplicateCount,
+      repeated:
+        repeatedCount,
+      existing:
+        existingCount,
+      invalid:
+        invalidCount,
+      failed:
+        failedCount,
+    };
+
+    const messageParts = [];
+
+    if (summary.created) {
+      messageParts.push(
+        `${summary.created} ${
+          summary.created === 1
+            ? 'link'
+            : 'links'
+        } sent.`
+      );
+    } else {
+      messageParts.push(
+        'No new links were sent.'
+      );
+    }
+
+    if (summary.repeated) {
+      messageParts.push(
+        `${summary.repeated} repeated ${
+          summary.repeated === 1
+            ? 'link'
+            : 'links'
+        } ignored.`
+      );
+    }
+
+    if (summary.existing) {
+      messageParts.push(
+        summary.existing === 1
+          ? '1 link was already in ApplyLoop.'
+          : `${summary.existing} links were already in ApplyLoop.`
+      );
+    }
+
+    if (summary.invalid) {
+      messageParts.push(
+        `${summary.invalid} invalid ${
+          summary.invalid === 1
+            ? 'link'
+            : 'links'
+        } ignored.`
+      );
+    }
+
+    if (summary.failed) {
+      messageParts.push(
+        `${summary.failed} ${
+          summary.failed === 1
+            ? 'link'
+            : 'links'
+        } could not be sent.`
+      );
+    }
+
+    const submissionMessage =
+      messageParts.join(' ');
+
+    if (
+      !createdRequests.length
+    ) {
+      const onlyDuplicates =
+        duplicateCount > 0 &&
+        invalidCount === 0 &&
+        failedCount === 0;
+
       throw new ApiError(
-        500,
-        'Your job link could not be submitted.'
+        onlyDuplicates
+          ? 409
+          : 400,
+        submissionMessage
       );
     }
 
     return res.status(201).json({
-      message: 'Job link submitted successfully.',
-      request: {
-        id: request.id,
-        jobLink: request.job_url,
-        comment: request.comment,
-        status: request.status,
-        requestSource: 'client',
-        createdAt: request.created_at,
-      },
+      message:
+        submissionMessage,
+      summary,
+      requests:
+        createdRequests,
+      results,
+
+      // Backward compatibility for
+      // the previous single-link client.
+      request:
+        createdRequests[0] ||
+        null,
     });
   } catch (error) {
     const statusCode =

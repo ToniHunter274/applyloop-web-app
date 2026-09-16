@@ -210,7 +210,7 @@ export default function ClientJobLinks() {
             Job Links
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            View opportunities added by you or sourced by your Linker and follow their application progress.
+            Send job links and track their application progress.
           </p>
         </div>
         <button
@@ -222,7 +222,7 @@ export default function ClientJobLinks() {
           }}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1A45A7]"
         >
-          <FiPlus /> Add Job Link
+          <FiPlus /> Send Job Links
         </button>
       </div>
 
@@ -334,29 +334,77 @@ export default function ClientJobLinks() {
       <AddJobLinkModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        onConfirm={async ({ jobLink, comment }) => {
-          const accessToken = await getAccessToken();
-          const response = await fetch('/api/client/job-requests', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ jobLink, comment }),
-          });
-          const result = await response.json().catch(() => ({}));
+        onConfirm={async ({
+          jobLinks,
+          comment,
+        }) => {
+          const accessToken =
+            await getAccessToken();
 
-          if (!response.ok || !result.request) {
-            throw new Error(result.error || 'Unable to submit your job link.');
+          const response =
+            await fetch(
+              '/api/client/job-requests',
+              {
+                method: 'POST',
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                  'Content-Type':
+                    'application/json',
+                },
+                body: JSON.stringify({
+                  jobLinks,
+                  comment,
+                }),
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (
+            !response.ok ||
+            !Array.isArray(
+              result.requests
+            ) ||
+            !result.requests.length
+          ) {
+            throw new Error(
+              result.error ||
+                'Unable to submit your job links.'
+            );
           }
 
-          setRequests((current) => [
-            result.request,
-            ...current.filter((request) => request.id !== result.request.id),
-          ]);
+          setRequests(
+            (current) => {
+              const createdIds =
+                new Set(
+                  result.requests.map(
+                    (request) =>
+                      request.id
+                  )
+                );
+
+              return [
+                ...result.requests,
+                ...current.filter(
+                  (request) =>
+                    !createdIds.has(
+                      request.id
+                    )
+                ),
+              ];
+            }
+          );
+
           setView('active');
           setError('');
-          setMessage(result.message || 'Job link submitted successfully.');
+          setMessage(
+            result.message ||
+              `${result.requests.length} job links submitted successfully.`
+          );
         }}
       />
     </DashboardLayout>

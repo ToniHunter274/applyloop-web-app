@@ -64,7 +64,7 @@ function formatNotificationDate(value) {
 
 const pageMeta = {
   '/dashboard': ['Dashboard', 'Track applications, monitor progress, and stay in control of your job search.'],
-  '/job-links': ['Job Links', 'Submit job opportunities and track active, withdrawn, and completed links.'],
+  '/job-links': ['Job Links', 'Send job links and track application progress.'],
   '/growth': ['Career Growth', 'Build job-ready skills with a personalized learning plan.'],
   '/billing': ['Billing & Subscription', 'Manage your plan, billing history, and application volume.'],
   '/settings': ['Settings', 'Update your profile, work preferences, and account details.'],
