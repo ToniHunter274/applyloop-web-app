@@ -765,6 +765,50 @@ export default function LinkerManagementPage({
                             linker.email
                           }
                         </p>
+
+                        {Number(
+                          linker.ratingCount ||
+                            0
+                        ) > 0 ? (
+                          <div className="mt-2 inline-flex flex-wrap items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800">
+                            <span
+                              className="text-amber-500"
+                              aria-hidden="true"
+                            >
+                              ★
+                            </span>
+
+                            <span>
+                              {Number(
+                                linker.qualityRating ||
+                                  0
+                              ).toFixed(1)}
+                              /5
+                            </span>
+
+                            <span className="text-amber-600">
+                              ·
+                            </span>
+
+                            <span>
+                              {Number(
+                                linker.ratingCount ||
+                                  0
+                              )}{' '}
+                              rated job link
+                              {Number(
+                                linker.ratingCount ||
+                                  0
+                              ) === 1
+                                ? ''
+                                : 's'}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-xs font-medium text-slate-400">
+                            No rated job links yet
+                          </p>
+                        )}
                       </td>
 
                       <td className="px-6 py-5">
