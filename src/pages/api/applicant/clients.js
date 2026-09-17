@@ -1,6 +1,9 @@
 import {
   createAdminClient,
 } from '../../../lib/supabase/server';
+import {
+  getApplicantLineManager,
+} from '../../../lib/applicants/getLineManager';
 
 class ApiError extends Error {
   constructor(statusCode, message) {
@@ -159,23 +162,22 @@ async function getClients(req, res) {
   );
 
   if (performanceError) {
-    console.error(
-      'Unable to load Applicant performance:',
+    console.warn(
+      'Applicant performance is temporarily unavailable:',
       performanceError
-    );
-
-    throw new ApiError(
-      500,
-      'Your performance information could not be loaded.'
     );
   }
 
   const performanceRow =
-    (performanceRows || []).find(
-      (row) =>
-        row.applicant_id ===
-        applicant.id
-    ) || {};
+    performanceError
+      ? {}
+      : (
+          performanceRows || []
+        ).find(
+          (row) =>
+            row.applicant_id ===
+            applicant.id
+        ) || {};
 
   const performance = {
     completedTasks: Number(
@@ -207,6 +209,26 @@ async function getClients(req, res) {
         0
     ),
   };
+
+  let lineManager = null;
+
+  try {
+    lineManager =
+      await getApplicantLineManager(
+        supabase,
+        applicant.id
+      );
+  } catch (lineManagerError) {
+    console.error(
+      'Unable to load Applicant Line Manager:',
+      lineManagerError
+    );
+
+    throw new ApiError(
+      500,
+      'Your Line Manager information could not be loaded.'
+    );
+  }
 
   const {
     data: assignmentRows,
@@ -250,6 +272,7 @@ async function getClients(req, res) {
       clients: [],
       feedback: [],
       performance,
+      lineManager,
     });
   }
 
@@ -1037,6 +1060,7 @@ async function getClients(req, res) {
     clients,
     feedback,
     performance,
+    lineManager,
   });
 }
 

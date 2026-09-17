@@ -2,6 +2,9 @@ import {
   ApiError,
   requireAdmin,
 } from '../../../../../lib/auth/requireAdmin';
+import {
+  getApplicantLineManager,
+} from '../../../../../lib/applicants/getLineManager';
 
 function getApplicantId(req) {
   const applicantId = Array.isArray(req.query.id)
@@ -79,6 +82,26 @@ async function listAssignments(req, res) {
       supabase,
       applicantId
     );
+
+  let lineManager = null;
+
+  try {
+    lineManager =
+      await getApplicantLineManager(
+        supabase,
+        applicantId
+      );
+  } catch (lineManagerError) {
+    console.error(
+      'Unable to load Applicant Line Manager for preview:',
+      lineManagerError
+    );
+
+    throw new ApiError(
+      500,
+      'The Applicant Line Manager could not be loaded.'
+    );
+  }
 
   const applicantCanReceiveAssignments =
     applicant.accountStatus === 'active' &&
@@ -327,6 +350,7 @@ async function listAssignments(req, res) {
   return res.status(200).json({
     applicantId,
     clients,
+    lineManager,
   });
 }
 

@@ -15,7 +15,6 @@ import {
   FiClock,
   FiCopy,
   FiDownload,
-  FiEdit3,
   FiExternalLink,
   FiFileText,
   FiHome,
@@ -3440,7 +3439,9 @@ function Toggle({
   );
 }
 
-function SettingsPage() {
+function SettingsPage({
+  lineManager = null,
+}) {
   const { user, updateProfile, changePassword, logout } = useAuth();
   const nameParts = (user?.name || '')
     .trim()
@@ -3610,7 +3611,58 @@ function SettingsPage() {
       </section>
       <section className={styles.settingsSection}>
         <h3>Company · ApplyLoop</h3>
-        <div className={styles.accountAction}><span>Live Manager</span><button type="button"><FiEdit3 /></button></div>
+        <div className={styles.accountAction}>
+          <div>
+            <strong
+              style={{
+                display: 'block',
+                color: '#172033',
+              }}
+            >
+              Line Manager
+            </strong>
+
+            <span
+              style={{
+                display: 'block',
+                marginTop: 4,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {lineManager?.fullName ||
+                'Not assigned yet'}
+            </span>
+
+            {lineManager?.email && (
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: 3,
+                  color: '#64748b',
+                  fontSize: 10,
+                }}
+              >
+                {lineManager.email}
+              </span>
+            )}
+          </div>
+
+          <span
+            style={{
+              color: lineManager
+                ? '#1f56c6'
+                : '#94a3b8',
+              fontSize: 10,
+              fontWeight: 700,
+              textAlign: 'right',
+            }}
+          >
+            {lineManager
+              ? 'Chief Applicant'
+              : 'Awaiting assignment'}
+          </span>
+        </div>
         <div className={styles.accountAction}><span>Non-Disclosure Agreement (NDA)</span><button type="button"><FiDownload /></button></div>
         <div className={styles.accountAction}><span>Sign out of this account</span><button type="button" onClick={logout}><FiLogOut /></button></div>
         <div className={classNames(styles.accountAction, styles.accountDanger)}><span>Delete account data</span><button type="button"><FiX /></button></div>
@@ -3728,6 +3780,10 @@ export default function ApplicantPortal() {
     setClientFeedback,
   ] = useState([]);
   const [
+    lineManager,
+    setLineManager,
+  ] = useState(null);
+  const [
     isLoadingAssignedClients,
     setIsLoadingAssignedClients,
   ] = useState(false);
@@ -3762,6 +3818,7 @@ export default function ApplicantPortal() {
         EMPTY_APPLICANT_PERFORMANCE
       );
       setClientFeedback([]);
+      setLineManager(null);
       setAssignedClientsError('');
       return undefined;
     }
@@ -3829,6 +3886,11 @@ export default function ApplicantPortal() {
               feedbackRows
             );
 
+            setLineManager(
+              result.lineManager ||
+                null
+            );
+
             setApplicantPerformance({
               completedTasks: Number(
                 result.performance
@@ -3873,6 +3935,7 @@ export default function ApplicantPortal() {
               EMPTY_APPLICANT_PERFORMANCE
             );
             setClientFeedback([]);
+            setLineManager(null);
             setAssignedClientsError(
               error?.message ||
                 'Assigned Clients could not be loaded.'
@@ -4713,7 +4776,11 @@ export default function ApplicantPortal() {
       />
     );
   } else if (section === 'settings') {
-    page = <SettingsPage />;
+    page = (
+      <SettingsPage
+        lineManager={lineManager}
+      />
+    );
   } else {
     page = <Dashboard
       clients={assignedClients}
