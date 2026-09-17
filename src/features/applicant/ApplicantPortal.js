@@ -21,7 +21,6 @@ import {
   FiLink,
   FiLock,
   FiLogOut,
-  FiMenu,
   FiMessageSquare,
   FiRefreshCw,
   FiSave,
@@ -36,21 +35,17 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
-import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
+import {
+  getRoleHome,
+  ROLE_NAVIGATION,
+  ROLE_PAGE_META,
+  USER_ROLES,
+} from '../../shared/config/roles';
+import WorkspaceShell from '../../shared/components/WorkspaceShell';
 import {
   STATUS_OPTIONS,
 } from '../../data/applicantData';
 import styles from './ApplicantPortal.module.css';
-
-const NAVIGATION = [
-  { section: 'dashboard', label: 'Dashboard', icon: FiHome, href: '/applicant' },
-  { section: 'clients', label: 'My Clients', icon: FiUsers, href: '/applicant/clients' },
-  { section: 'job-links', label: 'Job Links', icon: FiLink, href: '/applicant/job-links' },
-  { section: 'workshop', label: 'Workshop', icon: FiMessageSquare, href: '/applicant/workshop' },
-  { section: 'feedback', label: 'Feedback and Messages', icon: FiMessageSquare, href: '/applicant/feedback' },
-  { section: 'performance', label: 'Performance', icon: FiTrendingUp, href: '/applicant/performance' },
-  { section: 'settings', label: 'Settings', icon: FiSettings, href: '/applicant/settings' },
-];
 
 const classNames = (...values) => values.filter(Boolean).join(' ');
 
@@ -298,8 +293,21 @@ const normalizeAssignedClient = (
     'No admin notes available.',
 });
 
-function Avatar({ name, large = false }) {
-  return <span className={large ? styles.avatarLarge : styles.avatar}>{initials(name)}</span>;
+function Avatar({
+  name,
+  large = false,
+}) {
+  return (
+    <span
+      className={
+        large
+          ? styles.avatarLarge
+          : styles.avatar
+      }
+    >
+      {initials(name)}
+    </span>
+  );
 }
 
 function NotificationButton() {
@@ -310,147 +318,70 @@ function NotificationButton() {
   );
 }
 
-function ApplicantShell({
-  section,
-  children,
-  displayUser,
-  isPreview = false,
-  previewApplicantId = '',
-  onExitPreview,
+function PageHeader({
+  title,
+  subtitle,
+  searchable = false,
+  search = '',
+  onSearch,
+  action,
+  showHeading = true,
+  showNotification = true,
 }) {
-  const { user, logout } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const hasActions =
+    searchable ||
+    Boolean(action) ||
+    showNotification;
 
-  const shellUser =
-    displayUser || user;
-
-  const getNavigationHref = (href) =>
-    isPreview
-      ? {
-          pathname: href,
-          query: {
-            previewApplicantId,
-          },
-        }
-      : href;
+  if (
+    !showHeading &&
+    !hasActions
+  ) {
+    return null;
+  }
 
   return (
-    <div className={styles.app}>
-      <div className={styles.shell}>
-        {mobileOpen && <button type="button" aria-label="Close menu" className={styles.backdrop} onClick={() => setMobileOpen(false)} />}
-        <aside className={classNames(styles.sidebar, mobileOpen && styles.sidebarOpen)}>
-          <Link href={getNavigationHref('/applicant')} className={styles.brand} onClick={() => setMobileOpen(false)}>
-            <img src="/logo.svg" alt="ApplyLoop" className={styles.brandLogo} />
-            <span>ApplyLoop</span>
-          </Link>
-          <nav className={styles.navigation}>
-            {NAVIGATION.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.section}
-                  href={getNavigationHref(item.href)}
-                  onClick={() => setMobileOpen(false)}
-                  className={classNames(styles.navLink, section === item.section && styles.navLinkActive)}
-                >
-                  <Icon className={styles.navIcon} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-          <div className={styles.profileWrap}>
-            <button type="button" className={styles.profile} onClick={() => setProfileOpen((value) => !value)}>
-              <Avatar name={shellUser?.name || 'Applicant'} />
-              <span className={styles.profileText}>
-                <span className={styles.profileName}>
-                  {shellUser?.name || 'Applicant'}
-                </span>
-                <span className={styles.profileEmail}>
-                  {shellUser?.email || ''}
-                </span>
-              </span>
-            </button>
-            {profileOpen && (
-              <div className={styles.profileMenu}>
-                {isPreview ? (
-                  <button
-                    type="button"
-                    onClick={onExitPreview}
-                  >
-                    <FiArrowLeft />
-                    Back to Applicants Management
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={logout}
-                  >
-                    <FiLogOut />
-                    Sign out
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
+    <div
+      className={classNames(
+        styles.pageHeader,
+        !showHeading &&
+          styles.pageHeaderActionsOnly
+      )}
+    >
+      {showHeading && (
+        <div className={styles.pageHeading}>
+          <h1>{title}</h1>
+          {subtitle && (
+            <p>{subtitle}</p>
+          )}
+        </div>
+      )}
 
-        <div className={styles.mainRail}>
-          {isPreview && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200 bg-blue-50 px-5 py-3 text-sm">
-              <div className="flex min-w-0 items-center gap-2 text-blue-900">
-                <FiUser className="h-4 w-4 shrink-0" />
+      {hasActions && (
+        <div className={styles.headerActions}>
+          {searchable && (
+            <label className={styles.searchBox}>
+              <FiSearch />
 
-                <span className="truncate">
-                  Viewing as{' '}
-                  <strong>
-                    {shellUser?.name ||
-                      'Applicant'}
-                  </strong>
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={onExitPreview}
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
-              >
-                <FiArrowLeft className="h-3.5 w-3.5" />
-                Back to Applicants Management
-              </button>
-            </div>
+              <input
+                value={search}
+                onChange={(event) =>
+                  onSearch?.(
+                    event.target.value
+                  )
+                }
+                placeholder="Search Applications"
+              />
+            </label>
           )}
 
-          <div className={styles.mobileBar}>
-            <button type="button" aria-label="Open menu" onClick={() => setMobileOpen(true)}><FiMenu size={22} /></button>
-            <span>ApplyLoop</span>
-            <NotificationButton />
-          </div>
-          <main className={styles.pageSurface}>{children}</main>
-        </div>
-      </div>
-    </div>
-  );
-}
+          {action}
 
-function PageHeader({ title, subtitle, searchable = false, search = '', onSearch, action }) {
-  return (
-    <div className={styles.pageHeader}>
-      <div className={styles.pageHeading}>
-        <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
-      </div>
-      <div className={styles.headerActions}>
-        {searchable && (
-          <label className={styles.searchBox}>
-            <FiSearch />
-            <input value={search} onChange={(event) => onSearch?.(event.target.value)} placeholder="Search Applications" />
-          </label>
-        )}
-        {action}
-        <NotificationButton />
-      </div>
+          {showNotification && (
+            <NotificationButton />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -589,7 +520,15 @@ function Dashboard({
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Welcome back! Here’s your overview for today." searchable search={search} onSearch={setSearch} />
+      <PageHeader
+        title="Dashboard"
+        subtitle="Welcome back! Here’s your overview for today."
+        searchable
+        search={search}
+        onSearch={setSearch}
+        showHeading={false}
+        showNotification={false}
+      />
       <div className={styles.statsGrid}>
         <StatCard
           label="Total Clients"
@@ -765,6 +704,8 @@ function JobLinksPage({
         searchable
         search={search}
         onSearch={setSearch}
+        showHeading={false}
+        showNotification={false}
         action={
           <Link
             href={workshopHref}
@@ -1109,7 +1050,12 @@ function ClientsPage({
 
   return (
     <>
-      <PageHeader title="Assigned Clients" subtitle="Welcome back! Here’s your overview for today." />
+      <PageHeader
+        title="Assigned Clients"
+        subtitle="Welcome back! Here’s your overview for today."
+        showHeading={false}
+        showNotification={false}
+      />
       <div className={styles.statsGrid}>
         <StatCard
           label="Total Clients"
@@ -2142,6 +2088,8 @@ function WorkshopPage({
       <PageHeader
         title="Application Workshop"
         subtitle="Review client preferences and record verified job applications"
+        showHeading={false}
+        showNotification={false}
         action={
           selectedClient &&
           !isPreview ? (
@@ -2867,6 +2815,8 @@ function FeedbackPage({
       <PageHeader
         title="Feedback & Messages"
         subtitle="Review client feedback and communicate with the ApplyLoop team"
+        showHeading={false}
+        showNotification={false}
       />
 
       <div
@@ -2909,9 +2859,6 @@ function FeedbackPage({
           className={
             styles.feedbackList
           }
-          style={{
-            maxWidth: 540,
-          }}
         >
           {clientFeedback.map(
             (item) => (
@@ -3289,6 +3236,8 @@ function PerformancePage({
       <PageHeader
         title="Performance"
         subtitle="Live productivity and Client satisfaction metrics"
+        showHeading={false}
+        showNotification={false}
       />
 
       <div
@@ -3700,7 +3649,12 @@ function SettingsPage({
 
   return (
     <div className={styles.settingsPage}>
-      <PageHeader title="Profile & Settings" subtitle="Manage your account and preferences" />
+      <PageHeader
+        title="Profile & Settings"
+        subtitle="Manage your account and preferences"
+        showHeading={false}
+        showNotification={false}
+      />
       <div className={styles.settingsAvatar}><Avatar name={`${profile.firstName} ${profile.lastName}`} large /></div>
       <section className={styles.settingsSection}>
         <h3>Personal Information</h3>
@@ -3948,7 +3902,10 @@ function PreviewModal({ type, onClose }) {
 
 export default function ApplicantPortal() {
   const router = useRouter();
-  const { user } = useAuth();
+  const {
+    user,
+    logout,
+  } = useAuth();
 
   const previewApplicantId =
     typeof router.query
@@ -3981,6 +3938,44 @@ export default function ApplicantPortal() {
 
   const parts = getParts(router);
   const section = parts[0] || 'dashboard';
+
+  const metadata =
+    ROLE_PAGE_META[
+      USER_ROLES.APPLICANT
+    ]?.[section] || [
+      'Applicant Workspace',
+      'Manage assigned Client work and Applications.',
+    ];
+
+  const applicantNavigation =
+    (
+      ROLE_NAVIGATION[
+        USER_ROLES.APPLICANT
+      ] || []
+    ).map((item) => {
+      const itemSection =
+        item.href === '/applicant'
+          ? 'dashboard'
+          : String(item.href)
+              .split('?')[0]
+              .split('/')
+              .filter(Boolean)
+              .pop();
+
+      return {
+        ...item,
+        section:
+          itemSection ||
+          'dashboard',
+        href:
+          isApplicantPreview
+            ? `${item.href}?previewApplicantId=${encodeURIComponent(
+                previewApplicantId
+              )}`
+            : item.href,
+      };
+    });
+
   const clientId = parts[1];
   const applicationId = parts[2] === 'applications' ? parts[3] : null;
   const [
@@ -5175,26 +5170,79 @@ export default function ApplicantPortal() {
 
   return (
     <>
-      <Head><title>Applicant Workspace | ApplyLoop</title><meta name="description" content="ApplyLoop applicant workspace" /></Head>
-      <ApplicantShell
-        section={section}
-        displayUser={
+      <Head>
+        <title>
+          {metadata[0]} | ApplyLoop
+        </title>
+
+        <meta
+          name="description"
+          content={metadata[1]}
+        />
+      </Head>
+
+      <WorkspaceShell
+        navigation={
+          applicantNavigation
+        }
+        activeSection={section}
+        homeHref={
+          isApplicantPreview
+            ? `/applicant?previewApplicantId=${encodeURIComponent(
+                previewApplicantId
+              )}`
+            : '/applicant'
+        }
+        title={metadata[0]}
+        subtitle={metadata[1]}
+        workspaceLabel="Applicant Workspace"
+        roleLabel={
+          isApplicantPreview
+            ? 'Applicant Preview'
+            : 'Applicant'
+        }
+        user={
           applicantDisplayUser
         }
-        isPreview={
+        onLogout={
           isApplicantPreview
+            ? undefined
+            : logout
         }
-        previewApplicantId={
-          previewApplicantId
-        }
-        onExitPreview={
-          exitApplicantPreview
+        headerActions={
+          isApplicantPreview ? (
+            <button
+              type="button"
+              onClick={
+                exitApplicantPreview
+              }
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+            >
+              <FiArrowLeft className="h-4 w-4" />
+              Back to Applicants Management
+            </button>
+          ) : null
         }
       >
         {page}
-      </ApplicantShell>
-      <PreviewModal type={previewType} onClose={() => setPreviewType(null)} />
-      {toast && <div className={styles.toast}>{toast}</div>}
+      </WorkspaceShell>
+
+      <PreviewModal
+        type={previewType}
+        onClose={() =>
+          setPreviewType(null)
+        }
+      />
+
+      {toast && (
+        <div
+          className={
+            styles.toast
+          }
+        >
+          {toast}
+        </div>
+      )}
     </>
   );
 }

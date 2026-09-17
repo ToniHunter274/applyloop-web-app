@@ -73,10 +73,11 @@ export const ROLE_NAVIGATION = {
   [USER_ROLES.APPLICANT]: withBase('applicant', [
     { label: 'Dashboard', href: '', icon: FiHome },
     { label: 'My Clients', href: 'clients', icon: FiUsers },
+    { label: 'Job Links', href: 'job-links', icon: FiLink },
     { label: 'Workshop', href: 'workshop', icon: FiClipboard },
-    { label: 'Feedback and Messages', href: 'feedback', icon: FiMessageSquare },
+    { label: 'Feedback & Messages', href: 'feedback', icon: FiMessageSquare },
     { label: 'Performance', href: 'performance', icon: FiBarChart2 },
-    { label: 'Settings', href: 'settings', icon: FiSettings },
+    { label: 'Profile & Settings', href: 'settings', icon: FiSettings },
   ]),
   [USER_ROLES.CHIEF_APPLICANT]: withBase('chief-applicant', [
     { label: 'Dashboard', href: '', icon: FiHome },
@@ -189,12 +190,13 @@ export const ROLE_DEMO_USERS = {
 
 export const ROLE_PAGE_META = {
   [USER_ROLES.APPLICANT]: {
-    dashboard: ['Dashboard', 'Review clients, applications, and feedback.'],
-    clients: ['My Clients', 'Review assigned client profiles and application progress.'],
-    workshop: ['Workshop', 'Analyze job fit and create tailored application documents.'],
-    feedback: ['Feedback and Messages', 'Review client and admin feedback.'],
-    performance: ['Performance', 'Track application outcomes and client satisfaction.'],
-    settings: ['Settings', 'Manage profile, security, and notifications.'],
+    dashboard: ['Dashboard', 'Review Clients, Applications, and current workload.'],
+    clients: ['My Clients', 'Review assigned Client profiles and application progress.'],
+    'job-links': ['Job Links', 'Review job opportunities sent to your workspace.'],
+    workshop: ['Workshop', 'Work through job opportunities and prepare tailored applications.'],
+    feedback: ['Feedback & Messages', 'Review Client and ApplyLoop feedback.'],
+    performance: ['Performance', 'Track application outcomes and Client satisfaction.'],
+    settings: ['Profile & Settings', 'Manage profile, security, employment, and notifications.'],
   },
   [USER_ROLES.CHIEF_APPLICANT]: {
     dashboard: ['Dashboard', "Welcome back! Here's your team's overview"],

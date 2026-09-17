@@ -9,8 +9,8 @@
   --panel: #ffffff;
   --surface: #f8f9fb;
   min-height: 100vh;
-  background: var(--blue-rail);
-  color: var(--text);
+  background: #eaf0ff;
+  color: #171717;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 12px;
 }
@@ -170,7 +170,7 @@
   bottom: 86px;
   left: 8px;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid #e8eaf0;
   border-radius: 6px;
   background: #fff;
   box-shadow: 0 8px 28px rgba(15, 23, 42, .12);
@@ -213,6 +213,16 @@
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 32px;
+}
+
+.pageHeaderActionsOnly {
+  margin-bottom: 26px;
+}
+
+.pageHeaderActionsOnly .headerActions {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .pageHeading h1 {
@@ -269,17 +279,17 @@
   height: 36px;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid var(--blue);
+  border: 1.5px solid #1f56c6;
   border-radius: 999px;
   background: #fff;
-  color: var(--blue);
+  color: #1f56c6;
   cursor: pointer;
 }
 
 .notification svg {
   width: 18px;
   height: 18px;
-  fill: var(--blue);
+  fill: #1f56c6;
   stroke-width: 1.8;
 }
 
@@ -483,7 +493,7 @@
 .pagination button:hover:not(:disabled),
 .paginationActive {
   background: #edf2ff !important;
-  color: var(--blue) !important;
+  color: #1f56c6 !important;
 }
 
 .pagination button:disabled {
@@ -552,16 +562,22 @@
 
 .clientGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      min(100%, 420px),
+      1fr
+    )
+  );
+  gap: 18px;
 }
 
 .clientCard {
-  min-height: 229px;
+  min-height: 250px;
   border: 1px solid #e1e3e8;
-  border-radius: 5px;
+  border-radius: 14px;
   background: #fff;
-  padding: 20px 20px 15px;
+  padding: 24px;
 }
 
 .clientName {
@@ -1075,8 +1091,8 @@
 }
 
 .primaryButton {
-  border: 1px solid var(--blue);
-  background: var(--blue);
+  border: 1px solid #1f56c6;
+  background: #1f56c6;
   color: #fff;
 }
 
@@ -1380,34 +1396,42 @@
 
 .performanceStats {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 9px;
+  grid-template-columns: repeat(
+    5,
+    minmax(0, 1fr)
+  );
+  gap: 14px;
 }
 
 .performanceCard {
-  min-height: 79px;
+  min-height: 128px;
   border: 1px solid #e7e9ee;
-  border-radius: 4px;
-  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 20px;
 }
 
 .performanceCard span {
   color: #7a808a;
-  font-size: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
   text-transform: uppercase;
 }
 
 .performanceCard strong {
   display: block;
-  margin-top: 10px;
+  margin-top: 14px;
   color: #15181c;
-  font-size: 17px;
+  font-size: 22px;
 }
 
 .performanceCard small {
   display: block;
-  margin-top: 8px;
-  font-size: 7px;
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 9px;
+  line-height: 1.5;
 }
 
 .performanceLevel {
@@ -1540,7 +1564,8 @@
 }
 
 .settingsPage {
-  max-width: 920px;
+  width: 100%;
+  max-width: 1120px;
 }
 
 .settingsAvatar {
