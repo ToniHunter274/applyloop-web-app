@@ -2441,3 +2441,21 @@
     -webkit-text-fill-color: currentColor;
   }
 }
+
+
+.pageHeaderActionsOnly {
+  justify-content: flex-end;
+  margin-bottom: 22px;
+}
+
+.pageHeaderActionsOnly .pageHeaderActions {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .pageHeaderActionsOnly .pageHeaderActions {
+    align-items: stretch;
+  }
+}

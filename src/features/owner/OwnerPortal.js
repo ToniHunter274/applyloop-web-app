@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
   FiAlertTriangle,
   FiAward,
   FiBarChart2,
-  FiBell,
   FiBriefcase,
   FiChevronDown,
   FiClock,
@@ -18,11 +16,7 @@ import {
   FiDollarSign,
   FiEdit2,
   FiFileText,
-  FiGrid,
-  FiHome,
   FiKey,
-  FiLogOut,
-  FiMenu,
   FiMessageSquare,
   FiPauseCircle,
   FiPlayCircle,
@@ -43,7 +37,13 @@ import { HiOutlineLightBulb, HiOutlineUserGroup } from 'react-icons/hi';
 import { FaCrown, FaRegGem } from 'react-icons/fa';
 import { useAuth } from '../../shared/context/AuthContext';
 import { createClient } from '../../lib/supabase/client';
-import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
+import {
+  getRoleHome,
+  ROLE_NAVIGATION,
+  ROLE_PAGE_META,
+  USER_ROLES,
+} from '../../shared/config/roles';
+import WorkspaceShell from '../../shared/components/WorkspaceShell';
 import CustomSelect from '../../shared/components/CustomSelect';
 import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
 import styles from './OwnerPortal.module.css';
@@ -75,42 +75,11 @@ async function getOwnerAccessToken() {
   return session.access_token;
 }
 
-const OWNER_NAV_ITEMS = [
-  { section: 'dashboard', href: '/owner', label: 'Dashboard', icon: FiHome },
-  { section: 'client-management', href: '/owner/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
-  { section: 'applicants-management', href: '/owner/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
-  { section: 'chief-applicants', href: '/owner/chief-applicants', label: 'Chief Applicants', icon: FiGrid },
-  { section: 'application-operations', href: '/owner/application-operations', label: 'Application Operations', icon: FiFileText },
-  { section: 'subscription-revenue', href: '/owner/subscription-revenue', label: 'Subscription & Revenue', icon: FiCreditCard },
-  { section: 'prompt-system', href: '/owner/prompt-system', label: 'Prompt System', icon: FiFileText },
-  { section: 'analytics-reports', href: '/owner/analytics-reports', label: 'Analytics & Reports', icon: FiBarChart2 },
-  { section: 'payroll-system', href: '/owner/payroll-system', label: 'Payroll System', icon: FiDollarSign },
-  { section: 'escalations-issues', href: '/owner/escalations-issues', label: 'Escalations & Issues', icon: FiAlertTriangle },
-  { section: 'settings', href: '/owner/settings', label: 'Settings', icon: FiSettings },
-];
-
-const OPERATIONS_NAV_ITEMS = [
-  { section: 'application-operations', href: '/operations/application-operations', label: 'Application Operations', icon: FiFileText },
-  { section: 'client-management', href: '/operations/client-management', label: 'Client Management', icon: HiOutlineUserGroup },
-  { section: 'applicants-management', href: '/operations/applicants-management', label: 'Applicants Management', icon: FiBriefcase },
-];
-
-
-const OPERATIONS_SECTIONS = new Set(OPERATIONS_NAV_ITEMS.map((item) => item.section));
-
-const PAGE_META = {
-  dashboard: ['Dashboard', 'Mission Control - Complete visibility and control over your platform'],
-  'client-management': ['Client Management', 'Manage all client accounts, subscriptions, and assignments'],
-  'applicants-management': ['Applicants Management', 'Manage workers, assign workload, and track productivity'],
-  'chief-applicants': ['Chief Applicants', 'Review Chief Applicant teams, supervised Applicants, and application workload'],
-  'application-operations': ['Application Operations', 'Monitor opportunities, applications, feedback, and workflow exceptions'],
-  'subscription-revenue': ['Subscription & Revenue', 'Financial management dashboard and revenue analytics'],
-  'prompt-system': ['Prompt System', 'Manage prompt configurations and workflow templates'],
-  'analytics-reports': ['Analytics & Reports', 'Review real opportunity sources and application outcomes across ApplyLoop'],
-  'payroll-system': ['Payroll System', 'Track worker payments based on applications completed'],
-  'escalations-issues': ['Escalations & Issues', 'Review operational escalations and urgent account issues'],
-  settings: ['Settings', 'Manage workspace settings and platform rules'],
-};
+const OPERATIONS_SECTIONS = new Set([
+  'application-operations',
+  'client-management',
+  'applicants-management',
+]);
 
 function formatOwnerCurrency(value) {
   return new Intl.NumberFormat(
@@ -495,376 +464,27 @@ function formatMultiLine(text) {
   return String(text).split('\n').map((line) => <span key={line}>{line}</span>);
 }
 
-function Brand() {
-  return (
-    <span className={styles.brandMark}>
-      <img src="/logo.svg" alt="ApplyLoop" />
-      <span>ApplyLoop</span>
-    </span>
-  );
-}
-
-function OwnerShell({ section, children, portalRole, navItems }) {
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    logout,
-  } = useAuth();
-  const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const isOperations = portalRole === USER_ROLES.OPERATIONS;
-  const displayName = user?.name || (isOperations ? 'Operations Team' : 'Super Admin');
-
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((namePart) => namePart[0])
-    .join('')
-    .toUpperCase();
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      router.replace('/auth/login');
-      return;
-    }
-
-    if (
-      user?.role !== portalRole
-    ) {
-      router.replace(
-        getRoleHome(user?.role)
-      );
-    }
-  }, [
-    isAuthenticated,
-    isLoading,
-    portalRole,
-    router,
-    user?.role,
-  ]);
-
-  if (
-    isLoading ||
-    !isAuthenticated ||
-    user?.role !== portalRole
-  ) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
-          <p className="mt-4 text-sm font-medium text-slate-600">
-            Loading your workspace...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.app}>
-      {menuOpen && <button className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-label="Close menu" />}
-      <aside className={cn(styles.sidebar, menuOpen && styles.sidebarOpen)}>
-        <div className={styles.logoRow}><Brand /></div>
-        <nav className={styles.nav}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} className={cn(styles.navItem, section === item.section && styles.navItemActive)} onClick={() => setMenuOpen(false)}>
-                <Icon />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <div className={styles.accountPanel}>
-          <div className={styles.accountIdentity}>
-            <span className={styles.avatarTiny}>
-              {initials}
-            </span>
-
-            <span className={styles.accountText}>
-              <strong>{displayName}</strong>
-              <small>{isOperations ? 'Operations' : 'Owner'}</small>
-            </span>
-          </div>
-
-          <button
-            type="button"
-            className={styles.signOutButton}
-            onClick={logout}
-          >
-            <FiLogOut />
-            <span>Sign out</span>
-          </button>
-        </div>
-      </aside>
-
-      <div className={styles.mainRail}>
-        <div className={styles.mobileBar}>
-          <button onClick={() => setMenuOpen(true)} aria-label="Open menu"><FiMenu /></button>
-          <Brand />
-          <button className={styles.bellButton} aria-label="Notifications"><FiBell /></button>
-        </div>
-        <main className={styles.surface}>{children}</main>
-      </div>
-    </div>
-  );
-}
-
-function OperationsShell({
-  section,
-  children,
-  navItems,
+function PageHeader({
+  action,
 }) {
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    logout,
-  } = useAuth();
-
-  const router = useRouter();
-
-  const [
-    menuOpen,
-    setMenuOpen,
-  ] = useState(false);
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      router.replace('/auth/login');
-      return;
-    }
-
-    if (
-      user?.role !==
-      USER_ROLES.OPERATIONS
-    ) {
-      router.replace(
-        getRoleHome(user?.role)
-      );
-    }
-  }, [
-    isAuthenticated,
-    isLoading,
-    router,
-    user?.role,
-  ]);
-
-  const displayName =
-    user?.name || 'Operations Team';
-
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(
-      (namePart) =>
-        namePart[0]
-    )
-    .join('')
-    .toUpperCase();
-
-  if (
-    isLoading ||
-    !isAuthenticated ||
-    user?.role !==
-      USER_ROLES.OPERATIONS
-  ) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
-
-          <p className="mt-4 text-sm font-medium text-slate-600">
-            Loading your workspace...
-          </p>
-        </div>
-      </div>
-    );
+  if (!action) {
+    return null;
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
-      {menuOpen && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-          className="fixed inset-0 z-30 bg-slate-950/30 lg:hidden"
-        />
+    <header
+      className={cn(
+        styles.pageHeader,
+        styles.pageHeaderActionsOnly
       )}
-
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0',
-          menuOpen
-            ? 'translate-x-0'
-            : '-translate-x-full'
-        )}
+    >
+      <div
+        className={
+          styles.pageHeaderActions
+        }
       >
-        <div className="flex h-24 items-center border-b border-slate-200 px-6">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/logo.svg"
-              alt="ApplyLoop logo"
-              width={48}
-              height={48}
-              priority
-              className="h-12 w-12 rounded-xl object-cover"
-            />
-
-            <div>
-              <p className="text-xl font-bold tracking-tight text-slate-950">
-                ApplyLoop
-              </p>
-
-              <p className="mt-0.5 text-xs font-medium text-slate-500">
-                Operations Portal
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-          {navItems.map(
-            (item) => {
-              const Icon =
-                item.icon;
-
-              const active =
-                section ===
-                item.section;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() =>
-                    setMenuOpen(
-                      false
-                    )
-                  }
-                  className={cn(
-                    'flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition',
-                    active
-                      ? 'bg-blue-50 font-semibold text-blue-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-
-                  <span>
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            }
-          )}
-        </nav>
-
-        <div className="border-t border-slate-200 p-4">
-          <div className="rounded-xl bg-slate-50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                {initials}
-              </div>
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">
-                  {displayName}
-                </p>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Operations
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <div className="min-w-0 max-w-full lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-          <div className="flex min-h-24 items-center justify-between gap-4 px-5 py-4 sm:px-8">
-            <div className="flex items-center gap-3 lg:hidden">
-              <button
-                type="button"
-                onClick={() =>
-                  setMenuOpen(true)
-                }
-                aria-label="Open menu"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700"
-              >
-                <FiMenu className="h-5 w-5" />
-              </button>
-
-              <Image
-                src="/logo.svg"
-                alt="ApplyLoop logo"
-                width={42}
-                height={42}
-                priority
-                className="h-11 w-11 rounded-xl object-cover"
-              />
-
-              <span className="text-lg font-bold text-slate-950">
-                ApplyLoop
-              </span>
-            </div>
-
-            <div className="hidden lg:block">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">
-                Operations
-              </p>
-
-              <p className="mt-1.5 text-base font-semibold text-slate-800">
-                {displayName}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={logout}
-              className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-            >
-              <FiLogOut className="h-4 w-4" />
-
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
-          {children}
-        </main>
+        {action}
       </div>
-    </div>
-  );
-}
-
-function PageHeader({ section, action }) {
-  const [title, subtitle] = PAGE_META[section] || PAGE_META.dashboard;
-  return (
-    <header className={styles.pageHeader}>
-      <div>
-        <h1>{title}</h1>
-        <p>{subtitle}</p>
-      </div>
-      <div className={styles.pageHeaderActions}>{action}</div>
     </header>
   );
 }
@@ -7123,15 +6743,19 @@ function NoticeBox({ tone, title, items, compact = false }) {
 
 export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
   const router = useRouter();
+
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    logout,
+  } = useAuth();
   const isOperations = portalRole === USER_ROLES.OPERATIONS;
   const basePath = isOperations ? '/operations' : '/owner';
   const defaultSection = isOperations ? 'application-operations' : 'dashboard';
   const requestedSection = getSection(router, defaultSection);
   const section = isOperations && !OPERATIONS_SECTIONS.has(requestedSection) ? defaultSection : requestedSection;
   const detail = getDetail(router);
-  const navItems = isOperations ? OPERATIONS_NAV_ITEMS : OWNER_NAV_ITEMS;
-
-
   const [
     applicantRefreshKey,
     setApplicantRefreshKey,
@@ -7167,6 +6791,36 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
       router.replace(`${basePath}/${defaultSection}`);
     }
   }, [basePath, defaultSection, isOperations, requestedSection, router, section]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.replace(
+        '/auth/login'
+      );
+      return;
+    }
+
+    if (
+      user?.role !==
+      portalRole
+    ) {
+      router.replace(
+        getRoleHome(
+          user?.role
+        )
+      );
+    }
+  }, [
+    isAuthenticated,
+    isLoading,
+    portalRole,
+    router,
+    user?.role,
+  ]);
 
   const openModal = (key) => setModals((current) => ({ ...current, [key]: true }));
   const closeModal = (key) => setModals((current) => ({ ...current, [key]: false }));
@@ -7244,11 +6898,68 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
     section,
   ]);
 
-  const [title, subtitle] = PAGE_META[section] || PAGE_META.dashboard;
+  if (
+    isLoading ||
+    !isAuthenticated ||
+    user?.role !== portalRole
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
 
-  const Shell = isOperations
-    ? OperationsShell
-    : OwnerShell;
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading your workspace...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const metadata =
+    ROLE_PAGE_META[
+      portalRole
+    ]?.[section] || [
+      isOperations
+        ? 'Operations Workspace'
+        : 'Owner Workspace',
+      isOperations
+        ? 'Manage ApplyLoop operations.'
+        : 'Monitor and manage the ApplyLoop platform.',
+    ];
+
+  const [
+    title,
+    subtitle,
+  ] = metadata;
+
+  const navigation =
+    (
+      ROLE_NAVIGATION[
+        portalRole
+      ] || []
+    ).map((item) => {
+      const itemSection =
+        item.href === basePath
+          ? defaultSection
+          : String(item.href)
+              .split('?')[0]
+              .split('/')
+              .filter(Boolean)
+              .pop() ||
+            defaultSection;
+
+      return {
+        ...item,
+        section:
+          itemSection,
+      };
+    });
+
+  const homeHref =
+    isOperations
+      ? `${basePath}/${defaultSection}`
+      : basePath;
 
   return (
     <>
@@ -7256,7 +6967,25 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
         <title>{title} | ApplyLoop</title>
         <meta name="description" content={subtitle} />
       </Head>
-      <Shell section={section} portalRole={portalRole} navItems={navItems}>
+      <WorkspaceShell
+        navigation={navigation}
+        activeSection={section}
+        homeHref={homeHref}
+        title={title}
+        subtitle={subtitle}
+        workspaceLabel={
+          isOperations
+            ? 'Operations Workspace'
+            : 'Owner Workspace'
+        }
+        roleLabel={
+          isOperations
+            ? 'Operations'
+            : 'Owner'
+        }
+        user={user}
+        onLogout={logout}
+      >
         {content}
         <AddNewClientModal open={modals.addClient} onClose={() => closeModal('addClient')} />
         <ClientPerformanceModal open={modals.clientPerformance} onClose={() => closeModal('clientPerformance')} />
@@ -7294,7 +7023,7 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
         <EditSubscriptionModal open={modals.editSubscription} onClose={() => closeModal('editSubscription')} />
         <ManagePlansModal open={modals.managePlans} onClose={() => closeModal('managePlans')} />
         <PaymentHistoryModal open={modals.paymentHistory} onClose={() => closeModal('paymentHistory')} />
-      </Shell>
+      </WorkspaceShell>
     </>
   );
 }
