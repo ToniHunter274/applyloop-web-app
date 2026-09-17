@@ -2539,3 +2539,24 @@
   width: 16px;
   height: 16px;
 }
+
+
+.pageTitleActionsOnly {
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.pageTitleActionsOnly > * {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .pageTitleActionsOnly > * {
+    width: 100%;
+  }
+
+  .pageToolbar {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

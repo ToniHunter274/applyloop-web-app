@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
   FiAlertCircle,
@@ -8,7 +7,6 @@ import {
   FiAlertTriangle,
   FiArrowLeft,
   FiBarChart2,
-  FiBell,
   FiCheck,
   FiCheckCircle,
   FiCheckSquare,
@@ -17,17 +15,13 @@ import {
   FiDownload,
   FiFileText,
   FiFilter,
-  FiHome,
   FiInfo,
   FiLink,
-  FiLogOut,
-  FiMenu,
   FiMessageSquare,
   FiPlay,
   FiSearch,
   FiSend,
   FiShield,
-  FiSliders,
   FiTarget,
   FiTrendingUp,
   FiUser,
@@ -38,26 +32,16 @@ import {
 } from 'react-icons/fi';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '../../shared/context/AuthContext';
-import { getRoleHome } from '../../shared/config/roles';
+import {
+  getRoleHome,
+  ROLE_NAVIGATION,
+  ROLE_PAGE_META,
+  USER_ROLES,
+} from '../../shared/config/roles';
+import WorkspaceShell from '../../shared/components/WorkspaceShell';
 import styles from './TeamAuditorPortal.module.css';
 
 const cx = (...values) => values.filter(Boolean).join(' ');
-
-const NAV_ITEMS = [
-  { key: 'dashboard', label: 'Dashboard', href: '/team-auditor', icon: FiHome },
-  { key: 'queue', label: 'Audit Queue', href: '/team-auditor/audit-queue', icon: FiCheckSquare, count: 24 },
-  { key: 'ai', label: 'AI Auditing System', href: '/team-auditor/ai-auditing-system', icon: FiClipboardLike },
-  { key: 'reviews', label: 'Application Reviews', href: '/team-auditor/application-reviews', icon: FiFileText },
-  { key: 'quality', label: 'Team Quality Scores', href: '/team-auditor/team-quality-scores', icon: FiUsers },
-  { key: 'complaints', label: 'Client Complaints', href: '/team-auditor/client-complaints', icon: FiMessageSquare, count: 2 },
-  { key: 'reports', label: 'Audit Report', href: '/team-auditor/audit-report', icon: FiBarChart2 },
-  { key: 'analytics', label: 'Analytics and Trends', href: '/team-auditor/analytics-and-trends', icon: FiTrendingUp },
-  { key: 'settings', label: 'Profile and Settings', href: '/team-auditor/profile-settings', icon: FiSliders },
-];
-
-function FiClipboardLike(props) {
-  return <FiCheckSquare {...props} />;
-}
 
 const routeToSection = (segments) => {
   const section = Array.isArray(segments) ? segments[0] : segments;
@@ -249,74 +233,37 @@ const complaints = [
 
 const chartWeeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'];
 
-function Sidebar({ current, open, onClose, basePath = '/team-auditor', queueCount = 0 }) {
-  const { user, logout } = useAuth();
-  const [profileOpen, setProfileOpen] = useState(false);
-
-  const handleLogout = async () => {
-    setProfileOpen(false);
-    onClose?.();
-    await logout();
-  };
+function PageTitle({
+  title,
+  subtitle,
+  action,
+  showCopy = false,
+}) {
+  if (
+    !showCopy &&
+    !action
+  ) {
+    return null;
+  }
 
   return (
-    <aside className={cx(styles.sidebar, open && styles.sidebarOpen)}>
-      <div className={styles.logoWrap}>
-        <img src="/logo.svg" alt="ApplyLoop" />
-        <span>ApplyLoop</span>
-      </div>
-      <nav className={styles.nav}>
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const count =
-            item.key === 'queue'
-              ? queueCount
-              : item.count;
+    <div
+      className={cx(
+        styles.pageTitle,
+        !showCopy &&
+          styles.pageTitleActionsOnly
+      )}
+    >
+      {showCopy && (
+        <div>
+          <h1>{title}</h1>
 
-          return (
-            <Link key={item.key} href={item.href.replace('/team-auditor', basePath)} className={cx(styles.navItem, current === item.key && styles.navActive)} onClick={onClose}>
-              <Icon />
-              <span>{item.label}</span>
-              {count ? <b>{count}</b> : null}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className={styles.sidebarProfile}>
-        <button
-          type="button"
-          className={styles.sidebarUser}
-          onClick={() => setProfileOpen((value) => !value)}
-          aria-expanded={profileOpen}
-          aria-label="Open account menu"
-        >
-          <img src="/images/team-auditor-profile.png" alt={user?.name || 'Team Lead'} />
-          <div>
-            <strong>{user?.name || 'Team Lead'}</strong>
-            <span>Administrator</span>
-          </div>
-          <FiChevronDown className={cx(styles.profileChevron, profileOpen && styles.profileChevronOpen)} />
-        </button>
-        {profileOpen ? (
-          <div className={styles.sidebarProfileMenu}>
-            <button type="button" onClick={handleLogout}>
-              <FiLogOut />
-              <span>Sign out</span>
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </aside>
-  );
-}
+          {subtitle && (
+            <p>{subtitle}</p>
+          )}
+        </div>
+      )}
 
-function PageTitle({ title, subtitle, action }) {
-  return (
-    <div className={styles.pageTitle}>
-      <div>
-        <h1>{title}</h1>
-        <p>{subtitle}</p>
-      </div>
       {action}
     </div>
   );
@@ -1210,17 +1157,20 @@ function SliderRow({ label, value, tone = 'blue' }) {
   return <div className={styles.sliderRow}><label>{label}</label><div><span><i className={styles[`slider_${tone}`]} style={{ width: `${value}%` }} /><b style={{ left: `${value}%` }} /></span><strong className={tone === 'green' ? styles.greenText : styles.blueText}>{value}%</strong></div></div>;
 }
 
-function PersonalSettings() {
-  return <div className={styles.profileForm}><div className={styles.formGrid}><FormField label="Full Name" full><input value="Olabanji David T." readOnly /></FormField><FormField label="Designation" full><input value="Chief Applicant" readOnly /></FormField><FormField label="Email Address"><input value="banjidhevid216@gmail.com" readOnly /></FormField><FormField label="Phone Number"><input value="+234 811 474 6609" readOnly /></FormField><FormField label="Nationality"><input value="Nigeria" readOnly /></FormField><FormField label="State/Province"><input value="Lagos" readOnly /></FormField></div><Button className={styles.saveSmall}>Save Changes</Button><h2 className={styles.profileSectionTitle}>Security</h2><div className={styles.formGrid}><FormField label="Current Password" full><input type="password" value="password" readOnly /></FormField><FormField label="New Password" full><input type="password" value="password" readOnly /></FormField><FormField label="Confirm New Password" full><input type="password" value="password" readOnly /></FormField></div><Button className={styles.saveSmall}>Save Changes</Button><h2 className={styles.profileSectionTitle}>Notification Preferencessss</h2><div className={styles.notificationList}>{[['Email Notifications', 'Receive updates via Email', true], ['Deadline Alerts', 'Get notified about upcoming deadlines', true], ['Escalation Notifications', 'Alert on new escalations', true], ['Team Activity', 'Updates on team performance', false]].map(([title, detail, enabled]) => <div key={title}><span><strong>{title}</strong><small>{detail}</small></span><Toggle enabled={enabled} /></div>)}</div></div>;
+function PersonalSettings({ designation = 'Team Auditor' }) {
+  return <div className={styles.profileForm}><div className={styles.formGrid}><FormField label="Full Name" full><input value="Olabanji David T." readOnly /></FormField><FormField label="Designation" full><input value={designation} readOnly /></FormField><FormField label="Email Address"><input value="banjidhevid216@gmail.com" readOnly /></FormField><FormField label="Phone Number"><input value="+234 811 474 6609" readOnly /></FormField><FormField label="Nationality"><input value="Nigeria" readOnly /></FormField><FormField label="State/Province"><input value="Lagos" readOnly /></FormField></div><Button className={styles.saveSmall}>Save Changes</Button><h2 className={styles.profileSectionTitle}>Security</h2><div className={styles.formGrid}><FormField label="Current Password" full><input type="password" value="password" readOnly /></FormField><FormField label="New Password" full><input type="password" value="password" readOnly /></FormField><FormField label="Confirm New Password" full><input type="password" value="password" readOnly /></FormField></div><Button className={styles.saveSmall}>Save Changes</Button><h2 className={styles.profileSectionTitle}>Notification Preferences</h2><div className={styles.notificationList}>{[['Email Notifications', 'Receive updates via Email', true], ['Deadline Alerts', 'Get notified about upcoming deadlines', true], ['Escalation Notifications', 'Alert on new escalations', true], ['Team Activity', 'Updates on team performance', false]].map(([title, detail, enabled]) => <div key={title}><span><strong>{title}</strong><small>{detail}</small></span><Toggle enabled={enabled} /></div>)}</div></div>;
 }
 
 function AuditRulesSettings() {
   return <div className={styles.rulesStack}><Card className={styles.settingsPanel}><div className={styles.panelHeading}><FiInfo /><h2>Audit Rules</h2></div><div className={styles.twoColumnCompact}><SliderRow label="Random Audit Percentage" value={85} /><SliderRow label="Premium Client Audit Rate" value={30} /><FormField label="Minimum Audit Score"><input value="85" readOnly /><small>Minimum score required to pass audit</small></FormField></div></Card><Card className={styles.settingsPanel}><div className={styles.panelHeading}><FiShield /><h2>Quality Thresholds</h2></div><div className={styles.twoColumnCompact}><SliderRow label="Overall Pass Threshold" value={90} tone="green" /><SliderRow label="ATS Compliance Threshold" value={95} tone="green" /><SliderRow label="Resume Quality Threshold" value={88} /><SliderRow label="Cover Letter Quality Threshold" value={85} /></div></Card><Card className={styles.settingsPanel}><div className={styles.panelHeading}><h2>Compliance Policies</h2></div><div className={styles.policyList}>{[['Mandatory ATS Check', 'Require ATS compliance check before submission'], ['Client Preference Validation', 'Verify adherence to client-specific requirements'], ['Dual Review for Premium Clients', 'Require two auditors for premium tier applications']].map(([title, detail]) => <div key={title}><span><strong>{title}</strong><small>{detail}</small></span><Toggle /></div>)}</div></Card><Card className={styles.settingsPanel}><div className={styles.panelHeading}><h2>Escalation Rules</h2></div><div className={styles.twoColumnCompact}><FormField label="Auto-Escalate Score Threshold"><input value="70" readOnly /><small>Automatically escalate if quality score falls below this threshold</small></FormField><FormField label="Escalate After Query Count"><input value="3" readOnly /><small>Escalate applicant after this many quality queries</small></FormField></div><div className={styles.criticalRule}><span><strong>Auto-Escalate Critical Client Issues</strong><small>Immediately escalate any premium/critical client complaints</small></span><Toggle red /></div></Card></div>;
 }
 
-function SettingsPage() {
+function SettingsPage({ designation = 'Team Auditor' }) {
   const [tab, setTab] = useState('personal');
-  return <div className={styles.stack}><PageTitle title="Profile & Settings" subtitle="manage your account setting and preference" action={<button className={styles.bell}><FiBell /></button>} /><img src="/images/team-auditor-profile.png" className={styles.profilePhoto} alt="Profile" /><div className={styles.profileTabs}><button className={tab === 'personal' ? styles.profileTabActive : ''} onClick={() => setTab('personal')}>Personal Information</button><button className={tab === 'rules' ? styles.profileTabActive : ''} onClick={() => setTab('rules')}>Location & Work Authorization</button></div>{tab === 'personal' ? <PersonalSettings /> : <AuditRulesSettings />}</div>;
+  return <div className={styles.stack}><PageTitle
+      title="Profile & Settings"
+      subtitle="Manage your account settings and preferences."
+    /><img src="/images/team-auditor-profile.png" className={styles.profilePhoto} alt="Profile" /><div className={styles.profileTabs}><button className={tab === 'personal' ? styles.profileTabActive : ''} onClick={() => setTab('personal')}>Personal Information</button><button className={tab === 'rules' ? styles.profileTabActive : ''} onClick={() => setTab('rules')}>Audit Rules</button></div>{tab === 'personal' ? <PersonalSettings designation={designation} /> : <AuditRulesSettings />}</div>;
 }
 
 function Modal({ title, subtitle, children, footer, onClose, wide = false }) {
@@ -1469,13 +1419,21 @@ export default function TeamAuditorPortal({
   requiredRole = 'team_auditor',
 }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const {
+    user,
+    logout,
+  } = useAuth();
   const hasWorkspaceAccess =
     user?.role === requiredRole;
   const segments = Array.isArray(router.query.section) ? router.query.section : router.query.section ? [router.query.section] : [];
   const section = routeToSection(segments);
+
+  const roleKey =
+    requiredRole ===
+    USER_ROLES.CHIEF_AUDITOR
+      ? USER_ROLES.CHIEF_AUDITOR
+      : USER_ROLES.TEAM_AUDITOR;
   const detailId = section === 'queue' && segments[1] ? segments[1] : null;
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [auditQueue, setAuditQueue] = useState([]);
@@ -1730,6 +1688,54 @@ export default function TeamAuditorPortal({
     return null;
   }
 
+  const metadata =
+    ROLE_PAGE_META[
+      roleKey
+    ]?.[section] || [
+      portalTitle,
+      'Review audit operations and quality activity.',
+    ];
+
+  const navigation =
+    (
+      ROLE_NAVIGATION[
+        roleKey
+      ] || []
+    ).map((item) => {
+      const cleanHref =
+        String(item.href || '')
+          .split('?')[0]
+          .replace(/\/+$/, '');
+
+      const cleanHome =
+        String(basePath)
+          .replace(/\/+$/, '');
+
+      const routeSegment =
+        cleanHref === cleanHome
+          ? ''
+          : cleanHref
+              .split('/')
+              .filter(Boolean)
+              .pop();
+
+      const itemSection =
+        routeToSection(
+          routeSegment
+        );
+
+      return {
+        ...item,
+        section:
+          itemSection,
+        count:
+          itemSection === 'queue' &&
+          auditQueue.length > 0
+            ? auditQueue.length
+            : undefined,
+      };
+    });
+
   const page = {
     dashboard: <DashboardPage openAudit={openAuditDetail} openBreakdown={(row) => { setSelected(row); setModal('payout'); }} auditQueue={auditQueue} auditQueueLoading={auditQueueLoading} auditQueueError={auditQueueError} />,
     queue: detailId ? <AuditQueueDetailPage audit={auditDetail} loading={auditDetailLoading} error={auditDetailError} openModal={(type) => { setSelected(auditDetail); setModal(type); }} onBack={() => router.push(`${basePath}/audit-queue`)} /> : <AuditQueuePage openAudit={openAuditDetail} auditQueue={auditQueue} auditQueueLoading={auditQueueLoading} auditQueueError={auditQueueError} />,
@@ -1739,20 +1745,45 @@ export default function TeamAuditorPortal({
     complaints: <ComplaintsPage openModal={(type, item) => { setSelected(item); setModal(type); }} />,
     reports: <ReportsPage openReport={(type) => { setSelected(type); setModal('report'); }} />,
     analytics: <AnalyticsPage />,
-    settings: <SettingsPage />,
+    settings: (
+      <SettingsPage
+        designation={portalTitle}
+      />
+    ),
   }[section];
 
   return (
     <>
-      <Head><title>{portalTitle} | ApplyLoop</title></Head>
-      <div className={styles.app}>
-        {mobileOpen ? <button className={styles.backdrop} onClick={() => setMobileOpen(false)} aria-label="Close navigation" /> : null}
-        <Sidebar current={section} open={mobileOpen} onClose={() => setMobileOpen(false)} basePath={basePath} queueCount={auditQueue.length} />
-        <main className={styles.main}>
-          <div className={styles.mobileHeader}><button onClick={() => setMobileOpen(true)}><FiMenu /></button><strong>ApplyLoop</strong><button><FiBell /></button></div>
-          <div className={styles.surface}>{page}</div>
-        </main>
-      </div>
+      <Head>
+        <title>
+          {metadata[0]} | ApplyLoop
+        </title>
+
+        <meta
+          name="description"
+          content={metadata[1]}
+        />
+      </Head>
+
+      <WorkspaceShell
+        navigation={navigation}
+        activeSection={section}
+        homeHref={basePath}
+        title={metadata[0]}
+        subtitle={metadata[1]}
+        workspaceLabel={
+          roleKey ===
+          USER_ROLES.CHIEF_AUDITOR
+            ? 'Chief Audit Workspace'
+            : 'Audit Workspace'
+        }
+        roleLabel={portalTitle}
+        user={user}
+        onLogout={logout}
+      >
+        {page}
+      </WorkspaceShell>
+
       {modal === 'payout' ? <PayoutBreakdownModal row={selected} onClose={() => setModal(null)} /> : null}
       {modal === 'report' ? <ReportModal type={selected} onClose={() => setModal(null)} /> : null}
       {['pass', 'query', 'correction', 'escalate'].includes(modal) ? <ActionModal type={modal} audit={selected} onPassed={handleAuditPassed} onClose={() => setModal(null)} /> : null}

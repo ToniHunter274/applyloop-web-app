@@ -174,9 +174,21 @@ export default function WorkspaceShell({
                   <Icon className="h-5 w-5 shrink-0" />
                 )}
 
-                <span className="truncate">
+                <span className="min-w-0 flex-1 truncate">
                   {item.label}
                 </span>
+
+                {Number(item.count) > 0 && (
+                  <span
+                    className={`ml-auto inline-flex min-w-6 shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
+                      active
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {item.count}
+                  </span>
+                )}
               </Link>
             );
           })}
