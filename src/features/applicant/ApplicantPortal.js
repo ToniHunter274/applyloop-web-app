@@ -1617,6 +1617,11 @@ function WorkshopPage({
     setActiveJobRequestId,
   ] = useState('');
 
+  const [
+    workflowStatus,
+    setWorkflowStatus,
+  ] = useState('');
+
   const jobLinkHandoffRef =
     useRef('');
 
@@ -1746,6 +1751,7 @@ function WorkshopPage({
       handoffRequest.id
     );
 
+    setWorkflowStatus('');
     setResumeStatus('');
     setTailoredResume('');
     setTailoredResumePreviewUrl('');
@@ -1844,6 +1850,8 @@ function WorkshopPage({
     setTailoredResumeFingerprint('');
     setResumeGenerationError('');
     setActiveJobRequestId('');
+    setWorkflowStatus('');
+    jobLinkHandoffRef.current = '';
   };
 
   const openClientResume = async () => {
@@ -2101,6 +2109,87 @@ function WorkshopPage({
                 isQuotaReached
               }
               onClick={async () => {
+                const completedJobRequestId =
+                  activeJobRequestId;
+
+                /*
+                 * Build the next-link queue before recording.
+                 * Prefer another link for the current Client,
+                 * then continue with another eligible Client.
+                 *
+                 * For the current Client we calculate capacity
+                 * after this Application is recorded so we never
+                 * automatically load work beyond the Client limit.
+                 */
+                const nextJobQueue =
+                  activeClients.flatMap(
+                    (client) => {
+                      const applicationLimit =
+                        Number(
+                          client.applicationLimit ||
+                            0
+                        );
+
+                      const currentApplications =
+                        Number(
+                          client.applications ||
+                            0
+                        );
+
+                      const applicationsAfterRecord =
+                        currentApplications +
+                        (
+                          client.id ===
+                            selectedClient.id
+                            ? 1
+                            : 0
+                        );
+
+                      const hasCapacity =
+                        applicationsAfterRecord <
+                        applicationLimit;
+
+                      if (!hasCapacity) {
+                        return [];
+                      }
+
+                      return (
+                        client.jobRequests ||
+                        []
+                      )
+                        .filter(
+                          (request) =>
+                            request.id !==
+                              completedJobRequestId &&
+                            [
+                              'new',
+                              'in_review',
+                            ].includes(
+                              request.status
+                            )
+                        )
+                        .map(
+                          (request) => ({
+                            client,
+                            request,
+                          })
+                        );
+                    }
+                  );
+
+                const nextJob =
+                  completedJobRequestId
+                    ? (
+                        nextJobQueue.find(
+                          (entry) =>
+                            entry.client.id ===
+                            selectedClient.id
+                        ) ||
+                        nextJobQueue[0] ||
+                        null
+                      )
+                    : null;
+
                 const recorded =
                   await onRecordApplication(
                     selectedClient,
@@ -2109,26 +2198,138 @@ function WorkshopPage({
                     jobLocation,
                     jobUrl,
                     jobDescription,
-                    activeJobRequestId,
+                    completedJobRequestId,
                     tailoredResumeIsCurrent
                       ? tailoredResume
                       : ''
                   );
 
-                if (recorded) {
-                  setTailoredResume('');
-                  setTailoredResumePreviewUrl('');
-                  setTailoredResumeFingerprint('');
-                  setResumeGenerationError('');
-                  setCompanyName('');
-                  setPosition('');
-                  setJobLocation('');
-                  setJobUrl('');
+                if (!recorded) {
+                  return;
+                }
+
+                setTailoredResume('');
+                setTailoredResumePreviewUrl('');
+                setTailoredResumeFingerprint('');
+                setResumeGenerationError('');
+                setResumeStatus('');
+
+                if (
+                  completedJobRequestId &&
+                  nextJob
+                ) {
+                  const {
+                    client:
+                      nextClient,
+                    request:
+                      nextRequest,
+                  } = nextJob;
+
+                  setSelectedClientId(
+                    nextClient.id
+                  );
+
+                  setCompanyName(
+                    nextRequest
+                      .jobCompany || ''
+                  );
+
+                  setPosition(
+                    nextRequest
+                      .jobPosition || ''
+                  );
+
+                  setJobLocation(
+                    nextRequest
+                      .jobLocation || ''
+                  );
+
+                  setJobUrl(
+                    nextRequest
+                      .jobLink || ''
+                  );
+
                   setJobDescription('');
 
-                  if (activeJobRequestId) {
-                    setActiveJobRequestId('');
+                  setActiveJobRequestId(
+                    nextRequest.id
+                  );
+
+                  setWorkflowStatus(
+                    `Application recorded. Next job link loaded for ${nextClient.name}.`
+                  );
+
+                  jobLinkHandoffRef.current =
+                    `${nextClient.id}:${nextRequest.id}`;
+
+                  if (
+                    nextRequest.status ===
+                      'new' &&
+                    onUpdateJobRequest
+                  ) {
+                    try {
+                      await Promise.resolve(
+                        onUpdateJobRequest(
+                          nextRequest.id,
+                          'in_review'
+                        )
+                      );
+                    } catch (error) {
+                      setResumeStatus(
+                        error?.message ||
+                          'The next job link loaded, but its status could not be updated.'
+                      );
+                    }
                   }
+
+                  router.replace(
+                    {
+                      pathname:
+                        '/applicant/workshop',
+                      query: {
+                        clientId:
+                          nextClient.id,
+                        jobRequestId:
+                          nextRequest.id,
+                      },
+                    },
+                    undefined,
+                    {
+                      shallow: true,
+                    }
+                  );
+
+                  return;
+                }
+
+                setCompanyName('');
+                setPosition('');
+                setJobLocation('');
+                setJobUrl('');
+                setJobDescription('');
+                setActiveJobRequestId('');
+
+                if (
+                  completedJobRequestId
+                ) {
+                  setWorkflowStatus(
+                    'Application recorded. There are no more active job links waiting right now.'
+                  );
+
+                  jobLinkHandoffRef.current =
+                    '';
+
+                  router.replace(
+                    '/applicant/workshop',
+                    undefined,
+                    {
+                      shallow: true,
+                    }
+                  );
+                } else {
+                  setWorkflowStatus(
+                    'Application recorded. The Workshop is ready for another Applicant-sourced opportunity.'
+                  );
                 }
               }}
             >
@@ -2312,9 +2513,19 @@ function WorkshopPage({
               </strong>
 
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Client, company, position, location and job URL were prefilled from Job Links. Add the job description, complete the application, then record it here.
+                Client, company, position, location and job URL were prefilled from Job Links. Add the job description and complete the application. After you mark it as applied, the next available job link will load automatically.
               </p>
             </div>
+          </div>
+        )}
+
+        {workflowStatus && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <FiCheckCircle className="mt-0.5 shrink-0" />
+
+            <span>
+              {workflowStatus}
+            </span>
           </div>
         )}
 
@@ -4901,15 +5112,6 @@ export default function ApplicantPortal() {
         setToast(
           'Application recorded in the client database.'
         );
-
-        if (
-          jobRequestId &&
-          result.application
-        ) {
-          openApplication(
-            result.application
-          );
-        }
 
         return true;
       } catch (error) {
