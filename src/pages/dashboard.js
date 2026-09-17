@@ -11,6 +11,8 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiFile,
+  FiSearch,
+  FiX,
 } from 'react-icons/fi';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
 
@@ -79,10 +81,9 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [showPipeline, setShowPipeline] = useState(false);
-  const [showSources, setShowSources] = useState(false);
-  const [updateSlideIndex, setUpdateSlideIndex] = useState(0);
   const [announcements, setAnnouncements] = useState([]);
+  const [seenAnnouncementIds, setSeenAnnouncementIds] = useState([]);
+  const [announcementStorageKey, setAnnouncementStorageKey] = useState('');
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
   const [announcementsError, setAnnouncementsError] = useState('');
 
@@ -103,21 +104,6 @@ export default function Dashboard() {
     router.isReady,
     router.query.search,
   ]);
-
-  useEffect(() => {
-    if (announcements.length <= 1) {
-      setUpdateSlideIndex(0);
-      return undefined;
-    }
-
-    const timer = setInterval(() => {
-      setUpdateSlideIndex(
-        (prev) => (prev + 1) % announcements.length
-      );
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, [announcements.length]);
 
   useEffect(() => {
     if (!router.isReady) {
@@ -247,6 +233,52 @@ export default function Dashboard() {
       try {
         const accessToken = await getAccessToken();
 
+        const supabase =
+          createClient();
+
+        const {
+          data: {
+            session,
+          },
+        } =
+          await supabase.auth
+            .getSession();
+
+        const storageKey =
+          `applyloop:client-announcements-seen:${session?.user?.id || 'client'}`;
+
+        setAnnouncementStorageKey(
+          storageKey
+        );
+
+        if (
+          typeof window !==
+          'undefined'
+        ) {
+          try {
+            const stored =
+              JSON.parse(
+                window.localStorage
+                  .getItem(
+                    storageKey
+                  ) ||
+                  '[]'
+              );
+
+            setSeenAnnouncementIds(
+              Array.isArray(
+                stored
+              )
+                ? stored
+                : []
+            );
+          } catch {
+            setSeenAnnouncementIds(
+              []
+            );
+          }
+        }
+
         const response = await fetch(
           '/api/client/announcements',
           {
@@ -292,6 +324,96 @@ export default function Dashboard() {
       mounted = false;
     };
   }, [previewClientId]);
+
+
+  const unseenAnnouncements =
+    announcements.filter(
+      (announcement) =>
+        !seenAnnouncementIds
+          .includes(
+            announcement.id
+          )
+    );
+
+  const activeAnnouncement =
+    unseenAnnouncements[0] ||
+    null;
+
+  const markAnnouncementSeen =
+    (announcementId) => {
+      if (!announcementId) {
+        return;
+      }
+
+      const nextSeen =
+        Array.from(
+          new Set([
+            ...seenAnnouncementIds,
+            announcementId,
+          ])
+        );
+
+      setSeenAnnouncementIds(
+        nextSeen
+      );
+
+      if (
+        announcementStorageKey &&
+        typeof window !==
+          'undefined'
+      ) {
+        window.localStorage
+          .setItem(
+            announcementStorageKey,
+            JSON.stringify(
+              nextSeen
+            )
+          );
+      }
+    };
+
+  const announcementToneStyles = {
+    info: {
+      wrap:
+        'border-blue-200 bg-blue-50/80',
+      icon:
+        'bg-blue-100 text-blue-700',
+      badge:
+        'text-blue-700',
+    },
+    success: {
+      wrap:
+        'border-emerald-200 bg-emerald-50/80',
+      icon:
+        'bg-emerald-100 text-emerald-700',
+      badge:
+        'text-emerald-700',
+    },
+    warning: {
+      wrap:
+        'border-amber-200 bg-amber-50/90',
+      icon:
+        'bg-amber-100 text-amber-700',
+      badge:
+        'text-amber-700',
+    },
+    critical: {
+      wrap:
+        'border-red-200 bg-red-50/90',
+      icon:
+        'bg-red-100 text-red-700',
+      badge:
+        'text-red-700',
+    },
+  };
+
+  const activeAnnouncementTone =
+    announcementToneStyles[
+      activeAnnouncement
+        ?.tone
+    ] ||
+    announcementToneStyles
+      .info;
 
 
   // Status Badge styles helper
@@ -357,6 +479,9 @@ export default function Dashboard() {
         app.location,
         app.linkSource,
         app.originLabel,
+        app.resumeName,
+        app.coverLetterName,
+        app.jobUrl,
       ];
 
       return searchableValues.some(
@@ -395,99 +520,135 @@ export default function Dashboard() {
   ).length;
 
   const stats = [
-    { label: 'TOTAL APPLICATIONS', count: totalCount, filterKey: 'All', icon: FiFileText, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
-    { label: 'PENDING RESPONSES', count: waitingCount, filterKey: 'Waiting', icon: FiMail, color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' },
-    { label: 'REJECTED ROLES', count: rejectedCount, filterKey: 'Rejected', icon: FiUserX, color: 'text-red-500 bg-red-50 dark:bg-red-900/20' },
-    { label: 'UPCOMING INTERVIEWS', count: interviewCount, filterKey: 'Interview Scheduled', icon: FiCalendar, color: 'text-sky-500 bg-sky-50 dark:bg-sky-900/20' },
-    { label: 'OFFERS RECEIVED', count: offeredCount, filterKey: 'Offer Received', icon: FiMessageSquare, color: 'text-green-500 bg-green-50 dark:bg-green-900/20' }
+    {
+      label: 'TOTAL APPLICATIONS',
+      count: totalCount,
+      icon: FiFileText,
+      color:
+        'text-blue-600 bg-blue-50 dark:bg-blue-900/20',
+    },
+    {
+      label: 'PENDING RESPONSES',
+      count: waitingCount,
+      icon: FiMail,
+      color:
+        'text-amber-500 bg-amber-50 dark:bg-amber-900/20',
+    },
+    {
+      label: 'REJECTED ROLES',
+      count: rejectedCount,
+      icon: FiUserX,
+      color:
+        'text-red-500 bg-red-50 dark:bg-red-900/20',
+    },
+    {
+      label: 'UPCOMING INTERVIEWS',
+      count: interviewCount,
+      icon: FiCalendar,
+      color:
+        'text-sky-500 bg-sky-50 dark:bg-sky-900/20',
+    },
+    {
+      label: 'OFFERS RECEIVED',
+      count: offeredCount,
+      icon: FiMessageSquare,
+      color:
+        'text-green-500 bg-green-50 dark:bg-green-900/20',
+    },
   ];
 
-  const sourceCounts =
-    applications.reduce(
-      (counts, application) => {
-        const key =
-          application.origin ||
-          'shared';
-
-        if (
-          Object.prototype
-            .hasOwnProperty.call(
-              counts,
-              key
-            )
-        ) {
-          counts[key] += 1;
-        } else {
-          counts.shared += 1;
-        }
-
-        return counts;
-      },
-      {
-        linker: 0,
-        client: 0,
-        applicant: 0,
-        shared: 0,
-      }
-    );
-
-  const pipelineStages = [
+  const statusFilters = [
     {
+      value: 'All',
+      label: 'All',
+      count: applications.length,
+    },
+    {
+      value: 'Submitted',
       label: 'Submitted',
       count: submittedCount,
     },
     {
+      value: 'Waiting',
       label: 'Waiting',
       count: waitingCount,
     },
     {
-      label: 'Interview',
+      value: 'Interview Scheduled',
+      label: 'Interviews',
       count: interviewCount,
     },
     {
-      label: 'Offer',
+      value: 'Offer Received',
+      label: 'Offers',
       count: offeredCount,
     },
-  ];
-
-  const sourceStages = [
     {
-      label: 'Linker Sourced',
-      count: sourceCounts.linker,
-      note:
-        'Opportunities found by your Linker',
-    },
-    {
-      label: 'Client Added',
-      count: sourceCounts.client,
-      note:
-        'Job links added by you',
-    },
-    {
-      label: 'Applicant Sourced',
-      count: sourceCounts.applicant,
-      note:
-        'Jobs found independently by your Applicant',
+      value: 'Rejected',
+      label: 'Rejected',
+      count: rejectedCount,
     },
   ];
 
-  if (sourceCounts.shared > 0) {
-    sourceStages.push({
-      label: 'Shared Opportunity',
-      count: sourceCounts.shared,
-      note:
-        'Older or unclassified shared opportunities',
-    });
-  }
+  const hasActiveFilters =
+    activeFilter !== 'All' ||
+    Boolean(normalizedSearch);
+
+  const clearSearchQuery = () => {
+    setSearchQuery('');
+
+    if (
+      router.isReady &&
+      router.query.search
+    ) {
+      const nextQuery = {
+        ...router.query,
+      };
+
+      delete nextQuery.search;
+
+      router.replace(
+        {
+          pathname:
+            router.pathname,
+          query:
+            nextQuery,
+        },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
+    }
+  };
+
+  const clearFilters = () => {
+    setActiveFilter('All');
+    setCurrentPage(1);
+    clearSearchQuery();
+  };
 
 
   // Pagination config
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 10;
   const totalPages = Math.max(1, Math.ceil(filteredApps.length / ITEMS_PER_PAGE));
   const paginatedApps = filteredApps.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const resultStart =
+    filteredApps.length === 0
+      ? 0
+      : (
+          currentPage - 1
+        ) * ITEMS_PER_PAGE + 1;
+
+  const resultEnd =
+    Math.min(
+      currentPage * ITEMS_PER_PAGE,
+      filteredApps.length
+    );
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
@@ -496,280 +657,242 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout
-      searchValue={searchQuery}
-      onSearchChange={setSearchQuery}
+      showSearch={false}
     >
       <SEO title="Home" />
 
-      {/* Stat Cards Container */}
-      <div className="grid grid-cols-5 gap-1 sm:gap-4 md:gap-6 mb-8 select-none">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          const isActive = activeFilter === stat.filterKey;
+      {/* Dashboard Summary */}
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 xl:gap-5">
+        {stats.map(
+          (stat) => {
+            const Icon =
+              stat.icon;
 
-          return (
-            <div
-              key={i}
-              onClick={() => { setActiveFilter(stat.filterKey); setCurrentPage(1); }}
-              className={`p-1 sm:p-6 bg-white dark:bg-gray-800 border rounded-xl sm:rounded-2xl cursor-pointer hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden ${
-                isActive
-                  ? 'border-primary ring-2 ring-primary/10'
-                  : 'border-gray-100 dark:border-gray-700'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1 sm:mb-4">
-                <div className={`p-1 sm:p-2.5 rounded-lg sm:rounded-xl ${stat.color}`}>
-                  <Icon className="h-2.5 w-2.5 sm:h-5 sm:w-5" />
-                </div>
-              </div>
-              <p className="text-xs sm:text-3xl font-extrabold text-gray-950 dark:text-white tracking-tight">
-                {stat.count}
-              </p>
-              <p className="text-[6px] sm:text-[10px] font-semibold text-gray-400 dark:text-gray-500 tracking-wider mt-0.5 sm:mt-1.5 uppercase leading-tight sm:leading-normal line-clamp-2">
-                {stat.label}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-
-      <section className="mb-8">
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            aria-expanded={showPipeline}
-            onClick={() =>
-              setShowPipeline(
-                (current) => !current
-              )
-            }
-            className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
-              showPipeline
-                ? 'border-[#1E50C3] bg-blue-50 text-[#1E50C3] dark:bg-blue-900/20'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-[#1E50C3] hover:text-[#1E50C3] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
-            }`}
-          >
-            {showPipeline
-              ? 'Hide Pipeline'
-              : 'View Pipeline'}
-          </button>
-
-          <button
-            type="button"
-            aria-expanded={showSources}
-            onClick={() =>
-              setShowSources(
-                (current) => !current
-              )
-            }
-            className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
-              showSources
-                ? 'border-[#1E50C3] bg-blue-50 text-[#1E50C3] dark:bg-blue-900/20'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-[#1E50C3] hover:text-[#1E50C3] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
-            }`}
-          >
-            {showSources
-              ? 'Hide Sources'
-              : 'View Sources'}
-          </button>
-        </div>
-
-        {(showPipeline || showSources) && (
-          <div
-            className={`mt-4 grid gap-5 ${
-              showPipeline && showSources
-                ? 'lg:grid-cols-2'
-                : ''
-            }`}
-          >
-            {showPipeline && (
-              <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-                <div className="mb-5">
-                  <h2 className="text-base font-bold text-gray-950 dark:text-white">
-                    Application Pipeline
-                  </h2>
-                  <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    Follow how your recorded applications are progressing.
-                  </p>
+            return (
+              <article
+                key={
+                  stat.label
+                }
+                className="min-w-0 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800 sm:p-5"
+              >
+                <div
+                  className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}
+                >
+                  <Icon className="h-5 w-5" />
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                  {pipelineStages.map(
-                    (stage, index) => (
-                      <div
-                        key={stage.label}
-                        className="relative rounded-xl border border-gray-100 bg-gray-50 px-2 py-4 text-center dark:border-gray-700 dark:bg-gray-900/40 sm:px-3"
-                      >
-                        <strong className="block text-xl font-extrabold text-gray-950 dark:text-white sm:text-2xl">
-                          {stage.count}
-                        </strong>
+                <p className="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                  {
+                    stat.count
+                  }
+                </p>
 
-                        <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:text-[11px]">
-                          {stage.label}
-                        </span>
-
-                        {index <
-                          pipelineStages.length -
-                            1 && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-gray-300 sm:block"
-                          >
-                            →
-                          </span>
-                        )}
-                      </div>
-                    )
-                  )}
-                </div>
-
-                <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
-                  Rejected applications remain visible in your main dashboard metrics and application history.
+                <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500">
+                  {
+                    stat.label
+                  }
                 </p>
               </article>
-            )}
-
-            {showSources && (
-              <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-                <div className="mb-5">
-                  <h2 className="text-base font-bold text-gray-950 dark:text-white">
-                    Application Sources
-                  </h2>
-                  <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    See where your recorded job opportunities came from.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {sourceStages.map(
-                    (source) => (
-                      <div
-                        key={source.label}
-                        className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3 dark:border-gray-700"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {source.label}
-                          </p>
-
-                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                            {source.note}
-                          </p>
-                        </div>
-
-                        <strong className="shrink-0 text-xl font-extrabold text-[#1E50C3]">
-                          {source.count}
-                        </strong>
-                      </div>
-                    )
-                  )}
-                </div>
-              </article>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Important Updates */}
-      <div className="bg-white dark:bg-gray-800 border border-[#1E50C3] rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="bg-[#1E50C3] p-3 rounded-xl flex items-center justify-center shrink-0">
-            <HiOutlineSpeakerphone className="text-white w-6 h-6" />
-          </div>
-
-          <div>
-            <h2 className="text-lg font-bold text-gray-950 dark:text-white">
-              Important Updates
-            </h2>
-
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Latest news and announcements
-            </p>
-          </div>
-        </div>
-
-        {isLoadingAnnouncements ? (
-          <div className="border border-gray-100 dark:border-gray-700 rounded-xl py-10 flex flex-col items-center justify-center gap-3">
-            <div className="w-7 h-7 rounded-full border-2 border-blue-100 border-t-[#1E50C3] animate-spin" />
-
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Loading updates...
-            </span>
-          </div>
-        ) : announcementsError ? (
-          <div className="border border-gray-100 dark:border-gray-700 rounded-xl py-10 text-center">
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Unable to load updates.
-            </p>
-          </div>
-        ) : announcements.length === 0 ? (
-          <div className="border border-gray-100 dark:border-gray-700 rounded-xl py-10 text-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              No updates available.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="border border-gray-100 dark:border-gray-700 rounded-xl p-5 md:p-6">
-              <div className="flex items-start gap-3">
-                <span className="w-2 h-2 rounded-full bg-[#1E50C3] shrink-0 mt-1.5" />
-
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-sm md:text-base font-bold text-gray-800 dark:text-gray-200">
-                    {announcements[updateSlideIndex]?.title}
-                  </h3>
-
-                  <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                    {announcements[updateSlideIndex]?.message}
-                  </p>
-
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                    {announcements[updateSlideIndex]?.published_at
-                      ? new Date(
-                          announcements[
-                            updateSlideIndex
-                          ].published_at
-                        ).toLocaleDateString(
-                          'en-US',
-                          {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          }
-                        )
-                      : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {announcements.length > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-4">
-                {announcements.map(
-                  (announcement, idx) => (
-                    <button
-                      key={announcement.id}
-                      type="button"
-                      onClick={() =>
-                        setUpdateSlideIndex(idx)
-                      }
-                      aria-label={`Show update ${idx + 1}`}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        updateSlideIndex === idx
-                          ? 'bg-[#1E50C3]'
-                          : 'bg-blue-200 dark:bg-blue-900'
-                      }`}
-                    />
-                  )
-                )}
-              </div>
-            )}
-          </>
+            );
+          }
         )}
       </div>
 
-      {/* Applications Table */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+      {/* Unseen Client Update */}
+      {!isLoadingAnnouncements &&
+        !announcementsError &&
+        activeAnnouncement && (
+          <section
+            className={`mb-6 rounded-2xl border px-4 py-3.5 shadow-sm sm:px-5 ${activeAnnouncementTone.wrap}`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${activeAnnouncementTone.icon}`}
+              >
+                <HiOutlineSpeakerphone className="h-5 w-5" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span
+                    className={`text-[10px] font-extrabold uppercase tracking-[0.12em] ${activeAnnouncementTone.badge}`}
+                  >
+                    New Update
+                  </span>
+
+                  <span className="text-[10px] font-medium text-gray-400">
+                    {formatApplicationDate(
+                      activeAnnouncement
+                        .published_at
+                    )}
+                  </span>
+
+                  {unseenAnnouncements.length >
+                    1 && (
+                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+                      +
+                      {unseenAnnouncements.length -
+                        1}{' '}
+                      more unseen
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-1 flex flex-col gap-1 lg:flex-row lg:items-baseline lg:gap-3">
+                  <h2 className="shrink-0 text-sm font-bold text-gray-950 dark:text-white">
+                    {
+                      activeAnnouncement
+                        .title
+                    }
+                  </h2>
+
+                  <p className="line-clamp-2 text-sm leading-5 text-gray-600 dark:text-gray-300">
+                    {
+                      activeAnnouncement
+                        .message
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  markAnnouncementSeen(
+                    activeAnnouncement.id
+                  )
+                }
+                className="shrink-0 rounded-xl border border-white/80 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                Got it
+              </button>
+            </div>
+          </section>
+        )}
+
+      {/* Applications */}
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="border-b border-gray-100 px-5 py-5 dark:border-gray-700 sm:px-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-950 dark:text-white">
+                Applications
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Search and filter your application history.
+              </p>
+            </div>
+
+            <div className="relative w-full xl:max-w-md">
+              <FiSearch className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+
+              <input
+                type="search"
+                value={
+                  searchQuery
+                }
+                onChange={(
+                  event
+                ) =>
+                  setSearchQuery(
+                    event.target.value
+                  )
+                }
+                placeholder="Search company, position, location or status"
+                aria-label="Search applications"
+                className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-12 text-sm text-gray-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white"
+              />
+
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={
+                    clearSearchQuery
+                  }
+                  aria-label="Clear search"
+                  title="Clear search"
+                  className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700"
+                >
+                  <FiX className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {statusFilters.map(
+                (filter) => {
+                  const active =
+                    activeFilter ===
+                    filter.value;
+
+                  return (
+                    <button
+                      type="button"
+                      key={
+                        filter.value
+                      }
+                      onClick={() => {
+                        setActiveFilter(
+                          filter.value
+                        );
+
+                        setCurrentPage(
+                          1
+                        );
+                      }}
+                      className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition sm:text-sm ${
+                        active
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                      }`}
+                    >
+                      <span>
+                        {
+                          filter.label
+                        }
+                      </span>
+
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          active
+                            ? 'bg-white/20 text-white'
+                            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {
+                          filter.count
+                        }
+                      </span>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={
+                  clearFilters
+                }
+                className="inline-flex items-center gap-1.5 self-start text-xs font-semibold text-blue-600 transition hover:text-blue-800 lg:self-auto"
+              >
+                <FiX />
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          <p className="mt-4 text-xs font-medium text-gray-400">
+            {hasActiveFilters
+              ? `${filteredApps.length} matching application${filteredApps.length === 1 ? '' : 's'}`
+              : `${applications.length} application${applications.length === 1 ? '' : 's'}`}
+          </p>
+        </div>
+
         <div className="w-full">
           <table className="w-full text-left border-collapse table-auto">
             <thead>
@@ -872,7 +995,9 @@ export default function Dashboard() {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
-                    No records found.
+                    {hasActiveFilters
+                      ? 'No applications match your search or filters.'
+                      : 'No applications have been recorded yet.'}
                   </td>
                 </tr>
               )}
@@ -883,7 +1008,7 @@ export default function Dashboard() {
         {/* Pagination Section */}
         <div className="flex justify-between items-center px-6 py-4 bg-gray-50/50 dark:bg-gray-700/20 border-t border-gray-100 dark:border-gray-700 select-none">
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-            Showing {paginatedApps.length} of {filteredApps.length} results
+            Showing {resultStart}-{resultEnd} of {filteredApps.length} results
           </span>
           <div className="flex items-center gap-4">
             <button

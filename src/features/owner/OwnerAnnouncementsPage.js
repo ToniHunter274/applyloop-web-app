@@ -52,7 +52,41 @@ const ROLE_OPTIONS = [
     value: 'owner',
     label: 'Owners',
   },
+  {
+    value: 'admin',
+    label: 'Admins',
+  },
 ];
+
+const WORKFORCE_ROLES = [
+  'applicant',
+  'chief_applicant',
+  'linker',
+  'prompt_engineer',
+  'team_auditor',
+  'chief_auditor',
+  'operations',
+  'owner',
+  'admin',
+];
+
+function sameAudience(
+  current,
+  target
+) {
+  if (
+    !Array.isArray(current) ||
+    current.length !==
+      target.length
+  ) {
+    return false;
+  }
+
+  return target.every(
+    (role) =>
+      current.includes(role)
+  );
+}
 
 const ROLE_LABELS =
   Object.fromEntries(
@@ -240,6 +274,24 @@ function audienceLabel(
     roles.length === 0
   ) {
     return 'Everyone';
+  }
+
+  if (
+    sameAudience(
+      roles,
+      ['user_client']
+    )
+  ) {
+    return 'Clients only';
+  }
+
+  if (
+    sameAudience(
+      roles,
+      WORKFORCE_ROLES
+    )
+  ) {
+    return 'Workforce only';
   }
 
   return roles
@@ -739,8 +791,8 @@ export default function OwnerAnnouncementsPage() {
               Audience
             </div>
 
-            <p className="mt-1 text-xs text-slate-500">
-              Everyone means every active ApplyLoop role. Selecting a role switches the announcement to targeted delivery.
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Clients are ApplyLoop customers. Workforce includes Applicants, Linkers, Prompt Engineers, Auditors, Operations, Admins, and Owners.
             </p>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -768,39 +820,99 @@ export default function OwnerAnnouncementsPage() {
                 Everyone
               </button>
 
-              {ROLE_OPTIONS.map(
-                (role) => {
-                  const selected =
-                    form
-                      .audienceRoles
-                      .includes(
-                        role.value
-                      );
-
-                  return (
-                    <button
-                      type="button"
-                      key={
-                        role.value
-                      }
-                      onClick={() =>
-                        toggleAudience(
-                          role.value
-                        )
-                      }
-                      className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                        selected
-                          ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
-                      }`}
-                    >
-                      {
-                        role.label
-                      }
-                    </button>
-                  );
+              <button
+                type="button"
+                onClick={() =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+                      audienceRoles: [
+                        'user_client',
+                      ],
+                    })
+                  )
                 }
-              )}
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  sameAudience(
+                    form.audienceRoles,
+                    ['user_client']
+                  )
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                }`}
+              >
+                Clients only
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+                      audienceRoles: [
+                        ...WORKFORCE_ROLES,
+                      ],
+                    })
+                  )
+                }
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  sameAudience(
+                    form.audienceRoles,
+                    WORKFORCE_ROLES
+                  )
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                }`}
+              >
+                Workforce only
+              </button>
+            </div>
+
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                Or target specific roles
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {ROLE_OPTIONS.map(
+                  (role) => {
+                    const selected =
+                      form
+                        .audienceRoles
+                        .includes(
+                          role.value
+                        );
+
+                    return (
+                      <button
+                        type="button"
+                        key={
+                          role.value
+                        }
+                        onClick={() =>
+                          toggleAudience(
+                            role.value
+                          )
+                        }
+                        className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
+                          selected
+                            ? 'border-blue-600 bg-blue-50 text-blue-700'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                        }`}
+                      >
+                        {
+                          role.label
+                        }
+                      </button>
+                    );
+                  }
+                )}
+              </div>
             </div>
           </div>
 

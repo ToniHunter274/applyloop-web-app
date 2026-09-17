@@ -78,6 +78,7 @@ export default function DashboardLayout({
   logout: logoutProp,
   searchValue = '',
   onSearchChange,
+  showSearch = true,
 }) {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -805,30 +806,32 @@ export default function DashboardLayout({
           <div className="flex min-h-[88px] items-center justify-between gap-4 px-5 sm:px-7 lg:px-9">
             <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-xl font-bold tracking-[-0.025em] text-slate-950 lg:text-2xl">{title}</h1><p className="mt-1 hidden truncate text-sm text-slate-500 sm:block">{subtitle}</p></div></div>
             <div className="flex items-center gap-2">
-              <form
-                onSubmit={handleHeaderSearchSubmit}
-                className="hidden xl:block"
-              >
-                <label
-                  data-tour="application-search"
-                  className="relative block"
+              {showSearch && (
+                <form
+                  onSubmit={handleHeaderSearchSubmit}
+                  className="hidden xl:block"
                 >
-                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <label
+                    data-tour="application-search"
+                    className="relative block"
+                  >
+                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
 
-                  <input
-                    type="search"
-                    value={displayedSearchValue}
-                    onChange={(event) =>
-                      handleHeaderSearchChange(
-                        event.target.value
-                      )
-                    }
-                    placeholder="Search applications"
-                    aria-label="Search applications"
-                    className="h-11 w-[300px] rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </label>
-              </form>
+                    <input
+                      type="search"
+                      value={displayedSearchValue}
+                      onChange={(event) =>
+                        handleHeaderSearchChange(
+                          event.target.value
+                        )
+                      }
+                      placeholder="Search applications"
+                      aria-label="Search applications"
+                      className="h-11 w-[300px] rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                    />
+                  </label>
+                </form>
+              )}
               <div className="relative">
                 <button
                   type="button"
