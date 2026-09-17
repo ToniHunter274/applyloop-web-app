@@ -57,6 +57,8 @@ const emptyAssignmentData = {
     rejected: 0,
     openOpportunities: 0,
     needsAttention: 0,
+    qualityRating: 0,
+    ratingCount: 0,
   },
 };
 
@@ -3020,6 +3022,16 @@ function PerformancePage({
       data.summary?.needsAttention || 0
     );
 
+  const qualityRating =
+    Number(
+      data.summary?.qualityRating || 0
+    );
+
+  const ratingCount =
+    Number(
+      data.summary?.ratingCount || 0
+    );
+
   const inReview =
     Number(
       data.summary
@@ -3119,6 +3131,20 @@ function PerformancePage({
           <strong>{totalOffers}</strong>
           <small>
             From Linker-sourced applications
+          </small>
+        </article>
+
+        <article>
+          <span>Client Rating</span>
+          <strong>
+            {ratingCount > 0
+              ? `${qualityRating.toFixed(1)}/5`
+              : '—'}
+          </strong>
+          <small>
+            {ratingCount > 0
+              ? `${ratingCount} rated job link${ratingCount === 1 ? '' : 's'}`
+              : 'No rated job links yet'}
           </small>
         </article>
       </section>
@@ -3789,6 +3815,18 @@ export default function LinkerPortal() {
                 Number(
                   result.summary
                     ?.needsAttention ||
+                    0
+                ),
+              qualityRating:
+                Number(
+                  result.summary
+                    ?.qualityRating ||
+                    0
+                ),
+              ratingCount:
+                Number(
+                  result.summary
+                    ?.ratingCount ||
                     0
                 ),
             },

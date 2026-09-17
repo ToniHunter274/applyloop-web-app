@@ -106,6 +106,46 @@ async function getAssignments(req, res) {
   const linkerRequests =
     linkerRequestRows || [];
 
+  const {
+    data: linkerPerformanceRows,
+    error: linkerPerformanceError,
+  } = await supabase.rpc(
+    'get_linker_performance'
+  );
+
+  if (linkerPerformanceError) {
+    console.error(
+      'Unable to load Linker quality rating:',
+      linkerPerformanceError
+    );
+
+    throw new ApiError(
+      500,
+      'Your Linker rating could not be loaded.'
+    );
+  }
+
+  const linkerPerformance =
+    (
+      linkerPerformanceRows || []
+    ).find(
+      (performance) =>
+        performance.linker_user_id ===
+        linkerProfile.id
+    ) || {};
+
+  const qualityRating =
+    Number(
+      linkerPerformance
+        .quality_rating || 0
+    );
+
+  const ratingCount =
+    Number(
+      linkerPerformance
+        .rating_count || 0
+    );
+
   const linkerRequestIds =
     unique(
       linkerRequests.map(
@@ -340,6 +380,8 @@ async function getAssignments(req, res) {
           sourcedRejected,
         openOpportunities,
         needsAttention,
+        qualityRating,
+        ratingCount,
       },
     });
   }
@@ -979,6 +1021,8 @@ async function getAssignments(req, res) {
         sourcedRejected,
       openOpportunities,
       needsAttention,
+      qualityRating,
+      ratingCount,
     },
   });
 }

@@ -129,6 +129,35 @@ export default async function handler(
     }
 
     const {
+      data: applicationRating,
+      error: applicationRatingError,
+    } = await supabase
+      .from(
+        'application_client_ratings'
+      )
+      .select(`
+        rating,
+        note,
+        updated_at
+      `)
+      .eq(
+        'client_id',
+        client.id
+      )
+      .eq(
+        'application_id',
+        application.id
+      )
+      .maybeSingle();
+
+    if (applicationRatingError) {
+      throw new ApiError(
+        500,
+        'The Application rating could not be loaded.'
+      );
+    }
+
+    const {
       data: messages,
       error: messagesError,
     } = await supabase
@@ -237,6 +266,18 @@ export default async function handler(
           application.created_at,
         updatedAt:
           application.updated_at,
+
+        clientRating:
+          applicationRating?.rating ||
+          0,
+
+        clientRatingNote:
+          applicationRating?.note ||
+          '',
+
+        clientRatingUpdatedAt:
+          applicationRating?.updated_at ||
+          null,
       },
 
       messages: (messages || []).map(

@@ -133,6 +133,37 @@ async function listLinkers(req, res) {
     linkerProfiles || []
   ).map((linker) => linker.id);
 
+  const {
+    data: linkerPerformanceRows,
+    error: linkerPerformanceError,
+  } = await supabase.rpc(
+    'get_linker_performance'
+  );
+
+  if (linkerPerformanceError) {
+    console.error(
+      'Unable to load Linker performance:',
+      linkerPerformanceError
+    );
+
+    throw new ApiError(
+      500,
+      'Linker performance could not be loaded.'
+    );
+  }
+
+  const linkerPerformanceById =
+    new Map(
+      (
+        linkerPerformanceRows || []
+      ).map(
+        (performance) => [
+          performance.linker_user_id,
+          performance,
+        ]
+      )
+    );
+
   let assignmentRows = [];
 
   if (linkerIds.length > 0) {
@@ -260,6 +291,18 @@ async function listLinkers(req, res) {
       allocationCountByLinkerId.get(
         linker.id
       ) || 0,
+    qualityRating:
+      Number(
+        linkerPerformanceById.get(
+          linker.id
+        )?.quality_rating || 0
+      ),
+    ratingCount:
+      Number(
+        linkerPerformanceById.get(
+          linker.id
+        )?.rating_count || 0
+      ),
     createdAt: linker.created_at,
     updatedAt: linker.updated_at,
   }));
@@ -394,6 +437,8 @@ async function createLinker(req, res) {
           profile.account_status,
         activeAssignments: 0,
         activeAllocations: 0,
+        qualityRating: 0,
+        ratingCount: 0,
         createdAt:
           profile.created_at,
         updatedAt:

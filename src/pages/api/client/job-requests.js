@@ -227,11 +227,60 @@ export default async function handler(req, res) {
           );
       }
 
+      let ratingsByJobRequestId =
+        new Map();
+
+      if (requestIds.length) {
+        const {
+          data: ratingRows,
+          error: ratingsError,
+        } = await supabase
+          .from(
+            'job_request_client_ratings'
+          )
+          .select(`
+            job_request_id,
+            rating,
+            note,
+            updated_at
+          `)
+          .eq(
+            'client_id',
+            client.id
+          )
+          .in(
+            'job_request_id',
+            requestIds
+          );
+
+        if (ratingsError) {
+          throw new ApiError(
+            500,
+            'Ratings for your Job Links could not be loaded.'
+          );
+        }
+
+        ratingsByJobRequestId =
+          new Map(
+            (ratingRows || []).map(
+              (rating) => [
+                rating.job_request_id,
+                rating,
+              ]
+            )
+          );
+      }
+
       return res.status(200).json({
         requests: (requestRows || []).map(
           (request) => {
             const linkedApplication =
               applicationsByJobRequestId.get(
+                request.id
+              );
+
+            const requestRating =
+              ratingsByJobRequestId.get(
                 request.id
               );
 
@@ -258,6 +307,18 @@ export default async function handler(req, res) {
                 request.created_at,
               updatedAt:
                 request.updated_at,
+
+              clientRating:
+                requestRating?.rating ||
+                0,
+
+              clientRatingNote:
+                requestRating?.note ||
+                '',
+
+              clientRatingUpdatedAt:
+                requestRating?.updated_at ||
+                null,
             };
           }
         ),

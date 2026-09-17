@@ -17,6 +17,7 @@ import {
 
 import DashboardLayout from '../../shared/components/DashboardLayout';
 import ApproveModal from '../../shared/components/ApproveModal';
+import ClientWorkRating from '../../shared/components/ClientWorkRating';
 import { createClient } from '../../lib/supabase/client';
 
 async function getAccessToken() {
@@ -789,6 +790,41 @@ export default function ApplicationDetailPage() {
                   )}
                 </div>
               </div>
+
+              {!isClientPreview && (
+                <ClientWorkRating
+                  endpoint={`/api/client/applications/${application.id}/rating`}
+                  title="Rate Application Quality"
+                  description="Rate the quality of the work completed on this individual Application. This contributes to the Applicant's cumulative performance rating."
+                  initialRating={
+                    application.clientRating ||
+                    0
+                  }
+                  initialNote={
+                    application.clientRatingNote ||
+                    ''
+                  }
+                  onSaved={(
+                    savedRating
+                  ) =>
+                    setApplication(
+                      (
+                        current
+                      ) => ({
+                        ...current,
+                        clientRating:
+                          savedRating.value,
+                        clientRatingNote:
+                          savedRating.note ||
+                          '',
+                        clientRatingUpdatedAt:
+                          savedRating.updatedAt ||
+                          null,
+                      })
+                    )
+                  }
+                />
+              )}
 
               <div className="mt-6">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-3">

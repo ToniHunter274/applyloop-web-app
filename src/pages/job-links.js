@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FiExternalLink, FiLink, FiPlus } from 'react-icons/fi';
 import AddJobLinkModal from '../shared/components/AddJobLinkModal';
+import ClientWorkRating from '../shared/components/ClientWorkRating';
 import DashboardLayout from '../shared/components/DashboardLayout';
 import SEO from '../shared/components/SEO';
 import { createClient } from '../lib/supabase/client';
@@ -300,6 +301,52 @@ export default function ClientJobLinks() {
                     {request.comment}
                   </p>
                 )}
+                {request.requestSource ===
+                  'linker' && (
+                  <ClientWorkRating
+                    compact
+                    endpoint={`/api/client/job-requests/${request.id}/rating`}
+                    title="Rate this Job Link"
+                    description="Rate how relevant and useful this sourced opportunity is. This contributes to the Linker's cumulative performance rating."
+                    initialRating={
+                      request.clientRating ||
+                      0
+                    }
+                    initialNote={
+                      request.clientRatingNote ||
+                      ''
+                    }
+                    onSaved={(
+                      savedRating
+                    ) =>
+                      setRequests(
+                        (
+                          current
+                        ) =>
+                          current.map(
+                            (
+                              item
+                            ) =>
+                              item.id ===
+                              request.id
+                                ? {
+                                    ...item,
+                                    clientRating:
+                                      savedRating.value,
+                                    clientRatingNote:
+                                      savedRating.note ||
+                                      '',
+                                    clientRatingUpdatedAt:
+                                      savedRating.updatedAt ||
+                                      null,
+                                  }
+                                : item
+                          )
+                      )
+                    }
+                  />
+                )}
+
                 <div className="mt-4 flex flex-wrap gap-2">
                   <a
                     href={request.jobLink}

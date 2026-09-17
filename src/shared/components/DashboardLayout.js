@@ -20,7 +20,6 @@ import { getRoleHome, USER_ROLES } from '../config/roles';
 import { createClient } from '../../lib/supabase/client';
 import { Avatar } from './PortalUI';
 import ClientProductTour from './ClientProductTour';
-import ClientApplicantRating from './ClientApplicantRating';
 
 async function getClientAccessToken() {
   const supabase = createClient();
@@ -743,10 +742,6 @@ export default function DashboardLayout({
             <FiHelpCircle />
             Help & Support
           </Link>
-          {!isClientPreview && (
-            <ClientApplicantRating />
-          )}
-
           <div className="relative">
             <button
               data-tour="profile-menu"
