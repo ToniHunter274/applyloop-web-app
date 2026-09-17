@@ -33,6 +33,7 @@ import {
   FiXCircle,
 } from 'react-icons/fi';
 import { useAuth } from '../../shared/context/AuthContext';
+import { createClient } from '../../lib/supabase/client';
 import {
   getRoleHome,
   ROLE_NAVIGATION,
@@ -44,16 +45,33 @@ import styles from './ChiefApplicantPortal.module.css';
 
 const cn = (...values) => values.filter(Boolean).join(' ');
 
-const TEAM_MEMBERS = Array.from({ length: 9 }, (_, index) => ({
-  id: `team-${index + 1}`,
-  name: 'Sarah Chen',
-  completed: 187,
-  average: '2.3 hrs avg',
-  status: [4, 5, 6, 8].includes(index) ? 'Paused' : 'Available',
-  tasks: 15,
-  quality: null,
-  completion: 72,
-}));
+async function getChiefAccessToken() {
+  const supabase =
+    createClient();
+
+  if (!supabase) {
+    throw new Error(
+      'The Supabase connection is unavailable.'
+    );
+  }
+
+  const {
+    data: { session },
+    error,
+  } =
+    await supabase.auth.getSession();
+
+  if (
+    error ||
+    !session?.access_token
+  ) {
+    throw new Error(
+      'Your session has expired. Please sign in again.'
+    );
+  }
+
+  return session.access_token;
+}
 
 const CLIENT_ASSIGNMENTS = [
   ['Olabanji David', 300, 20, '15/20', 75, 'Sarah Chen', 'On Track'],
@@ -246,53 +264,474 @@ function AlertItem({ icon: Icon, tone, title, text, action }) {
   return <div className={styles.alertRow}><span className={cn(styles.alertIcon, styles[`alert_${tone}`])}><Icon /></span><div><strong>{title}</strong><p>{text}</p>{action && <button>{action}</button>}</div><StatusPill>High</StatusPill></div>;
 }
 
-function TeamPage() {
-  const [search, setSearch] = useState('');
-  const [statsMember, setStatsMember] = useState(null);
-  const [messageMember, setMessageMember] = useState(null);
-  const [assignMember, setAssignMember] = useState(null);
-  const rows = TEAM_MEMBERS.filter((member) => member.name.toLowerCase().includes(search.toLowerCase()));
+function TeamPage({
+  data,
+  isLoading,
+  error,
+}) {
+  const [search, setSearch] =
+    useState('');
+
+  const [
+    statsMember,
+    setStatsMember,
+  ] = useState(null);
+
+  if (isLoading) {
+    return (
+      <section className={styles.largePanel}>
+        <h2>Loading supervision team...</h2>
+        <p>
+          Loading Applicants and Linkers
+          assigned to you.
+        </p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className={styles.largePanel}>
+        <h2>
+          Supervision team could not be loaded
+        </h2>
+        <p>{error}</p>
+      </section>
+    );
+  }
+
+  const members =
+    data?.members || [];
+
+  const summary =
+    data?.summary || {};
+
+  const query =
+    search
+      .trim()
+      .toLowerCase();
+
+  const rows =
+    members.filter(
+      (member) =>
+        !query ||
+        [
+          member.fullName,
+          member.email,
+          member.roleType,
+          member.status,
+        ].some(
+          (value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(query)
+        )
+    );
+
   return (
     <>
-      <PageHeader search searchValue={search} onSearch={setSearch} />
+      <PageHeader
+        search
+        searchValue={search}
+        onSearch={setSearch}
+      />
+
       <div className={styles.stats}>
-        <StatCard label="Total Applicants" value="24" foot="+2 from yesterday" />
-        <StatCard label="Available" value="87" foot="+3 from yesterday" />
-        <StatCard label="Busy" value="15" foot="+3 from yesterday" />
-        <StatCard label="Active Tasks" value="6" foot="2 Urgent" />
+        <StatCard
+          label="Team Members"
+          value={
+            Number(
+              summary.teamMembers ||
+              0
+            )
+          }
+          foot="Direct reports"
+        />
+
+        <StatCard
+          label="Applicants"
+          value={
+            Number(
+              summary.applicants ||
+              0
+            )
+          }
+          foot="Assigned Applicants"
+        />
+
+        <StatCard
+          label="Linkers"
+          value={
+            Number(
+              summary.linkers ||
+              0
+            )
+          }
+          foot="Assigned Linkers"
+        />
+
+        <StatCard
+          label="Rated Work"
+          value={
+            Number(
+              summary.ratedWorkItems ||
+              0
+            )
+          }
+          foot="Client-rated work items"
+        />
       </div>
+
       <div className={styles.tableScroll}>
-        <table className={cn(styles.dataTable, styles.teamTable)}>
-          <thead><tr><th>Team Member</th><th>Status</th><th>Active Tasks</th><th>Client Satisfaction</th><th>Completion Rate</th><th>Action</th></tr></thead>
-          <tbody>{rows.map((member) => <tr key={member.id}>
-            <td><strong>{member.name}</strong><small>{member.completed} completed • {member.average}</small></td>
-            <td><StatusPill>{member.status}</StatusPill></td>
-            <td><span className={styles.taskCount}>{member.tasks}</span></td>
-            <td>{member.quality == null ? 'Not connected' : `${member.quality}/5`}</td>
-            <td><div className={styles.completionCell}><strong>{member.completion}%</strong><span><i style={{ width: `${member.completion}%` }} /></span></div></td>
-            <td><div className={styles.actionGroup}><button onClick={() => setAssignMember(member)}><FiUserPlus /> Assign</button><button onClick={() => setStatsMember(member)}><FiBarChart2 /> Stats</button><button onClick={() => setMessageMember(member)}><FiMessageSquare /> Chat</button></div></td>
-          </tr>)}</tbody>
+        <table
+          className={cn(
+            styles.dataTable,
+            styles.teamTable
+          )}
+        >
+          <thead>
+            <tr>
+              <th>Team Member</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Active Work</th>
+              <th>Client Rating</th>
+              <th>Completion Rate</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map(
+              (member) => {
+                const ratingCount =
+                  Number(
+                    member.ratingCount ||
+                    0
+                  );
+
+                const qualityRating =
+                  Number(
+                    member.qualityRating ||
+                    0
+                  );
+
+                const completionRate =
+                  member.completionRate ===
+                  null
+                    ? null
+                    : Number(
+                        member
+                          .completionRate ||
+                          0
+                      );
+
+                return (
+                  <tr key={member.id}>
+                    <td>
+                      <strong>
+                        {member.fullName}
+                      </strong>
+
+                      <small>
+                        {member.email ||
+                          'No email available'}
+                      </small>
+                    </td>
+
+                    <td>
+                      <strong>
+                        {member.roleType}
+                      </strong>
+                    </td>
+
+                    <td>
+                      <StatusPill>
+                        {member.status ||
+                          member.accountStatus ||
+                          'Unknown'}
+                      </StatusPill>
+                    </td>
+
+                    <td>
+                      <span
+                        className={
+                          styles.taskCount
+                        }
+                      >
+                        {Number(
+                          member.activeWork ||
+                          0
+                        )}
+                      </span>
+
+                      <small>
+                        {member.roleType ===
+                        'Linker'
+                          ? 'open job links'
+                          : 'active tasks'}
+                      </small>
+                    </td>
+
+                    <td>
+                      {ratingCount > 0
+                        ? `${qualityRating.toFixed(
+                            1
+                          )}/5 · ${ratingCount} rating${
+                            ratingCount === 1
+                              ? ''
+                              : 's'
+                          }`
+                        : 'Not rated yet'}
+                    </td>
+
+                    <td>
+                      {completionRate ===
+                      null ? (
+                        '—'
+                      ) : (
+                        <div
+                          className={
+                            styles
+                              .completionCell
+                          }
+                        >
+                          <strong>
+                            {completionRate}%
+                          </strong>
+
+                          <span>
+                            <i
+                              style={{
+                                width:
+                                  `${Math.max(
+                                    0,
+                                    Math.min(
+                                      100,
+                                      completionRate
+                                    )
+                                  )}%`,
+                              }}
+                            />
+                          </span>
+                        </div>
+                      )}
+                    </td>
+
+                    <td>
+                      <div
+                        className={
+                          styles.actionGroup
+                        }
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setStatsMember(
+                              member
+                            )
+                          }
+                        >
+                          <FiBarChart2 />
+                          Stats
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+            )}
+
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan="7">
+                  No assigned personnel match
+                  this view.
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
       </div>
-      <PerformanceModal member={statsMember} onClose={() => setStatsMember(null)} />
-      <MessageModal member={messageMember} onClose={() => setMessageMember(null)} />
-      <AssignModal member={assignMember} onClose={() => setAssignMember(null)} />
+
+      <PerformanceModal
+        member={statsMember}
+        onClose={() =>
+          setStatsMember(null)
+        }
+      />
     </>
   );
 }
 
-function PerformanceModal({ member, onClose }) {
-  return <Modal open={Boolean(member)} onClose={onClose} title="Performance Statistics" subtitle={member?.name} wide footer={<button className={styles.secondaryButton} onClick={onClose}>Close</button>}>
-    <div className={styles.performanceModalTitle}><span>SJ</span><div><h3>Performance Statistics</h3><p>Sarah Chen</p></div></div>
-    <div className={styles.modalMetricGrid}>
-      <div className={styles.modalMetricBlue}><FiFileText /><span>Active Tasks<strong>12</strong></span></div>
-      <div className={styles.modalMetricGreen}><FiCheckCircle /><span>Total Completed<strong>187</strong></span></div>
-      <div className={styles.modalMetricOrange}><FiAwardIcon /><span>Quality Score<strong>4.8/5.0</strong></span></div>
-      <div className={styles.modalMetricPurple}><FiClock /><span>Avg Time/Task<strong>2.3 hrs</strong></span></div>
-    </div>
-    <div className={styles.modalProgress}><ProgressLine label="Team Completion Rate" value={95} color="blue" /><ProgressLine label="Approval Accuracy" value={98} color="green" /><ProgressLine label="Deadline Compliance" value={97} color="purple" /></div>
-    <div className={styles.recentActivityBox}><h4>Recent Activity</h4></div>
-  </Modal>;
+function PerformanceModal({
+  member,
+  onClose,
+}) {
+  const ratingCount =
+    Number(
+      member?.ratingCount || 0
+    );
+
+  const qualityRating =
+    Number(
+      member?.qualityRating || 0
+    );
+
+  const completionRate =
+    member?.completionRate === null ||
+    member?.completionRate === undefined
+      ? null
+      : Number(
+          member.completionRate || 0
+        );
+
+  return (
+    <Modal
+      open={Boolean(member)}
+      onClose={onClose}
+      title="Performance Statistics"
+      subtitle={
+        member
+          ? `${member.fullName} · ${member.roleType}`
+          : ''
+      }
+      wide
+      footer={
+        <button
+          className={
+            styles.secondaryButton
+          }
+          onClick={onClose}
+        >
+          Close
+        </button>
+      }
+    >
+      <div
+        className={
+          styles.performanceModalTitle
+        }
+      >
+        <span>
+          {String(
+            member?.fullName ||
+            'T'
+          )
+            .charAt(0)
+            .toUpperCase()}
+        </span>
+
+        <div>
+          <h3>
+            {member?.fullName ||
+              'Team Member'}
+          </h3>
+
+          <p>
+            {member?.roleType ||
+              'Personnel'}
+          </p>
+        </div>
+      </div>
+
+      <div
+        className={
+          styles.modalMetricGrid
+        }
+      >
+        <div
+          className={
+            styles.modalMetricBlue
+          }
+        >
+          <FiFileText />
+
+          <span>
+            Active Work
+            <strong>
+              {Number(
+                member?.activeWork ||
+                0
+              )}
+            </strong>
+          </span>
+        </div>
+
+        <div
+          className={
+            styles.modalMetricGreen
+          }
+        >
+          <FiCheckCircle />
+
+          <span>
+            Completed / Sourced
+            <strong>
+              {Number(
+                member?.completedWork ||
+                0
+              )}
+            </strong>
+          </span>
+        </div>
+
+        <div
+          className={
+            styles.modalMetricOrange
+          }
+        >
+          <FiAwardIcon />
+
+          <span>
+            Client Rating
+            <strong>
+              {ratingCount > 0
+                ? `${qualityRating.toFixed(
+                    1
+                  )}/5`
+                : 'Not rated'}
+            </strong>
+          </span>
+        </div>
+
+        <div
+          className={
+            styles.modalMetricPurple
+          }
+        >
+          <FiStar />
+
+          <span>
+            Rated Work
+            <strong>
+              {ratingCount}
+            </strong>
+          </span>
+        </div>
+      </div>
+
+      {completionRate !== null && (
+        <div
+          className={
+            styles.modalProgress
+          }
+        >
+          <ProgressLine
+            label="Completion Rate"
+            value={Math.max(
+              0,
+              Math.min(
+                100,
+                completionRate
+              )
+            )}
+            color="blue"
+          />
+        </div>
+      )}
+    </Modal>
+  );
 }
 
 function FiAwardIcon(props) { return <FiTarget {...props} />; }
@@ -447,13 +886,298 @@ function FeedbackPage() {
   );
 }
 
-function PerformancePage() {
+function PerformancePage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return (
+      <section className={styles.largePanel}>
+        <h2>
+          Loading team performance...
+        </h2>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className={styles.largePanel}>
+        <h2>
+          Team performance could not be loaded
+        </h2>
+        <p>{error}</p>
+      </section>
+    );
+  }
+
+  const members =
+    data?.members || [];
+
+  const applicants =
+    members.filter(
+      (member) =>
+        member.roleType ===
+        'Applicant'
+    );
+
+  const ratedWorkItems =
+    members.reduce(
+      (total, member) =>
+        total +
+        Number(
+          member.ratingCount ||
+          0
+        ),
+      0
+    );
+
+  const weightedRatingTotal =
+    members.reduce(
+      (total, member) =>
+        total +
+        (
+          Number(
+            member.qualityRating ||
+            0
+          ) *
+          Number(
+            member.ratingCount ||
+            0
+          )
+        ),
+      0
+    );
+
+  const teamRating =
+    ratedWorkItems > 0
+      ? weightedRatingTotal /
+        ratedWorkItems
+      : 0;
+
+  const applicantCompletion =
+    applicants.length > 0
+      ? Math.round(
+          applicants.reduce(
+            (total, applicant) =>
+              total +
+              Number(
+                applicant
+                  .completionRate ||
+                0
+              ),
+            0
+          ) /
+          applicants.length
+        )
+      : 0;
+
+  const trackedWork =
+    members.reduce(
+      (total, member) =>
+        total +
+        Number(
+          member.completedWork ||
+          0
+        ),
+      0
+    );
+
+  const orderedMembers =
+    [...members].sort(
+      (a, b) => {
+        const ratingDifference =
+          Number(
+            b.qualityRating || 0
+          ) -
+          Number(
+            a.qualityRating || 0
+          );
+
+        if (ratingDifference) {
+          return ratingDifference;
+        }
+
+        return a.fullName.localeCompare(
+          b.fullName
+        );
+      }
+    );
+
   return (
     <>
       <PageHeader />
-      <div className={styles.stats}><StatCard label="Total Applications" value="328" foot="All time" icon={FiFileText} /><StatCard label="Completion Rate" value="89%" foot="Team average" icon={FiTarget} /><StatCard label="Quality Score" value="4.6/5.0" foot="Average Rating" icon={FiTrendingUp} /><StatCard label="On-Time Delivery" value="94%" foot="Meet deadlines" icon={FiUsers} /></div>
-      <section className={styles.largePanel}><h2>Top Performers</h2><div className={styles.performers}>{[['Sarah Chen',42,94],['David Martinez',46,95],['Rachel Green',40,92],['Emma Wilson',47,91]].map(([name,tasks,percent], index) => <div className={styles.performer} key={name}><div><span>{index + 1}</span><div><strong>{name}</strong><p>{tasks} tasks completed</p></div><b>{percent}%</b></div><span className={styles.performerTrack}><i style={{ width: `${percent}%` }} /></span></div>)}</div></section>
-      <div className={styles.chartGrid}><section className={styles.chartPlaceholder}><h2>Weekly Performance Trend</h2><p>Chart visualization placeholder</p></section><section className={styles.chartPlaceholder}><h2>Application Status Distribution</h2><p>Chart visualization placeholder</p></section></div>
+
+      <div className={styles.stats}>
+        <StatCard
+          label="Team Members"
+          value={members.length}
+          foot="Direct reports"
+          icon={FiUsers}
+        />
+
+        <StatCard
+          label="Tracked Work"
+          value={trackedWork}
+          foot="Completed applications + sourced links"
+          icon={FiFileText}
+        />
+
+        <StatCard
+          label="Team Client Rating"
+          value={
+            ratedWorkItems > 0
+              ? `${teamRating.toFixed(
+                  1
+                )}/5.0`
+              : '—'
+          }
+          foot={
+            ratedWorkItems > 0
+              ? `${ratedWorkItems} rated work item${
+                  ratedWorkItems === 1
+                    ? ''
+                    : 's'
+                }`
+              : 'No rated work yet'
+          }
+          icon={FiStar}
+        />
+
+        <StatCard
+          label="Applicant Completion"
+          value={
+            `${applicantCompletion}%`
+          }
+          foot="Applicant team average"
+          icon={FiTrendingUp}
+        />
+      </div>
+
+      <section
+        className={
+          styles.largePanel
+        }
+      >
+        <h2>
+          Personnel Performance
+        </h2>
+
+        <div
+          className={
+            styles.tableScroll
+          }
+        >
+          <table
+            className={
+              styles.dataTable
+            }
+          >
+            <thead>
+              <tr>
+                <th>
+                  Team Member
+                </th>
+                <th>Role</th>
+                <th>
+                  Client Rating
+                </th>
+                <th>
+                  Rated Work
+                </th>
+                <th>
+                  Completed / Sourced
+                </th>
+                <th>
+                  Completion
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {orderedMembers.map(
+                (member) => {
+                  const ratingCount =
+                    Number(
+                      member.ratingCount ||
+                      0
+                    );
+
+                  return (
+                    <tr
+                      key={member.id}
+                    >
+                      <td>
+                        <strong>
+                          {
+                            member.fullName
+                          }
+                        </strong>
+
+                        <small>
+                          {member.email ||
+                            'No email available'}
+                        </small>
+                      </td>
+
+                      <td>
+                        {
+                          member.roleType
+                        }
+                      </td>
+
+                      <td>
+                        {ratingCount > 0
+                          ? `${Number(
+                              member
+                                .qualityRating ||
+                                0
+                            ).toFixed(
+                              1
+                            )}/5`
+                          : 'Not rated'}
+                      </td>
+
+                      <td>
+                        {ratingCount}
+                      </td>
+
+                      <td>
+                        {Number(
+                          member.completedWork ||
+                          0
+                        )}
+                      </td>
+
+                      <td>
+                        {member.completionRate ===
+                        null
+                          ? '—'
+                          : `${Number(
+                              member
+                                .completionRate ||
+                                0
+                            )}%`}
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
+
+              {orderedMembers.length ===
+                0 && (
+                <tr>
+                  <td colSpan="6">
+                    No personnel are assigned
+                    to this Chief Applicant yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }
@@ -483,6 +1207,30 @@ export default function ChiefApplicantPortal() {
     logout,
   } = useAuth();
 
+  const [
+    supervisionData,
+    setSupervisionData,
+  ] = useState({
+    members: [],
+    summary: {
+      teamMembers: 0,
+      applicants: 0,
+      linkers: 0,
+      ratedMembers: 0,
+      ratedWorkItems: 0,
+    },
+  });
+
+  const [
+    isLoadingSupervision,
+    setIsLoadingSupervision,
+  ] = useState(true);
+
+  const [
+    supervisionError,
+    setSupervisionError,
+  ] = useState('');
+
   useEffect(() => {
     if (
       user?.role &&
@@ -495,6 +1243,108 @@ export default function ChiefApplicantPortal() {
     }
   }, [
     router,
+    user?.role,
+  ]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      user?.role !==
+        USER_ROLES.CHIEF_APPLICANT
+    ) {
+      return undefined;
+    }
+
+    let active = true;
+
+    const loadSupervision =
+      async () => {
+        setIsLoadingSupervision(
+          true
+        );
+        setSupervisionError('');
+
+        try {
+          const accessToken =
+            await getChiefAccessToken();
+
+          const response =
+            await fetch(
+              '/api/chief-applicant/team',
+              {
+                cache: 'no-store',
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (
+            !response.ok ||
+            !Array.isArray(
+              result.members
+            )
+          ) {
+            throw new Error(
+              result.error ||
+                'Your supervision team could not be loaded.'
+            );
+          }
+
+          if (active) {
+            setSupervisionData({
+              members:
+                result.members,
+              summary:
+                result.summary || {
+                  teamMembers: 0,
+                  applicants: 0,
+                  linkers: 0,
+                  ratedMembers: 0,
+                  ratedWorkItems: 0,
+                },
+            });
+          }
+        } catch (loadError) {
+          if (active) {
+            setSupervisionData({
+              members: [],
+              summary: {
+                teamMembers: 0,
+                applicants: 0,
+                linkers: 0,
+                ratedMembers: 0,
+                ratedWorkItems: 0,
+              },
+            });
+
+            setSupervisionError(
+              loadError?.message ||
+                'Your supervision team could not be loaded.'
+            );
+          }
+        } finally {
+          if (active) {
+            setIsLoadingSupervision(
+              false
+            );
+          }
+        }
+      };
+
+    loadSupervision();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    router.isReady,
     user?.role,
   ]);
 
@@ -530,7 +1380,17 @@ export default function ChiefApplicantPortal() {
 
   const page =
     section === 'team'
-      ? <TeamPage />
+      ? (
+          <TeamPage
+            data={supervisionData}
+            isLoading={
+              isLoadingSupervision
+            }
+            error={
+              supervisionError
+            }
+          />
+        )
       : section === 'clients'
         ? <ClientsPage />
         : section === 'workshop'
@@ -542,7 +1402,17 @@ export default function ChiefApplicantPortal() {
               : section === 'feedback'
                 ? <FeedbackPage />
                 : section === 'performance'
-                  ? <PerformancePage />
+                  ? (
+                      <PerformancePage
+                        data={supervisionData}
+                        isLoading={
+                          isLoadingSupervision
+                        }
+                        error={
+                          supervisionError
+                        }
+                      />
+                    )
                   : section === 'settings'
                     ? <SettingsPage />
                     : <DashboardPage />;
