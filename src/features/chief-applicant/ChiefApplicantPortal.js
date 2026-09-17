@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
   FiAlertCircle,
   FiAlertTriangle,
   FiArchive,
   FiBarChart2,
-  FiBell,
   FiBriefcase,
   FiCalendar,
   FiCheck,
@@ -16,17 +14,13 @@ import {
   FiClock,
   FiEdit3,
   FiFileText,
-  FiHome,
   FiLink,
-  FiMenu,
   FiMessageCircle,
   FiMessageSquare,
   FiRefreshCw,
   FiSave,
   FiSearch,
   FiSend,
-  FiSettings,
-  FiSliders,
   FiStar,
   FiTarget,
   FiThumbsDown,
@@ -39,34 +33,16 @@ import {
   FiXCircle,
 } from 'react-icons/fi';
 import { useAuth } from '../../shared/context/AuthContext';
-import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
+import {
+  getRoleHome,
+  ROLE_NAVIGATION,
+  ROLE_PAGE_META,
+  USER_ROLES,
+} from '../../shared/config/roles';
+import WorkspaceShell from '../../shared/components/WorkspaceShell';
 import styles from './ChiefApplicantPortal.module.css';
 
 const cn = (...values) => values.filter(Boolean).join(' ');
-
-const NAVIGATION = [
-  { section: 'dashboard', label: 'Dashboard', href: '/chief-applicant', icon: FiHome },
-  { section: 'team', label: 'Team Overview', href: '/chief-applicant/team', icon: FiUsers },
-  { section: 'clients', label: 'Clients Assignment', href: '/chief-applicant/clients', icon: FiBriefcase },
-  { section: 'workshop', label: 'Workshop', href: '/chief-applicant/workshop', icon: FiMessageCircle },
-  { section: 'review', label: 'Application Review', href: '/chief-applicant/review', icon: FiArchive },
-  { section: 'deadlines', label: 'Deadlines & Escalations', href: '/chief-applicant/deadlines', icon: FiAlertTriangle },
-  { section: 'feedback', label: 'Feedbacks & Approvals', href: '/chief-applicant/feedback', icon: FiMessageSquare },
-  { section: 'performance', label: 'Performance Analytics', href: '/chief-applicant/performance', icon: FiBarChart2 },
-  { section: 'settings', label: 'Profile and Settings', href: '/chief-applicant/settings', icon: FiSliders },
-];
-
-const PAGE_META = {
-  dashboard: ['Dashboard', "Welcome back! Here's your team's overview"],
-  team: ['Team Overview', "Monitor your team's performance and availability"],
-  clients: ['Clients Assignments', 'Assign and manage client workload distribution'],
-  workshop: ['Prompt Center', 'Analyze job fit, generate tailored resumes and cover letters'],
-  review: ['Application Review', 'Review and approve submitted applications'],
-  deadlines: ['Deadlines & Escalations', 'Monitor critical deadlines and manage escalated issues'],
-  feedback: ['Feedback & Approvals', 'Review client feedback and approve applications'],
-  performance: ['Performance Analytics', 'Track your team performance and quality metrics'],
-  settings: ['Profile & Settings', 'manage your account setting and preference'],
-};
 
 const TEAM_MEMBERS = Array.from({ length: 9 }, (_, index) => ({
   id: `team-${index + 1}`,
@@ -140,76 +116,49 @@ function getSection(router) {
   return 'dashboard';
 }
 
-function NotificationButton() {
-  return <button type="button" aria-label="Notifications" className={styles.notification}><FiBell /></button>;
-}
-
 function Avatar({ size = 'small' }) {
   return <img src="/chief-applicant-avatar.png" alt="Team member" className={cn(styles.avatar, size === 'large' && styles.avatarLarge)} />;
 }
 
-function ChiefShell({ section, children }) {
-  const { user, logout } = useAuth();
-  const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
+function PageHeader({
+  search = false,
+  searchValue = '',
+  onSearch,
+  action,
+}) {
+  const hasTools =
+    search ||
+    Boolean(action);
 
-  useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.CHIEF_APPLICANT) router.replace(getRoleHome(user.role));
-  }, [router, user?.role]);
+  if (!hasTools) {
+    return null;
+  }
 
   return (
-    <div className={styles.app}>
-      {menuOpen && <button className={styles.backdrop} aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
-      <aside className={cn(styles.sidebar, menuOpen && styles.sidebarOpen)}>
-        <Link href="/chief-applicant" className={styles.brand} onClick={() => setMenuOpen(false)}>
-          <img src="/logo.svg" alt="ApplyLoop" />
-          <span>ApplyLoop</span>
-        </Link>
-        <nav className={styles.nav}>
-          {NAVIGATION.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.section} href={item.href} onClick={() => setMenuOpen(false)} className={cn(styles.navItem, section === item.section && styles.navActive)}>
-                <Icon />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <button type="button" className={styles.account} onClick={logout}>
-          <Avatar />
-          <span><strong>Team Lead</strong><small>Administrator</small></span>
-        </button>
-      </aside>
-      <div className={styles.mainRail}>
-        <div className={styles.mobileBar}>
-          <button type="button" onClick={() => setMenuOpen(true)} aria-label="Open menu"><FiMenu /></button>
-          <span>ApplyLoop</span>
-          <NotificationButton />
-        </div>
-        <main className={styles.surface}>{children}</main>
-      </div>
-    </div>
-  );
-}
-
-function PageHeader({ section, search = false, searchValue = '', onSearch, action }) {
-  const [title, subtitle] = PAGE_META[section];
-  return (
-    <header className={styles.pageHeader}>
-      <div>
-        <h1>{title}</h1>
-        <p>{subtitle}</p>
-      </div>
+    <header
+      className={cn(
+        styles.pageHeader,
+        styles.pageHeaderActionsOnly
+      )}
+    >
       <div className={styles.headerTools}>
         {search && (
           <label className={styles.search}>
             <FiSearch />
-            <input value={searchValue} onChange={(event) => onSearch?.(event.target.value)} placeholder="Search Applications" />
+
+            <input
+              value={searchValue}
+              onChange={(event) =>
+                onSearch?.(
+                  event.target.value
+                )
+              }
+              placeholder="Search Applications"
+            />
           </label>
         )}
+
         {action}
-        <NotificationButton />
       </div>
     </header>
   );
@@ -250,7 +199,7 @@ function DashboardPage() {
   const rows = useMemo(() => DASHBOARD_APPLICATIONS.filter((item) => !search || Object.values(item).join(' ').toLowerCase().includes(search.toLowerCase())), [search]);
   return (
     <>
-      <PageHeader section="dashboard" search searchValue={search} onSearch={setSearch} />
+      <PageHeader search searchValue={search} onSearch={setSearch} />
       <div className={cn(styles.stats, styles.statsFive)}>
         <StatCard label="Total Applicants" value="24" foot="+2 from yesterday" />
         <StatCard label="Total Applications" value="87" foot="+3 from yesterday" />
@@ -305,7 +254,7 @@ function TeamPage() {
   const rows = TEAM_MEMBERS.filter((member) => member.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <>
-      <PageHeader section="team" search searchValue={search} onSearch={setSearch} />
+      <PageHeader search searchValue={search} onSearch={setSearch} />
       <div className={styles.stats}>
         <StatCard label="Total Applicants" value="24" foot="+2 from yesterday" />
         <StatCard label="Available" value="87" foot="+3 from yesterday" />
@@ -372,7 +321,7 @@ function ClientsPage() {
   const rows = CLIENT_ASSIGNMENTS.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <>
-      <PageHeader section="clients" search searchValue={search} onSearch={setSearch} />
+      <PageHeader search searchValue={search} onSearch={setSearch} />
       <div className={styles.stats}>
         <StatCard label="Total Clients" value="8" foot="Active clients" icon={FiFileText} />
         <StatCard label="Weekly Target" value="125" foot="89 completed" icon={FiTarget} />
@@ -409,7 +358,7 @@ function WorkshopPage() {
   const tone = stage === 'success' ? 'green' : stage === 'failed' ? 'red' : 'neutral';
   return (
     <>
-      <PageHeader section="workshop" action={selected ? <button className={styles.primaryButton}><FiSave /> Record Application</button> : null} />
+      <PageHeader action={selected ? <button className={styles.primaryButton}><FiSave /> Record Application</button> : null} />
       <section className={styles.selectClientPanel}>
         <label className={styles.field}><strong>Select Client</strong><span>Client</span><select value={selected} onChange={(event) => selectClient(event.target.value)}><option value="">Select a client</option><option value="olabanji">Olabanji David</option></select></label>
         {selected && <div className={styles.clientCard}><Avatar size="large" /><div><strong>{WORKSHOP_CLIENT.name}</strong><span>{WORKSHOP_CLIENT.role}　•　{WORKSHOP_CLIENT.work}</span><p>{WORKSHOP_CLIENT.details}</p></div><a href="#resume">Client&apos;s Resume</a></div>}
@@ -454,7 +403,7 @@ function ApplicationReviewPage() {
   const rows = APPLICATIONS.filter((item) => !search || Object.values(item).join(' ').toLowerCase().includes(search.toLowerCase()));
   return (
     <>
-      <PageHeader section="review" search searchValue={search} onSearch={setSearch} />
+      <PageHeader search searchValue={search} onSearch={setSearch} />
       <div className={styles.stats}>
         <StatCard label="Pending Review" value="2" foot="Awaiting Review" icon={FiFileText} />
         <StatCard label="Approved" value="1" foot="Ready to Submit" icon={FiTarget} />
@@ -479,7 +428,7 @@ function ApplicationReviewPage() {
 function DeadlinesPage() {
   return (
     <>
-      <PageHeader section="deadlines" />
+      <PageHeader />
       <div className={cn(styles.stats, styles.statsThree)}><StatCard label="Active Escalations" value="3" foot="Requiring attention" icon={FiFileText} /><StatCard label="Upcoming Deadlines" value="3" foot="Next 48 hours" icon={FiTarget} /><StatCard label="At Risk" value="1" foot="Deadlines at risk" icon={FiTrendingUp} /></div>
       <section className={styles.largePanel}><h2>Active Escalations</h2><div className={styles.tableScroll}><table className={styles.dataTable}><thead><tr><th>Client</th><th>Applicant</th><th>Issue</th><th>Days Overdue</th><th>Severity</th><th>Date Escalated</th><th>Actions</th></tr></thead><tbody>{ESCALATIONS.map((item) => <tr key={item.client}><td>{item.client}</td><td>{item.applicant}</td><td>{item.issue}</td><td className={item.days !== '-' ? styles.redText : ''}>{item.days}</td><td><StatusPill>{item.severity}</StatusPill></td><td>{item.date}</td><td><div className={styles.iconActions}><button><FiCheckCircle /></button><button><FiRefreshCw /></button></div></td></tr>)}</tbody></table></div></section>
       <section className={styles.largePanel}><h2>Upcoming Deadlines</h2><div className={styles.tableScroll}><table className={styles.dataTable}><thead><tr><th>Client</th><th>Applicant</th><th>Deadline</th><th>Time Remaining</th><th>Status</th><th>Actions</th></tr></thead><tbody>{ESCALATIONS.map((item) => <tr key={`deadline-${item.client}`}><td>{item.client}</td><td>{item.applicant}</td><td>2026-05-21</td><td className={item.days !== '-' ? styles.redText : ''}>{item.days}</td><td><StatusPill>{item.severity}</StatusPill></td><td><button className={styles.secondaryButton}>Monitor</button></td></tr>)}</tbody></table></div></section>
@@ -490,7 +439,7 @@ function DeadlinesPage() {
 function FeedbackPage() {
   return (
     <>
-      <PageHeader section="feedback" />
+      <PageHeader />
       <div className={cn(styles.stats, styles.statsThree)}><StatCard label="Pending Feedback" value="1" foot="Requiring attention" icon={FiFileText} /><StatCard label="Awaiting Approval" value="2" foot="Next 48 hours" icon={FiTarget} /><StatCard label="Approved Today" value="1" foot="Deadlines at risk" icon={FiTrendingUp} /></div>
       <section className={styles.largePanel}><h2>Client Feedback</h2><div className={styles.feedbackList}>{FEEDBACK_ITEMS.map((item) => <article className={styles.feedbackCard} key={item.id}><div className={styles.feedbackTop}><div><strong>{item.id}</strong> <StatusPill>{item.state}</StatusPill><p>{item.company} • {item.applicant}</p></div><span className={item.tone === 'positive' ? styles.positive : styles.negative}>{item.tone === 'positive' ? <FiThumbsUp /> : <FiThumbsDown />} {item.tone === 'positive' ? 'Positive' : 'Negative'}</span></div><p>{item.message}</p><div className={styles.feedbackFoot}><small>Received: 2026-05-20</small><div><button className={styles.secondaryButton}>Respond</button><button className={styles.secondaryButton}>Resolve</button><button className={styles.linkButton}>Forward to Applicant</button></div></div></article>)}</div></section>
       <section className={styles.largePanel}><h2>Approval Queue</h2><div className={styles.approvalList}>{APPROVAL_QUEUE.map((item) => <article className={styles.approvalCard} key={item.id}><div className={styles.approvalHead}><div><strong>{item.id}</strong> <StatusPill>{item.priority}</StatusPill><p>{item.company} • {item.applicant}</p></div><small>2026-05-20</small></div><textarea placeholder="Add approval notes..." /><div><button className={styles.primaryButton}><FiSave /> Approve</button><button className={styles.secondaryButton}><FiX /> Request Changes</button></div></article>)}</div></section>
@@ -501,7 +450,7 @@ function FeedbackPage() {
 function PerformancePage() {
   return (
     <>
-      <PageHeader section="performance" />
+      <PageHeader />
       <div className={styles.stats}><StatCard label="Total Applications" value="328" foot="All time" icon={FiFileText} /><StatCard label="Completion Rate" value="89%" foot="Team average" icon={FiTarget} /><StatCard label="Quality Score" value="4.6/5.0" foot="Average Rating" icon={FiTrendingUp} /><StatCard label="On-Time Delivery" value="94%" foot="Meet deadlines" icon={FiUsers} /></div>
       <section className={styles.largePanel}><h2>Top Performers</h2><div className={styles.performers}>{[['Sarah Chen',42,94],['David Martinez',46,95],['Rachel Green',40,92],['Emma Wilson',47,91]].map(([name,tasks,percent], index) => <div className={styles.performer} key={name}><div><span>{index + 1}</span><div><strong>{name}</strong><p>{tasks} tasks completed</p></div><b>{percent}%</b></div><span className={styles.performerTrack}><i style={{ width: `${percent}%` }} /></span></div>)}</div></section>
       <div className={styles.chartGrid}><section className={styles.chartPlaceholder}><h2>Weekly Performance Trend</h2><p>Chart visualization placeholder</p></section><section className={styles.chartPlaceholder}><h2>Application Status Distribution</h2><p>Chart visualization placeholder</p></section></div>
@@ -513,7 +462,7 @@ function SettingsPage() {
   const [toggles, setToggles] = useState({ email: true, deadline: true, escalation: true, team: false });
   return (
     <>
-      <PageHeader section="settings" />
+      <PageHeader />
       <div className={styles.settingsContent}>
         <Avatar size="large" />
         <h2>Personal Information</h2>
@@ -528,8 +477,102 @@ function SettingsPage() {
 
 export default function ChiefApplicantPortal() {
   const router = useRouter();
-  const section = getSection(router);
-  const page = section === 'team' ? <TeamPage /> : section === 'clients' ? <ClientsPage /> : section === 'workshop' ? <WorkshopPage /> : section === 'review' ? <ApplicationReviewPage /> : section === 'deadlines' ? <DeadlinesPage /> : section === 'feedback' ? <FeedbackPage /> : section === 'performance' ? <PerformancePage /> : section === 'settings' ? <SettingsPage /> : <DashboardPage />;
-  const [title] = PAGE_META[section] || PAGE_META.dashboard;
-  return <><Head><title>{title} | ApplyLoop</title></Head><ChiefShell section={section}>{page}</ChiefShell></>;
+
+  const {
+    user,
+    logout,
+  } = useAuth();
+
+  useEffect(() => {
+    if (
+      user?.role &&
+      user.role !==
+        USER_ROLES.CHIEF_APPLICANT
+    ) {
+      router.replace(
+        getRoleHome(user.role)
+      );
+    }
+  }, [
+    router,
+    user?.role,
+  ]);
+
+  const section =
+    getSection(router);
+
+  const metadata =
+    ROLE_PAGE_META[
+      USER_ROLES.CHIEF_APPLICANT
+    ]?.[section] || [
+      'Chief Applicant Workspace',
+      'Supervise Applicants and operational work.',
+    ];
+
+  const navigation =
+    (
+      ROLE_NAVIGATION[
+        USER_ROLES.CHIEF_APPLICANT
+      ] || []
+    ).map((item) => ({
+      ...item,
+      section:
+        item.href ===
+        '/chief-applicant'
+          ? 'dashboard'
+          : String(item.href)
+              .split('?')[0]
+              .split('/')
+              .filter(Boolean)
+              .pop() ||
+            'dashboard',
+    }));
+
+  const page =
+    section === 'team'
+      ? <TeamPage />
+      : section === 'clients'
+        ? <ClientsPage />
+        : section === 'workshop'
+          ? <WorkshopPage />
+          : section === 'review'
+            ? <ApplicationReviewPage />
+            : section === 'deadlines'
+              ? <DeadlinesPage />
+              : section === 'feedback'
+                ? <FeedbackPage />
+                : section === 'performance'
+                  ? <PerformancePage />
+                  : section === 'settings'
+                    ? <SettingsPage />
+                    : <DashboardPage />;
+
+  return (
+    <>
+      <Head>
+        <title>
+          {metadata[0]} | ApplyLoop
+        </title>
+
+        <meta
+          name="description"
+          content={metadata[1]}
+        />
+      </Head>
+
+      <WorkspaceShell
+        navigation={navigation}
+        activeSection={section}
+        homeHref="/chief-applicant"
+        title={metadata[0]}
+        subtitle={metadata[1]}
+        workspaceLabel="Chief Workspace"
+        roleLabel="Chief Applicant"
+        user={user}
+        onLogout={logout}
+      >
+        {page}
+      </WorkspaceShell>
+    </>
+  );
 }
