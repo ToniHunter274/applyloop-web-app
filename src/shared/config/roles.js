@@ -133,6 +133,7 @@ export const ROLE_NAVIGATION = {
     { label: 'Analytics & Reports', href: 'analytics-reports', icon: FiBarChart2 },
     { label: 'Payroll System', href: 'payroll-system', icon: FiDollarSign },
     { label: 'Escalations & Issues', href: 'escalations-issues', icon: FiAlertTriangle },
+    { label: 'Updates', href: 'updates', icon: FiMessageSquare },
     { label: 'Settings', href: 'settings', icon: FiSettings },
   ]),
   [USER_ROLES.LINKER]: withBase('linker', [
@@ -265,6 +266,7 @@ export const ROLE_PAGE_META = {
     'analytics-reports': ['Analytics & Reports', 'Review opportunity sources and Application outcomes across ApplyLoop.'],
     'payroll-system': ['Payroll System', 'Track staff earnings, payouts, and completed work.'],
     'escalations-issues': ['Escalations & Issues', 'Review operational escalations and urgent account issues.'],
+    updates: ['Updates & Announcements', 'Publish platform updates to everyone or selected ApplyLoop workspaces.'],
     settings: ['Settings', 'Manage Owner workspace settings and platform rules.'],
   },
   [USER_ROLES.LINKER]: {

@@ -6,6 +6,7 @@ import {
   FiMenu,
   FiX,
 } from 'react-icons/fi';
+import WorkspaceAnnouncements from './WorkspaceAnnouncements';
 
 function getNavigationSection(
   item,
@@ -279,6 +280,8 @@ export default function WorkspaceShell({
         </header>
 
         <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
+          <WorkspaceAnnouncements />
+
           {children}
         </main>
       </div>

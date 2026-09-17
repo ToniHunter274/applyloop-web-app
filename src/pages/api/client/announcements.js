@@ -18,11 +18,13 @@ export default async function handler(req, res) {
       data,
       error,
     } = await supabase
-      .from('client_announcements')
+      .from('platform_announcements')
       .select(`
         id,
         title,
         message,
+        tone,
+        audience_roles,
         published_at,
         expires_at
       `)
@@ -42,6 +44,23 @@ export default async function handler(req, res) {
 
     const announcements = (data || [])
       .filter((announcement) => {
+        const audienceRoles =
+          Array.isArray(
+            announcement.audience_roles
+          )
+            ? announcement.audience_roles
+            : [];
+
+        const visibleToClient =
+          audienceRoles.length === 0 ||
+          audienceRoles.includes(
+            'user_client'
+          );
+
+        if (!visibleToClient) {
+          return false;
+        }
+
         if (!announcement.expires_at) {
           return true;
         }

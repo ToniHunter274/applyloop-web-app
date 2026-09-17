@@ -44,6 +44,7 @@ import {
   USER_ROLES,
 } from '../../shared/config/roles';
 import WorkspaceShell from '../../shared/components/WorkspaceShell';
+import OwnerAnnouncementsPage from './OwnerAnnouncementsPage';
 import CustomSelect from '../../shared/components/CustomSelect';
 import ClientManagementWorkspace from '../../shared/components/ClientManagementWorkspace';
 import styles from './OwnerPortal.module.css';
@@ -6888,6 +6889,7 @@ export default function OwnerPortal({ portalRole = USER_ROLES.OWNER }) {
     if (section === 'analytics-reports') return <OwnerAnalyticsReportsPage />;
     if (section === 'payroll-system') return <PayrollSystemPage openPaymentHistory={() => openModal('paymentHistory')} />;
     if (section === 'escalations-issues') return <EscalationsIssuesPage />;
+    if (!isOperations && section === 'updates') return <OwnerAnnouncementsPage />;
     if (section === 'settings') return <SettingsPage />;
     return <PlaceholderPage section={section} />;
   }, [
