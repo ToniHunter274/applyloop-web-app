@@ -92,10 +92,11 @@ export const ROLE_NAVIGATION = {
   ]),
   [USER_ROLES.PROMPT_ENGINEER]: withBase('prompt-engineer', [
     { label: 'Dashboard', href: '', icon: FiHome },
-    { label: 'My Tasks', href: 'tasks', icon: FiClipboard },
-    { label: 'Task History', href: 'history', icon: FiCheckSquare },
-    { label: 'Quality Insights', href: 'insights', icon: FiBarChart2 },
-    { label: 'Messages', href: 'messages', icon: FiMessageSquare },
+    { label: 'Prompt Library', href: 'prompt-library', icon: FiFileText },
+    { label: 'Testing', href: 'testing', icon: FiClipboard },
+    { label: 'Clients', href: 'clients', icon: FiUsers },
+    { label: 'Performance Analytics', href: 'performance', icon: FiBarChart2 },
+    { label: 'Profile & Settings', href: 'settings', icon: FiSettings },
   ]),
   [USER_ROLES.TEAM_AUDITOR]: withBase('team-auditor', [
     { label: 'Dashboard', href: '', icon: FiHome },
@@ -210,11 +211,12 @@ export const ROLE_PAGE_META = {
     settings: ['Profile & Settings', 'Manage your account settings and preferences.'],
   },
   [USER_ROLES.PROMPT_ENGINEER]: {
-    dashboard: ['Prompt Workspace', 'Build and improve tailored job-application prompts.'],
-    tasks: ['My Tasks', 'Work through assigned resume and cover-letter tasks.'],
-    history: ['Task History', 'Review completed, returned, and approved tasks.'],
-    insights: ['Quality Insights', 'Track prompt quality, acceptance, and turnaround time.'],
-    messages: ['Messages', 'Communicate with applicants and auditors.'],
+    dashboard: ['Dashboard', 'Monitor prompt activity, usage, testing, and performance.'],
+    'prompt-library': ['Prompt Library', 'Manage and organize ApplyLoop prompt templates.'],
+    testing: ['Testing', 'Run and compare prompt and document tests before deployment.'],
+    clients: ['Clients', 'Manage Client-specific prompt libraries and usage.'],
+    performance: ['Performance Analytics', 'Review prompt success, usage, and quality trends.'],
+    settings: ['Profile & Settings', 'Manage your Prompt Engineer profile and preferences.'],
   },
   [USER_ROLES.TEAM_AUDITOR]: {
     dashboard: ['Audit Dashboard', 'Review application quality and keep your queue moving.'],

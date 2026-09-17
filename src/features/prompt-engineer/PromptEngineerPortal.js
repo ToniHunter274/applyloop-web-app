@@ -6,7 +6,6 @@ import {
   FiAlertTriangle,
   FiArrowLeft,
   FiBarChart2,
-  FiBell,
   FiBriefcase,
   FiCheckCircle,
   FiChevronDown,
@@ -16,17 +15,13 @@ import {
   FiEye,
   FiFileText,
   FiFilter,
-  FiHome,
   FiLayers,
-  FiMenu,
   FiPaperclip,
   FiPlay,
   FiPlus,
   FiRefreshCw,
   FiSave,
   FiSearch,
-  FiSettings,
-  FiSliders,
   FiTarget,
   FiTrash2,
   FiTrendingUp,
@@ -38,19 +33,16 @@ import {
 } from 'react-icons/fi';
 import { FaRegStar, FaStar } from 'react-icons/fa';
 import { useAuth } from '../../shared/context/AuthContext';
-import { getRoleHome, USER_ROLES } from '../../shared/config/roles';
+import {
+  getRoleHome,
+  ROLE_NAVIGATION,
+  ROLE_PAGE_META,
+  USER_ROLES,
+} from '../../shared/config/roles';
+import WorkspaceShell from '../../shared/components/WorkspaceShell';
 import styles from './PromptEngineerPortal.module.css';
 
 const cx = (...values) => values.filter(Boolean).join(' ');
-
-const NAV_ITEMS = [
-  { key: 'dashboard', href: '/prompt-engineer', label: 'Dashboard', icon: FiHome },
-  { key: 'library', href: '/prompt-engineer/prompt-library', label: 'Prompt Library', icon: FiFileText },
-  { key: 'testing', href: '/prompt-engineer/testing', label: 'Testing', icon: FiEdit3 },
-  { key: 'clients', href: '/prompt-engineer/clients', label: 'Clients', icon: FiUser },
-  { key: 'performance', href: '/prompt-engineer/performance', label: 'Performance Analytics', icon: FiBarChart2 },
-  { key: 'settings', href: '/prompt-engineer/settings', label: 'Profile and Settings', icon: FiSliders },
-];
 
 const dashboardStats = [
   { value: '48', label: 'Total Prompts', change: '+12%', tone: 'green', icon: FiFileText },
@@ -145,91 +137,58 @@ function getSegments(router) {
   return Array.isArray(raw) ? raw : raw ? [raw] : [];
 }
 
-function currentNavKey(segments) {
-  if (!segments.length) return 'dashboard';
-  if (segments[0] === 'prompt-library') return 'library';
-  if (segments[0] === 'testing') return 'testing';
-  if (segments[0] === 'clients') return 'clients';
-  if (segments[0] === 'performance') return 'performance';
-  if (segments[0] === 'settings') return 'settings';
-  return 'dashboard';
-}
+function PageHeading({
+  title,
+  subtitle,
+  actions,
+  backHref,
+  showCopy = true,
+}) {
+  const hasCopy =
+    showCopy ||
+    Boolean(backHref);
 
-function titleForSegments(segments) {
-  if (!segments.length) return 'Dashboard';
-  if (segments[0] === 'prompt-library') return 'Prompt Library';
-  if (segments[0] === 'testing') return 'Testing Ground';
-  if (segments[0] === 'clients') return 'Clients';
-  if (segments[0] === 'performance') return 'Performance Analysis';
-  if (segments[0] === 'settings') return 'Profile & Settings';
-  return 'Prompt Engineer';
-}
-
-function Brand() {
-  return (
-    <span className={styles.brand}>
-      <img src="/logo.svg" alt="ApplyLoop" />
-      <span>ApplyLoop</span>
-    </span>
-  );
-}
-
-function PromptEngineerShell({ segments, children }) {
-  const router = useRouter();
-  const { user, logout } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const activeKey = currentNavKey(segments);
-
-  useEffect(() => {
-    if (user?.role && user.role !== USER_ROLES.PROMPT_ENGINEER) {
-      router.replace(getRoleHome(user.role));
-    }
-  }, [router, user?.role]);
+  if (
+    !hasCopy &&
+    !actions
+  ) {
+    return null;
+  }
 
   return (
-    <div className={styles.app}>
-      {menuOpen && <button className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-label="Close navigation" />}
-      <aside className={cx(styles.sidebar, menuOpen && styles.sidebarOpen)}>
-        <div className={styles.logoWrap}><Brand /></div>
-        <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.key} href={item.href} className={cx(styles.navItem, activeKey === item.key && styles.navActive)} onClick={() => setMenuOpen(false)}>
-                <Icon />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <button className={styles.profileFooter} onClick={logout}>
-          <img src="/images/profile.jpg" alt="Team Lead" />
-          <span><strong>Team Lead</strong><small>Administrator</small></span>
-        </button>
-      </aside>
-      <div className={styles.mainRail}>
-        <div className={styles.mobileHeader}>
-          <button onClick={() => setMenuOpen(true)} aria-label="Open navigation"><FiMenu /></button>
-          <Brand />
-          <button className={styles.mobileBell} aria-label="Notifications"><FiBell /></button>
+    <div
+      className={cx(
+        styles.pageHeading,
+        !hasCopy &&
+          styles.pageHeadingActionsOnly
+      )}
+    >
+      {hasCopy && (
+        <div className={styles.headingCopy}>
+          {backHref && (
+            <Link
+              href={backHref}
+              className={styles.backLink}
+            >
+              <FiArrowLeft />
+            </Link>
+          )}
+
+          <div>
+            <h1>{title}</h1>
+
+            {subtitle && (
+              <p>{subtitle}</p>
+            )}
+          </div>
         </div>
-        <main className={styles.content}>{children}</main>
-      </div>
-    </div>
-  );
-}
+      )}
 
-function PageHeading({ title, subtitle, actions, backHref }) {
-  return (
-    <div className={styles.pageHeading}>
-      <div className={styles.headingCopy}>
-        {backHref && <Link href={backHref} className={styles.backLink}><FiArrowLeft /></Link>}
-        <div>
-          <h1>{title}</h1>
-          {subtitle && <p>{subtitle}</p>}
+      {actions && (
+        <div className={styles.headingActions}>
+          {actions}
         </div>
-      </div>
-      {actions && <div className={styles.headingActions}>{actions}</div>}
+      )}
     </div>
   );
 }
@@ -333,7 +292,10 @@ function BarChart({ values = [800, 1000, 1200], labels = ['Resume\nGeneration', 
 function DashboardPage() {
   return (
     <>
-      <PageHeading title="Welcome back, David" subtitle="Here's what's happening with your prompts today." />
+      <PageHeading
+        title="Dashboard"
+        showCopy={false}
+      />
       <div className={styles.statsGrid}>{dashboardStats.map((item) => <StatCard key={item.label} {...item} />)}</div>
       <div className={styles.twoColumnCharts}>
         <Card>
@@ -388,7 +350,18 @@ function PromptLibraryPage({ segments }) {
   const prompts = promptCardsByTab[activeTab];
   return (
     <>
-      <PageHeading title="Prompts Library" subtitle="Manage and organize all your prompt templates." actions={<PrimaryButton href="/prompt-engineer/prompt-library/new" icon={FiPlus}>New Prompt</PrimaryButton>} />
+      <PageHeading
+        title="Prompt Library"
+        showCopy={false}
+        actions={
+          <PrimaryButton
+            href="/prompt-engineer/prompt-library/new"
+            icon={FiPlus}
+          >
+            New Prompt
+          </PrimaryButton>
+        }
+      />
       <LibraryTabs active={activeTab} />
       <div className={styles.libraryToolbar}>
         <label className={styles.searchBox}><FiSearch /><input placeholder="Search prompts..." /></label>
@@ -523,7 +496,21 @@ function TestingPage({ segments }) {
   const active = ['prompt', 'document', 'comparison'].includes(segments[1]) ? segments[1] : 'prompt';
   return (
     <>
-      <PageHeading title="Testing Ground" subtitle={active === 'prompt' ? 'Run and manage test suites for your prompts.' : 'Run and manage test suites for your prompts, documents, and comparisons.'} actions={<><SecondaryButton icon={FiEdit3}>Edit Prompt</SecondaryButton><PrimaryButton icon={FiZap}>Deploy Prompt</PrimaryButton></>} />
+      <PageHeading
+        title="Testing"
+        showCopy={false}
+        actions={
+          <>
+            <SecondaryButton icon={FiEdit3}>
+              Edit Prompt
+            </SecondaryButton>
+
+            <PrimaryButton icon={FiZap}>
+              Deploy Prompt
+            </PrimaryButton>
+          </>
+        }
+      />
       <TestingTabs active={active} />
       {active === 'prompt' && <PromptTestingView />}
       {active === 'document' && <DocumentTestingView />}
@@ -585,7 +572,10 @@ function ClientsPage({ segments }) {
 function ClientListPage() {
   return (
     <>
-      <PageHeading title="Clients" subtitle="Manage client accounts and their custom prompt libraries." />
+      <PageHeading
+        title="Clients"
+        showCopy={false}
+      />
       <div className={styles.statsGrid}>{[
         { value: '6', label: 'Total Clients', change: '+12%', tone: 'green', icon: FiBriefcase },
         { value: '5', label: 'Active Clients', change: '+8%', tone: 'blue', icon: FiUser },
@@ -617,7 +607,10 @@ function ClientDetailPage() {
 function PerformancePage() {
   return (
     <>
-      <PageHeading title="Performance Analysis" subtitle="Advanced analytics and performance insights" />
+      <PageHeading
+        title="Performance Analytics"
+        showCopy={false}
+      />
       <div className={styles.statsGrid}>{[
         { value: '48', label: 'TOTAL PROMPTS', change: '+12%', tone: 'green', icon: FiFileText },
         { value: '32', label: 'TOTAL SUCCESSFUL PROMPTS', change: '+8%', tone: 'blue', icon: FiCheckCircle },
@@ -638,16 +631,19 @@ function Toggle({ on = true }) {
 function SettingsPage() {
   return (
     <>
-      <PageHeading title="Profile & Settings" subtitle="manage your account setting and preference" actions={<button className={styles.notificationButton}><FiBell /></button>} />
+      <PageHeading
+        title="Profile & Settings"
+        showCopy={false}
+      />
       <div className={styles.settingsContainer}>
         <img src="/images/profile.jpg" alt="Olabanji David" className={styles.profileImage} />
         <h2>Personal Information</h2>
-        <div className={styles.settingsForm}><div className={styles.fullField}><FormInput label="Full Name" value="Olabanji David T." /></div><div className={styles.fullField}><FormInput label="Designation" value="Super Admin" /></div><FormInput label="Email Address" value="banjidhevid216@gmail.com" /><FormInput label="Phone Number" value="+234 811 474 6609" /><FormInput label="Nationality" value="Nigeria" /><FormInput label="State/Province" value="Lagos" /></div>
+        <div className={styles.settingsForm}><div className={styles.fullField}><FormInput label="Full Name" value="Olabanji David T." /></div><div className={styles.fullField}><FormInput label="Designation" value="Prompt Engineer" /></div><FormInput label="Email Address" value="banjidhevid216@gmail.com" /><FormInput label="Phone Number" value="+234 811 474 6609" /><FormInput label="Nationality" value="Nigeria" /><FormInput label="State/Province" value="Lagos" /></div>
         <PrimaryButton className={styles.saveSmall}>Save Changes</PrimaryButton>
         <h2 className={styles.settingsSectionTitle}>Security</h2>
         <div className={styles.securityFields}><FormInput label="Current Password" value="********" /><FormInput label="New Password" value="********" /><FormInput label="Confirm New Password" value="********" /></div>
         <PrimaryButton className={styles.saveSmall}>Save Changes</PrimaryButton>
-        <h2 className={styles.settingsSectionTitle}>Notification Preferencessss</h2>
+        <h2 className={styles.settingsSectionTitle}>Notification Preferences</h2>
         <div className={styles.notificationList}>{[
           ['Email Notifications', 'Receive updates via Email', true], ['Deadline Alerts', 'Get notified about upcoming deadlines', true], ['Escalation Notifications', 'Alert on new escalations', true], ['Team Activity', 'Updates on team performance', false],
         ].map(([title, subtitle, on]) => <div key={title}><span><strong>{title}</strong><small>{subtitle}</small></span><Toggle on={on} /></div>)}</div>
@@ -658,38 +654,151 @@ function SettingsPage() {
 
 export default function PromptEngineerPortal() {
   const router = useRouter();
-  const { user } = useAuth();
-  const segments = getSegments(router);
-  const title = titleForSegments(segments);
+
+  const {
+    user,
+    logout,
+  } = useAuth();
+
+  const segments =
+    getSegments(router);
+
+  const section =
+    segments[0] ||
+    'dashboard';
 
   useEffect(() => {
     if (
       user?.role &&
-      user.role !== USER_ROLES.PROMPT_ENGINEER
+      user.role !==
+        USER_ROLES.PROMPT_ENGINEER
     ) {
-      router.replace(getRoleHome(user.role));
+      router.replace(
+        getRoleHome(user.role)
+      );
     }
-  }, [router, user?.role]);
+  }, [
+    router,
+    user?.role,
+  ]);
 
-  // Client/company prompt content must never render for Applicants or any
-  // other workspace role, even briefly while the redirect is taking place.
-  if (user?.role !== USER_ROLES.PROMPT_ENGINEER) {
+  // Prompt-engineer content must never render
+  // for another workspace role while redirecting.
+  if (
+    user?.role !==
+    USER_ROLES.PROMPT_ENGINEER
+  ) {
     return null;
   }
 
-  let page = <DashboardPage />;
-  if (segments[0] === 'prompt-library' && segments[1] === 'edit') page = <PromptEditorPage />;
-  else if (segments[0] === 'prompt-library' && segments[1] === 'new') page = <PromptEditorPage newPrompt />;
-  else if (segments[0] === 'prompt-library') page = <PromptLibraryPage segments={segments} />;
-  else if (segments[0] === 'testing') page = <TestingPage segments={segments} />;
-  else if (segments[0] === 'clients') page = <ClientsPage segments={segments} />;
-  else if (segments[0] === 'performance') page = <PerformancePage />;
-  else if (segments[0] === 'settings') page = <SettingsPage />;
+  const metadata =
+    ROLE_PAGE_META[
+      USER_ROLES.PROMPT_ENGINEER
+    ]?.[section] || [
+      'Prompt Engineer Workspace',
+      'Build, test, and manage ApplyLoop prompts.',
+    ];
+
+  const navigation =
+    (
+      ROLE_NAVIGATION[
+        USER_ROLES.PROMPT_ENGINEER
+      ] || []
+    ).map((item) => ({
+      ...item,
+      section:
+        item.href ===
+        '/prompt-engineer'
+          ? 'dashboard'
+          : String(item.href)
+              .split('?')[0]
+              .split('/')
+              .filter(Boolean)
+              .pop() ||
+            'dashboard',
+    }));
+
+  let page =
+    <DashboardPage />;
+
+  if (
+    segments[0] ===
+      'prompt-library' &&
+    segments[1] === 'edit'
+  ) {
+    page = <PromptEditorPage />;
+  } else if (
+    segments[0] ===
+      'prompt-library' &&
+    segments[1] === 'new'
+  ) {
+    page = (
+      <PromptEditorPage
+        newPrompt
+      />
+    );
+  } else if (
+    segments[0] ===
+    'prompt-library'
+  ) {
+    page = (
+      <PromptLibraryPage
+        segments={segments}
+      />
+    );
+  } else if (
+    segments[0] === 'testing'
+  ) {
+    page = (
+      <TestingPage
+        segments={segments}
+      />
+    );
+  } else if (
+    segments[0] === 'clients'
+  ) {
+    page = (
+      <ClientsPage
+        segments={segments}
+      />
+    );
+  } else if (
+    segments[0] ===
+    'performance'
+  ) {
+    page = <PerformancePage />;
+  } else if (
+    segments[0] === 'settings'
+  ) {
+    page = <SettingsPage />;
+  }
 
   return (
     <>
-      <Head><title>{title} | ApplyLoop</title><meta name="description" content="ApplyLoop Prompt Engineer workspace" /></Head>
-      <PromptEngineerShell segments={segments}>{page}</PromptEngineerShell>
+      <Head>
+        <title>
+          {metadata[0]} | ApplyLoop
+        </title>
+
+        <meta
+          name="description"
+          content={metadata[1]}
+        />
+      </Head>
+
+      <WorkspaceShell
+        navigation={navigation}
+        activeSection={section}
+        homeHref="/prompt-engineer"
+        title={metadata[0]}
+        subtitle={metadata[1]}
+        workspaceLabel="Prompt Workspace"
+        roleLabel="Prompt Engineer"
+        user={user}
+        onLogout={logout}
+      >
+        {page}
+      </WorkspaceShell>
     </>
   );
 }
