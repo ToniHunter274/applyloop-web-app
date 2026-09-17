@@ -1,5 +1,8 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireLinker } from '../../../lib/auth/requireLinker';
+import {
+  getLinkerEmployment,
+} from '../../../lib/linkers/getLinkerEmployment';
 
 function unique(values) {
   return [
@@ -14,6 +17,24 @@ async function getAssignments(req, res) {
     profile: linkerProfile,
     supabase,
   } = await requireLinker(req);
+
+  let employment = {
+    lineManager: null,
+    nda: null,
+  };
+
+  try {
+    employment =
+      await getLinkerEmployment(
+        supabase,
+        linkerProfile.id
+      );
+  } catch (employmentError) {
+    console.warn(
+      'Linker employment information is temporarily unavailable:',
+      employmentError
+    );
+  }
 
   const {
     data: assignmentRows,
@@ -300,6 +321,7 @@ async function getAssignments(req, res) {
       applications: [],
       sourcedApplications:
         sourcedApplicationResults,
+      employment,
       summary: {
         assignedApplicants: 0,
         assignedClients: 0,
@@ -936,6 +958,7 @@ async function getAssignments(req, res) {
       applicationResults,
     sourcedApplications:
       sourcedApplicationResults,
+    employment,
     summary: {
       assignedApplicants:
         applicantResults.length,

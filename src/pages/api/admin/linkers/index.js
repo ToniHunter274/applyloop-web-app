@@ -170,6 +170,59 @@ async function listLinkers(req, res) {
     assignmentRows = assignments || [];
   }
 
+  let allocationRows = [];
+
+  if (linkerIds.length > 0) {
+    const {
+      data: allocations,
+      error: allocationsError,
+    } = await supabase
+      .from(
+        'linker_work_allocations'
+      )
+      .select(`
+        id,
+        linker_user_id,
+        status
+      `)
+      .in(
+        'linker_user_id',
+        linkerIds
+      )
+      .eq('status', 'active');
+
+    if (allocationsError) {
+      console.error(
+        'Unable to load Linker work allocations:',
+        allocationsError
+      );
+
+      throw new ApiError(
+        500,
+        'Linker work allocations could not be loaded.'
+      );
+    }
+
+    allocationRows =
+      allocations || [];
+  }
+
+  const allocationCountByLinkerId =
+    new Map();
+
+  allocationRows.forEach(
+    (allocation) => {
+      allocationCountByLinkerId.set(
+        allocation.linker_user_id,
+        (
+          allocationCountByLinkerId.get(
+            allocation.linker_user_id
+          ) || 0
+        ) + 1
+      );
+    }
+  );
+
   const assignmentCountByLinkerId =
     new Map();
 
@@ -201,6 +254,10 @@ async function listLinkers(req, res) {
       'active',
     activeAssignments:
       assignmentCountByLinkerId.get(
+        linker.id
+      ) || 0,
+    activeAllocations:
+      allocationCountByLinkerId.get(
         linker.id
       ) || 0,
     createdAt: linker.created_at,
@@ -336,6 +393,7 @@ async function createLinker(req, res) {
         accountStatus:
           profile.account_status,
         activeAssignments: 0,
+        activeAllocations: 0,
         createdAt:
           profile.created_at,
         updatedAt:

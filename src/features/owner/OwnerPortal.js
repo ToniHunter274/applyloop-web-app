@@ -38,6 +38,7 @@ import {
   FiExternalLink,
 } from 'react-icons/fi';
 import PasswordResetConfirmationModal from '../../shared/components/PasswordResetConfirmationModal';
+import ApplicantEmploymentModal from '../admin/ApplicantEmploymentModal';
 import { HiOutlineLightBulb, HiOutlineUserGroup } from 'react-icons/hi';
 import { FaCrown, FaRegGem } from 'react-icons/fa';
 import { useAuth } from '../../shared/context/AuthContext';
@@ -1616,6 +1617,10 @@ export function ApplicantsManagementPage({
     setPasswordResetApplicant,
   ] = useState(null);
   const [
+    employmentApplicant,
+    setEmploymentApplicant,
+  ] = useState(null);
+  const [
     passwordResetError,
     setPasswordResetError,
   ] = useState('');
@@ -2421,21 +2426,14 @@ export function ApplicantsManagementPage({
             }
 
             const assignmentCount =
-              Math.min(
-                2,
-                Number(
-                  item.assignmentCount || 0
-                ) + 1
-              );
+              Number(
+                item.assignmentCount || 0
+              ) + 1;
 
             return {
               ...item,
               assignmentCount,
-              remainingSlots:
-                Math.max(
-                  0,
-                  2 - assignmentCount
-                ),
+              remainingSlots: null,
               isAssigned: true,
               canAssign: false,
             };
@@ -2567,11 +2565,7 @@ export function ApplicantsManagementPage({
               return {
                 ...item,
                 assignmentCount,
-                remainingSlots:
-                  Math.max(
-                    0,
-                    2 - assignmentCount
-                  ),
+                remainingSlots: null,
                 isAssigned: false,
                 canAssign:
                   assignmentApplicant
@@ -2581,8 +2575,7 @@ export function ApplicantsManagementPage({
                     .availability ===
                     'available' &&
                   item.status ===
-                    'active' &&
-                  assignmentCount < 2,
+                    'active',
               };
             })
         );
@@ -3437,6 +3430,23 @@ export function ApplicantsManagementPage({
                                     : 'Pause'}
                                 </button>
 
+                                {mode === 'admin' && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEmploymentApplicant(
+                                        applicant
+                                      )
+                                    }
+                                    title="Employment & NDA"
+                                    aria-label={`Manage employment and NDA for ${applicant.fullName}`}
+                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100"
+                                  >
+                                    <FiFileText className="h-3.5 w-3.5" />
+                                    Employment &amp; NDA
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -3872,13 +3882,11 @@ export function ApplicantsManagementPage({
         <div className="space-y-5">
           <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
             <p className="text-sm font-semibold text-blue-900">
-              Each client can have a maximum of
-              two Applicants.
+              Flexible Applicant coverage
             </p>
 
             <p className="mt-1 text-xs leading-5 text-blue-700">
-              Clients at 2/2 are full and cannot
-              receive another assignment.
+              A Client can be supported by multiple Applicants. Assign or remove coverage as operational needs change.
             </p>
           </div>
 
@@ -3936,12 +3944,6 @@ export function ApplicantsManagementPage({
             <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1">
               {visibleAssignmentClients.map(
                 (client) => {
-                  const isFull =
-                    Number(
-                      client.assignmentCount ||
-                        0
-                    ) >= 2;
-
                   const isBusy =
                     Boolean(
                       assigningClientId ||
@@ -3955,9 +3957,7 @@ export function ApplicantsManagementPage({
                         'rounded-2xl border p-4 transition',
                         client.isAssigned
                           ? 'border-emerald-200 bg-emerald-50/50'
-                          : isFull
-                            ? 'border-slate-200 bg-slate-50'
-                            : 'border-slate-200 bg-white hover:border-blue-300'
+                          : 'border-slate-200 bg-white hover:border-blue-300'
                       )}
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -3984,24 +3984,11 @@ export function ApplicantsManagementPage({
 
                           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
                             <span className="font-semibold text-slate-700">
-                              {client.assignmentCount}
-                              /2 Applicants assigned
-                            </span>
-
-                            <span
-                              className={cn(
-                                'font-semibold',
-                                isFull
-                                  ? 'text-red-600'
-                                  : 'text-emerald-600'
-                              )}
-                            >
-                              {client.remainingSlots}{' '}
-                              {client.remainingSlots ===
-                              1
-                                ? 'slot'
-                                : 'slots'}{' '}
-                              remaining
+                              {client.assignmentCount}{' '}
+                              {client.assignmentCount === 1
+                                ? 'Applicant'
+                                : 'Applicants'}{' '}
+                              assigned
                             </span>
                           </div>
                         </div>
@@ -4026,9 +4013,7 @@ export function ApplicantsManagementPage({
                             'inline-flex min-w-[110px] items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
                             client.isAssigned
                               ? 'border border-red-200 bg-red-50 text-red-600 hover:border-red-300 hover:bg-red-100'
-                              : isFull
-                                ? 'cursor-not-allowed bg-slate-200 text-slate-500'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
                           )}
                         >
                           {client.isAssigned
@@ -4036,12 +4021,10 @@ export function ApplicantsManagementPage({
                               client.id
                               ? 'Unassigning...'
                               : 'Unassign'
-                            : isFull
-                              ? 'Full'
-                              : assigningClientId ===
-                                  client.id
-                                ? 'Assigning...'
-                                : 'Assign'}
+                            : assigningClientId ===
+                                client.id
+                              ? 'Assigning...'
+                              : 'Assign'}
                         </button>
                       </div>
                     </div>
@@ -4052,6 +4035,13 @@ export function ApplicantsManagementPage({
           )}
         </div>
       </Modal>
+
+      <ApplicantEmploymentModal
+        applicant={employmentApplicant}
+        onClose={() =>
+          setEmploymentApplicant(null)
+        }
+      />
 
       <WorkerPerformanceModal
         open={Boolean(statsApplicant)}

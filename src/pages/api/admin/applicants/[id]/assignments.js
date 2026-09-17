@@ -332,17 +332,13 @@ async function listAssignments(req, res) {
           client.assigned_team || '',
         status: client.status,
         assignmentCount,
-        assignmentLimit: 2,
-        remainingSlots: Math.max(
-          0,
-          2 - assignmentCount
-        ),
+        assignmentLimit: null,
+        remainingSlots: null,
         isAssigned,
         canAssign:
           applicantCanReceiveAssignments &&
           client.status === 'active' &&
-          !isAssigned &&
-          assignmentCount < 2,
+          !isAssigned,
       };
     }
   );
@@ -476,17 +472,6 @@ async function createAssignment(req, res) {
       throw new ApiError(
         409,
         'This client is already assigned to this applicant.'
-      );
-    }
-
-    if (
-      normalizedMessage.includes(
-        'maximum of 2 applicants'
-      )
-    ) {
-      throw new ApiError(
-        409,
-        'This client already has the maximum of 2 applicants assigned.'
       );
     }
 

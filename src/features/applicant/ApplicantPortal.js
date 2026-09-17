@@ -3441,6 +3441,7 @@ function Toggle({
 
 function SettingsPage({
   lineManager = null,
+  isPreview = false,
 }) {
   const { user, updateProfile, changePassword, logout } = useAuth();
   const nameParts = (user?.name || '')
@@ -3457,20 +3458,188 @@ function SettingsPage({
     timezone: user?.timezone || '',
   });
   const [emailNotifications, setEmailNotifications] = useState(user?.emailNotifications ?? true);
-  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? false);
   const [savingNotificationKey, setSavingNotificationKey] = useState('');
 
   useEffect(() => {
     setEmailNotifications(
       user?.emailNotifications ?? true
     );
-    setPushNotifications(
-      user?.pushNotifications ?? false
-    );
   }, [
     user?.emailNotifications,
-    user?.pushNotifications,
   ]);
+  const [
+    employmentDocument,
+    setEmploymentDocument,
+  ] = useState(null);
+
+  const [
+    employmentDocumentError,
+    setEmploymentDocumentError,
+  ] = useState('');
+
+  const [
+    isLoadingEmploymentDocument,
+    setIsLoadingEmploymentDocument,
+  ] = useState(false);
+
+  const [
+    isDownloadingEmploymentDocument,
+    setIsDownloadingEmploymentDocument,
+  ] = useState(false);
+
+  useEffect(() => {
+    if (isPreview) {
+      setEmploymentDocument(null);
+      setEmploymentDocumentError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadEmploymentDocument =
+      async () => {
+        setIsLoadingEmploymentDocument(
+          true
+        );
+
+        setEmploymentDocumentError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const response =
+            await fetch(
+              '/api/applicant/employment-document',
+              {
+                cache: 'no-store',
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Your employee agreement could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setEmploymentDocument(
+              result.document ||
+              null
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setEmploymentDocumentError(
+              error?.message ||
+                'Your employee agreement could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingEmploymentDocument(
+              false
+            );
+          }
+        }
+      };
+
+    loadEmploymentDocument();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPreview]);
+
+  const downloadEmploymentDocument =
+    async () => {
+      if (
+        !employmentDocument ||
+        isPreview
+      ) {
+        return;
+      }
+
+      setIsDownloadingEmploymentDocument(
+        true
+      );
+
+      setEmploymentDocumentError('');
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            '/api/applicant/employment-document?download=1',
+            {
+              cache: 'no-store',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (
+          !response.ok ||
+          !result.url
+        ) {
+          throw new Error(
+            result.error ||
+              'Your employee agreement could not be downloaded.'
+          );
+        }
+
+        const link =
+          document.createElement(
+            'a'
+          );
+
+        link.href = result.url;
+
+        link.rel =
+          'noreferrer';
+
+        link.download =
+          result.filename ||
+          employmentDocument.fileName ||
+          'ApplyLoop-employee-agreement';
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+        link.remove();
+      } catch (error) {
+        setEmploymentDocumentError(
+          error?.message ||
+            'Your employee agreement could not be downloaded.'
+        );
+      } finally {
+        setIsDownloadingEmploymentDocument(
+          false
+        );
+      }
+    };
+
   const [saved, setSaved] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -3487,10 +3656,6 @@ function SettingsPage({
 
     if (key === 'emailNotifications') {
       setEmailNotifications(value);
-    }
-
-    if (key === 'pushNotifications') {
-      setPushNotifications(value);
     }
 
     try {
@@ -3582,7 +3747,7 @@ function SettingsPage({
       </section>
       <section className={styles.settingsSection}>
         <h3>Notification Preferences</h3>
-        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Receive important updates by email</p></div><Toggle
+        <div className={styles.settingRow}><div><strong>Email Notifications</strong><p>Important account and workflow updates will be sent to your email.</p></div><Toggle
           value={emailNotifications}
           onChange={(value) =>
             handleNotificationChange(
@@ -3591,19 +3756,6 @@ function SettingsPage({
             )
           }
           label="Email notifications"
-          disabled={Boolean(
-            savingNotificationKey
-          )}
-        /></div>
-        <div className={styles.settingRow}><div><strong>Push Notifications</strong><p>Receive notifications in the browser</p></div><Toggle
-          value={pushNotifications}
-          onChange={(value) =>
-            handleNotificationChange(
-              'pushNotifications',
-              value
-            )
-          }
-          label="Push notifications"
           disabled={Boolean(
             savingNotificationKey
           )}
@@ -3663,9 +3815,95 @@ function SettingsPage({
               : 'Awaiting assignment'}
           </span>
         </div>
-        <div className={styles.accountAction}><span>Non-Disclosure Agreement (NDA)</span><button type="button"><FiDownload /></button></div>
+        <div className={styles.accountAction}>
+          <div>
+            <strong
+              style={{
+                display: 'block',
+                color: '#172033',
+              }}
+            >
+              Non-Disclosure Agreement
+            </strong>
+
+            <span
+              style={{
+                display: 'block',
+                marginTop: 4,
+                color: employmentDocument
+                  ? '#334155'
+                  : '#94a3b8',
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              {isLoadingEmploymentDocument
+                ? 'Checking agreement...'
+                : employmentDocument
+                  ? employmentDocument.fileName
+                  : 'Not uploaded yet'}
+            </span>
+
+            {employmentDocumentError && (
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: 4,
+                  color: '#d14343',
+                  fontSize: 9,
+                }}
+              >
+                {employmentDocumentError}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              downloadEmploymentDocument
+            }
+            disabled={
+              !employmentDocument ||
+              isDownloadingEmploymentDocument ||
+              isPreview
+            }
+            title={
+              employmentDocument
+                ? 'Download Agreement'
+                : 'No agreement uploaded yet'
+            }
+            style={{
+              opacity:
+                employmentDocument &&
+                !isPreview
+                  ? 1
+                  : 0.45,
+              cursor:
+                employmentDocument &&
+                !isPreview
+                  ? 'pointer'
+                  : 'not-allowed',
+            }}
+          >
+            <FiDownload />
+
+            <span
+              style={{
+                marginLeft: 6,
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
+              {isDownloadingEmploymentDocument
+                ? 'Preparing...'
+                : employmentDocument
+                  ? 'Download Agreement'
+                  : 'Not available'}
+            </span>
+          </button>
+        </div>
         <div className={styles.accountAction}><span>Sign out of this account</span><button type="button" onClick={logout}><FiLogOut /></button></div>
-        <div className={classNames(styles.accountAction, styles.accountDanger)}><span>Delete account data</span><button type="button"><FiX /></button></div>
       </section>
     </div>
   );
@@ -4779,6 +5017,9 @@ export default function ApplicantPortal() {
     page = (
       <SettingsPage
         lineManager={lineManager}
+        isPreview={
+          isApplicantPreview
+        }
       />
     );
   } else {

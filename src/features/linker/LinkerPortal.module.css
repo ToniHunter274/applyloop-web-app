@@ -1354,7 +1354,7 @@
 .readinessGrid {
   display: grid;
   grid-template-columns:
-    repeat(3, minmax(0, 1fr));
+    repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 15px;
 }
@@ -2453,6 +2453,45 @@ article {
   font-size: 8px;
 }
 
+.companySettings small {
+  color: #737b89;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.companySettings button {
+  border: 1px solid #dfe4ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px 11px;
+  color: #94a3b8;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.companySettings button:disabled {
+  cursor: not-allowed;
+}
+
+.companySettings button:not(:disabled) {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+
+.companySettings button:not(:disabled):hover {
+  background: #dbeafe;
+}
+
+.settingsDocumentError {
+  margin: 10px 0 0;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .performanceMetrics {
     grid-template-columns:
@@ -2555,7 +2594,7 @@ article {
 
 .figmaDashboard {
   gap: 30px;
-  padding-top: 44px;
+  padding-top: 0;
 }
 
 .dashboardSearch {

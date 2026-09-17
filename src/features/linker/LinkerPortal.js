@@ -6,8 +6,6 @@ import {
   FiBriefcase,
   FiExternalLink,
   FiLink,
-  FiLogOut,
-  FiMenu,
   FiMessageSquare,
   FiTrendingUp,
   FiUsers,
@@ -22,6 +20,7 @@ import {
   ROLE_PAGE_META,
   USER_ROLES,
 } from '../../shared/config/roles';
+import WorkspaceShell from '../../shared/components/WorkspaceShell';
 import styles from './LinkerPortal.module.css';
 
 const validSections = new Set([
@@ -40,6 +39,10 @@ const emptyAssignmentData = {
   clients: [],
   applications: [],
   sourcedApplications: [],
+  employment: {
+    lineManager: null,
+    nda: null,
+  },
   summary: {
     assignedApplicants: 0,
     assignedClients: 0,
@@ -160,8 +163,6 @@ function DashboardPage({
   isLoading,
   error,
 }) {
-  const [search, setSearch] =
-    useState('');
   const [
     selectedClient,
     setSelectedClient,
@@ -175,30 +176,12 @@ function DashboardPage({
     return <ErrorState message={error} />;
   }
 
-  const term =
-    search.trim().toLowerCase();
-
   const applications =
     data.applications.filter(
       (application) =>
-        (
-          !selectedClient ||
-          application.clientId ===
-            selectedClient
-        ) &&
-               (
-          !term ||
-          [
-            application.company,
-            application.position,
-            application.clientName,
-            application.jobLink,
-          ].some((value) =>
-            String(value || '')
-              .toLowerCase()
-              .includes(term)
-          )
-        )
+        !selectedClient ||
+        application.clientId ===
+          selectedClient
     );
 
   const metrics = [
@@ -226,22 +209,6 @@ function DashboardPage({
 
   return (
     <div className={styles.figmaDashboard}>
-      <label
-        className={styles.dashboardSearch}
-      >
-        <span className="sr-only">
-          Search job links
-        </span>
-        <input
-          type="search"
-          value={search}
-          onChange={(event) =>
-            setSearch(event.target.value)
-          }
-          placeholder="Search Job Links"
-        />
-      </label>
-
       <section
         className={styles.figmaMetrics}
         aria-label="Linker activity summary"
@@ -1369,71 +1336,185 @@ function ApplicantsPage({
 }
 
 function RecordLinkPage({
-  data,
   isLoading,
   error,
 }) {
+  const [
+    allocations,
+    setAllocations,
+  ] = useState([]);
+
+  const [
+    allocationsLoading,
+    setAllocationsLoading,
+  ] = useState(true);
+
+  const [
+    allocationsError,
+    setAllocationsError,
+  ] = useState('');
+
+  const [
+    allocationId,
+    setAllocationId,
+  ] = useState('');
+
   const [applicantId, setApplicantId] =
     useState('');
-  const [clientId, setClientId] =
-    useState('');
+
   const [company, setCompany] =
     useState('');
+
   const [position, setPosition] =
     useState('');
+
   const [location, setLocation] =
     useState('');
+
   const [jobType, setJobType] =
     useState('');
+
   const [salaryRange, setSalaryRange] =
     useState('');
+
   const [jobLink, setJobLink] =
     useState('');
+
   const [linkProvider, setLinkProvider] =
     useState('');
+
   const [comment, setComment] =
     useState('');
+
   const [
     isSubmitting,
     setIsSubmitting,
   ] = useState(false);
+
   const [
     requestError,
     setRequestError,
   ] = useState('');
+
   const [
     successMessage,
     setSuccessMessage,
   ] = useState('');
 
-  if (isLoading) {
+  useEffect(() => {
+    let active = true;
+
+    const loadAllocations =
+      async () => {
+        setAllocationsLoading(true);
+        setAllocationsError('');
+
+        try {
+          const accessToken =
+            await getLinkerAccessToken();
+
+          const response =
+            await fetch(
+              '/api/linker/work-allocations',
+              {
+                cache: 'no-store',
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (
+            !response.ok ||
+            !Array.isArray(
+              result.allocations
+            )
+          ) {
+            throw new Error(
+              result.error ||
+                'Your Work Allocations could not be loaded.'
+            );
+          }
+
+          if (active) {
+            setAllocations(
+              result.allocations
+            );
+          }
+        } catch (loadError) {
+          if (active) {
+            setAllocationsError(
+              loadError?.message ||
+                'Your Work Allocations could not be loaded.'
+            );
+          }
+        } finally {
+          if (active) {
+            setAllocationsLoading(
+              false
+            );
+          }
+        }
+      };
+
+    loadAllocations();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (
+    isLoading ||
+    allocationsLoading
+  ) {
     return <LoadingState />;
   }
 
   if (error) {
-    return <ErrorState message={error} />;
+    return (
+      <ErrorState
+        message={error}
+      />
+    );
   }
 
-  const eligibleApplicants =
-    data.applicants.filter(
-      (applicant) =>
-        applicant.canReceiveLinks
+  if (allocationsError) {
+    return (
+      <ErrorState
+        message={allocationsError}
+      />
     );
+  }
 
-  const eligibleClients =
-    applicantId
-      ? data.clients.filter(
-          (client) =>
-            client.canReceiveLinks &&
-            client.applicantIds.includes(
-              applicantId
-            )
-        )
-      : [];
+  const selectedAllocation =
+    allocations.find(
+      (allocation) =>
+        allocation.id ===
+        allocationId
+    ) || null;
+
+  const clientId =
+    selectedAllocation
+      ?.clientId || '';
+
+  const eligibleApplicants =
+    selectedAllocation
+      ?.applicants
+      ?.filter(
+        (applicant) =>
+          applicant.canReceiveLinks
+      ) || [];
 
   const clearForm = () => {
+    setAllocationId('');
     setApplicantId('');
-    setClientId('');
     setCompany('');
     setPosition('');
     setLocation('');
@@ -1446,124 +1527,175 @@ function RecordLinkPage({
     setSuccessMessage('');
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setRequestError('');
-    setSuccessMessage('');
+  const handleSubmit =
+    async (event) => {
+      event.preventDefault();
 
-    if (
-      !applicantId ||
-      !clientId ||
-      !company.trim() ||
-      !position.trim() ||
-      !location.trim() ||
-      !jobType ||
-      !jobLink.trim()
-    ) {
-      setRequestError(
-        'Complete every required field before sending the job link.'
-      );
-      return;
-    }
+      setRequestError('');
+      setSuccessMessage('');
 
-    setIsSubmitting(true);
+      if (
+        !allocationId ||
+        !applicantId ||
+        !clientId ||
+        !company.trim() ||
+        !position.trim() ||
+        !location.trim() ||
+        !jobType ||
+        !jobLink.trim()
+      ) {
+        setRequestError(
+          'Complete every required field before sending the job link.'
+        );
+        return;
+      }
 
-    try {
-      const accessToken =
-        await getLinkerAccessToken();
+      setIsSubmitting(true);
 
-      const response = await fetch(
-        '/api/linker/job-requests',
-        {
-          method: 'POST',
-          headers: {
-            Authorization:
-              'Bearer ' + accessToken,
-            'Content-Type':
-              'application/json',
-          },
-          body: JSON.stringify({
-            applicantId,
-            clientId,
-            company,
-            position,
-            location,
-            jobType,
-            salaryRange,
-            jobLink,
-            linkProvider,
-            comment,
-          }),
+      try {
+        const accessToken =
+          await getLinkerAccessToken();
+
+        const response =
+          await fetch(
+            '/api/linker/job-requests',
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                allocationId,
+                applicantId,
+                clientId,
+                company,
+                position,
+                location,
+                jobType,
+                salaryRange,
+                jobLink,
+                linkProvider,
+                comment,
+              }),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The job link could not be sent.'
+          );
         }
-      );
 
-      const result =
-        await response
-          .json()
-          .catch(() => ({}));
+        if (!result.request?.id) {
+          throw new Error(
+            'The sent job link could not be verified.'
+          );
+        }
 
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-            'The job link could not be sent.'
+        const recipientApplicant =
+          eligibleApplicants.find(
+            (applicant) =>
+              applicant.id ===
+              applicantId
+          );
+
+        setAllocations(
+          (current) =>
+            current.map(
+              (allocation) => {
+                if (
+                  allocation.id !==
+                  allocationId
+                ) {
+                  return allocation;
+                }
+
+                const submitted =
+                  Number(
+                    allocation
+                      .linksSubmitted ||
+                      0
+                  ) + 1;
+
+                return {
+                  ...allocation,
+                  linksSubmitted:
+                    submitted,
+                  linksRemaining:
+                    Math.max(
+                      Number(
+                        allocation
+                          .targetLinks ||
+                          0
+                      ) -
+                        submitted,
+                      0
+                    ),
+                  progressPercent:
+                    allocation.targetLinks >
+                    0
+                      ? Math.min(
+                          100,
+                          Math.round(
+                            (
+                              submitted /
+                              allocation
+                                .targetLinks
+                            ) *
+                              100
+                          )
+                        )
+                      : 0,
+                };
+              }
+            )
         );
+
+        setCompany('');
+        setPosition('');
+        setLocation('');
+        setJobType('');
+        setSalaryRange('');
+        setJobLink('');
+        setLinkProvider('');
+        setComment('');
+
+        setSuccessMessage(
+          `Job link sent to ${
+            recipientApplicant
+              ?.fullName ||
+            'the selected Applicant'
+          } for ${
+            selectedAllocation
+              ?.clientName ||
+            'the selected Client'
+          }.`
+        );
+      } catch (submitError) {
+        setRequestError(
+          submitError?.message ||
+            'The job link could not be recorded.'
+        );
+      } finally {
+        setIsSubmitting(false);
       }
+    };
 
-      if (!result.request?.id) {
-        throw new Error(
-          'The sent job link could not be verified.'
-        );
-      }
-
-      setCompany('');
-      setPosition('');
-      setLocation('');
-      setJobType('');
-      setSalaryRange('');
-      setJobLink('');
-      setLinkProvider('');
-      setComment('');
-
-      const recipientApplicant =
-        data.applicants.find(
-          (applicant) =>
-            applicant.id ===
-            applicantId
-        );
-
-      const recipientClient =
-        data.clients.find(
-          (client) =>
-            client.id === clientId
-        );
-
-      setSuccessMessage(
-        `Job link sent to ${
-          recipientApplicant
-            ?.fullName ||
-          'the selected Applicant'
-        } for ${
-          recipientClient
-            ?.fullName ||
-          'the selected Client'
-        }.`
-      );
-    } catch (submitError) {
-      setRequestError(
-        submitError.message ||
-          'The job link could not be recorded.'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (eligibleApplicants.length === 0) {
+  if (allocations.length === 0) {
     return (
       <EmptyState
         icon={FiExternalLink}
-        title="No eligible assignments"
-        description="An active Applicant with an active assigned Client is required before a job link can be recorded."
+        title="No active Work Allocations"
+        description="Admin needs to create an active Client workload for you before job links can be sent."
       />
     );
   }
@@ -1575,23 +1707,32 @@ function RecordLinkPage({
       <header
         className={styles.recordPageHeader}
       >
-        <span aria-hidden="true">←</span>
+        <span aria-hidden="true">
+          ←
+        </span>
+
         <div>
           <h2>Send Job Link</h2>
+
           <p>
-            Send a verified opportunity to
-            the Applicant responsible for
-            the selected Client.
+            Choose one of your active
+            Work Allocations, then send
+            the opportunity to an
+            eligible Applicant.
           </p>
         </div>
       </header>
 
       <form
-        className={styles.figmaRecordForm}
+        className={
+          styles.figmaRecordForm
+        }
         onSubmit={handleSubmit}
       >
         <fieldset>
-          <legend>Choose Recipient</legend>
+          <legend>
+            Work Allocation
+          </legend>
 
           <div
             className={
@@ -1604,16 +1745,17 @@ function RecordLinkPage({
               }
             >
               <span>
-                Applicant<sup>*</sup>
+                Allocation<sup>*</sup>
               </span>
 
               <select
-                value={applicantId}
+                value={allocationId}
                 onChange={(event) => {
-                  setApplicantId(
+                  setAllocationId(
                     event.target.value
                   );
-                  setClientId('');
+
+                  setApplicantId('');
                   setRequestError('');
                   setSuccessMessage('');
                 }}
@@ -1621,65 +1763,157 @@ function RecordLinkPage({
                 required
               >
                 <option value="">
-                  Select an Applicant
+                  Select Work Allocation
                 </option>
 
-                {eligibleApplicants.map(
-                  (applicant) => (
+                {allocations.map(
+                  (allocation) => (
                     <option
-                      key={applicant.id}
-                      value={applicant.id}
+                      key={allocation.id}
+                      value={allocation.id}
                     >
-                      {applicant.fullName}
+                      {allocation.clientName}
+                      {' — '}
+                      {
+                        allocation.linksRemaining
+                      }
+                      {' of '}
+                      {
+                        allocation.targetLinks
+                      }
+                      {' links remaining'}
                     </option>
                   )
                 )}
               </select>
             </label>
 
-            <label
-              className={
-                styles.recordFullField
-              }
-            >
-              <span>
-                Client<sup>*</sup>
-              </span>
+            {selectedAllocation && (
+              <>
+                <label>
+                  <span>Client</span>
 
-              <select
-                value={clientId}
-                onChange={(event) => {
-                  setClientId(
-                    event.target.value
-                  );
-                  setRequestError('');
-                  setSuccessMessage('');
-                }}
-                disabled={
-                  !applicantId ||
-                  isSubmitting
-                }
-                required
-              >
-                <option value="">
-                  {applicantId
-                    ? 'Select a Client'
-                    : 'Select an Applicant first'}
-                </option>
+                  <input
+                    value={
+                      selectedAllocation
+                        .clientName
+                    }
+                    disabled
+                    readOnly
+                  />
+                </label>
 
-                {eligibleClients.map(
-                  (client) => (
-                    <option
-                      key={client.id}
-                      value={client.id}
-                    >
-                      {client.fullName}
+                <label>
+                  <span>
+                    Applicant<sup>*</sup>
+                  </span>
+
+                  <select
+                    value={applicantId}
+                    onChange={(event) => {
+                      setApplicantId(
+                        event.target.value
+                      );
+
+                      setRequestError('');
+                      setSuccessMessage('');
+                    }}
+                    disabled={isSubmitting}
+                    required
+                  >
+                    <option value="">
+                      Select Applicant
                     </option>
-                  )
-                )}
-              </select>
-            </label>
+
+                    {eligibleApplicants.map(
+                      (applicant) => (
+                        <option
+                          key={
+                            applicant.id
+                          }
+                          value={
+                            applicant.id
+                          }
+                        >
+                          {
+                            applicant.fullName
+                          }
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
+              </>
+            )}
           </div>
+
+          {selectedAllocation && (
+            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              <article className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">
+                  Target
+                </span>
+                <strong className="mt-1 block">
+                  {
+                    selectedAllocation
+                      .targetLinks
+                  }
+                </strong>
+              </article>
+
+              <article className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">
+                  Submitted
+                </span>
+                <strong className="mt-1 block">
+                  {
+                    selectedAllocation
+                      .linksSubmitted
+                  }
+                </strong>
+              </article>
+
+              <article className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">
+                  Remaining
+                </span>
+                <strong className="mt-1 block">
+                  {
+                    selectedAllocation
+                      .linksRemaining
+                  }
+                </strong>
+              </article>
+
+              <article className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">
+                  Priority
+                </span>
+                <strong className="mt-1 block capitalize">
+                  {
+                    selectedAllocation
+                      .priority
+                  }
+                </strong>
+              </article>
+            </div>
+          )}
+
+          {selectedAllocation
+            ?.instructions && (
+            <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                Sourcing Instructions
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-blue-950">
+                {
+                  selectedAllocation
+                    .instructions
+                }
+              </p>
+            </div>
+          )}
         </fieldset>
 
         <fieldset>
@@ -1694,6 +1928,7 @@ function RecordLinkPage({
               <span>
                 Company Name<sup>*</sup>
               </span>
+
               <input
                 value={company}
                 onChange={(event) =>
@@ -1701,7 +1936,7 @@ function RecordLinkPage({
                     event.target.value
                   )
                 }
-                placeholder="Remote"
+                placeholder="e.g. Stripe"
                 maxLength={200}
                 disabled={isSubmitting}
                 required
@@ -1712,6 +1947,7 @@ function RecordLinkPage({
               <span>
                 Job Position<sup>*</sup>
               </span>
+
               <input
                 value={position}
                 onChange={(event) =>
@@ -1719,7 +1955,7 @@ function RecordLinkPage({
                     event.target.value
                   )
                 }
-                placeholder="Remote"
+                placeholder="e.g. Frontend Engineer"
                 maxLength={200}
                 disabled={isSubmitting}
                 required
@@ -1730,6 +1966,7 @@ function RecordLinkPage({
               <span>
                 Location<sup>*</sup>
               </span>
+
               <input
                 value={location}
                 onChange={(event) =>
@@ -1737,7 +1974,7 @@ function RecordLinkPage({
                     event.target.value
                   )
                 }
-                placeholder="Remote"
+                placeholder="e.g. London, UK or Remote"
                 maxLength={200}
                 disabled={isSubmitting}
                 required
@@ -1748,6 +1985,7 @@ function RecordLinkPage({
               <span>
                 Job Type<sup>*</sup>
               </span>
+
               <select
                 value={jobType}
                 onChange={(event) =>
@@ -1780,7 +2018,10 @@ function RecordLinkPage({
             </label>
 
             <label>
-              <span>Salary Range</span>
+              <span>
+                Salary Range
+              </span>
+
               <input
                 value={salaryRange}
                 onChange={(event) =>
@@ -1796,8 +2037,10 @@ function RecordLinkPage({
 
             <label>
               <span>
-                Job Posting URL<sup>*</sup>
+                Job Posting URL
+                <sup>*</sup>
               </span>
+
               <input
                 type="url"
                 value={jobLink}
@@ -1814,7 +2057,10 @@ function RecordLinkPage({
             </label>
 
             <label>
-              <span>Link Provided By</span>
+              <span>
+                Link Provided By
+              </span>
+
               <select
                 value={linkProvider}
                 onChange={(event) =>
@@ -1848,14 +2094,19 @@ function RecordLinkPage({
         </fieldset>
 
         <fieldset>
-          <legend>Notes &amp; Tags</legend>
+          <legend>
+            Notes &amp; Tags
+          </legend>
 
           <label
             className={
               styles.recordFullField
             }
           >
-            <span>Additional Notes</span>
+            <span>
+              Additional Notes
+            </span>
+
             <textarea
               value={comment}
               onChange={(event) =>
@@ -1863,7 +2114,7 @@ function RecordLinkPage({
                   event.target.value
                 )
               }
-              placeholder="Add any additional details about this application."
+              placeholder="Add any useful details about this opportunity."
               maxLength={2000}
               rows={5}
               disabled={isSubmitting}
@@ -1873,7 +2124,9 @@ function RecordLinkPage({
 
         {requestError && (
           <p
-            className={styles.formError}
+            className={
+              styles.formError
+            }
             role="alert"
           >
             {requestError}
@@ -1882,7 +2135,9 @@ function RecordLinkPage({
 
         {successMessage && (
           <p
-            className={styles.formSuccess}
+            className={
+              styles.formSuccess
+            }
             role="status"
           >
             {successMessage}
@@ -1890,7 +2145,9 @@ function RecordLinkPage({
         )}
 
         <footer
-          className={styles.recordActions}
+          className={
+            styles.recordActions
+          }
         >
           <button
             type="button"
@@ -1910,6 +2167,7 @@ function RecordLinkPage({
             }
             disabled={
               isSubmitting ||
+              !allocationId ||
               !applicantId ||
               !clientId ||
               !company.trim() ||
@@ -2804,12 +3062,6 @@ function PerformancePage({
               application.status
             )
         ).length,
-      declined:
-        periodApplications.filter(
-          (application) =>
-            application.status ===
-            'Rejected'
-        ).length,
     };
   };
 
@@ -2965,12 +3217,6 @@ function PerformancePage({
                     </dd>
                   </div>
 
-                  <div>
-                    <dt>Rejected</dt>
-                    <dd>
-                      {values.declined}
-                    </dd>
-                  </div>
                 </dl>
               </article>
             )
@@ -2995,7 +3241,10 @@ function PerformancePage({
   );
 }
 
-function SettingsPage({ user }) {
+function SettingsPage({
+  user,
+  employment,
+}) {
   const name =
     user?.name || 'Not provided';
 
@@ -3006,6 +3255,82 @@ function SettingsPage({ user }) {
     name !== 'Not provided'
       ? name.charAt(0).toUpperCase()
       : 'L';
+
+  const lineManager =
+    employment?.lineManager ||
+    null;
+
+  const nda =
+    employment?.nda ||
+    null;
+
+  const [
+    isDownloading,
+    setIsDownloading,
+  ] = useState(false);
+
+  const [
+    documentError,
+    setDocumentError,
+  ] = useState('');
+
+  const downloadNda = async () => {
+    setIsDownloading(true);
+    setDocumentError('');
+
+    try {
+      const accessToken =
+        await getLinkerAccessToken();
+
+      const response =
+        await fetch(
+          '/api/linker/employment-document',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+            cache: 'no-store',
+          }
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The employee contract could not be downloaded.'
+        );
+      }
+
+      const link =
+        document.createElement('a');
+
+      link.href = result.url;
+      link.rel = 'noreferrer';
+      link.download =
+        result.filename ||
+        nda?.fileName ||
+        'ApplyLoop-employee-contract';
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+      link.remove();
+    } catch (downloadError) {
+      setDocumentError(
+        downloadError?.message ||
+          'The employee contract could not be downloaded.'
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <div
@@ -3131,23 +3456,10 @@ function SettingsPage({ user }) {
                 Email Notifications
               </strong>
               <span>
-                Account and workflow
-                notifications
+                Important account and workflow
+                updates are sent to {email}.
               </span>
             </div>
-            <small>Managed</small>
-          </div>
-
-          <div>
-            <div>
-              <strong>
-                Push Notifications
-              </strong>
-              <span>
-                Browser notification support
-              </span>
-            </div>
-            <small>Unavailable</small>
           </div>
         </div>
       </section>
@@ -3157,7 +3469,7 @@ function SettingsPage({ user }) {
           styles.settingsSection
         }
       >
-        <h2>Company · ApplyLoop</h2>
+        <h2>Employment · ApplyLoop</h2>
 
         <div
           className={
@@ -3165,19 +3477,62 @@ function SettingsPage({ user }) {
           }
         >
           <div>
-            <strong>Role</strong>
-            <span>Linker</span>
+            <div>
+              <strong>Line Manager</strong>
+              <span>
+                Chief Applicant
+              </span>
+            </div>
+
+            <small>
+              {lineManager?.fullName ||
+                'Not assigned yet'}
+            </small>
           </div>
 
           <div>
-            <strong>
-              Account Management
-            </strong>
-            <span>
-              ApplyLoop Administration
-            </span>
+            <div>
+              <strong>
+                Non-Disclosure Agreement
+              </strong>
+              <span>
+                {nda?.fileName ||
+                  'Employee contract / NDA'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              disabled={
+                !nda ||
+                isDownloading
+              }
+              onClick={downloadNda}
+              title={
+                nda
+                  ? 'Download your employee contract.'
+                  : 'No employee contract has been uploaded yet.'
+              }
+            >
+              {isDownloading
+                ? 'Preparing...'
+                : nda
+                  ? 'Download Agreement'
+                  : 'Not uploaded yet'}
+            </button>
           </div>
         </div>
+
+        {documentError && (
+          <p
+            className={
+              styles.settingsDocumentError
+            }
+            role="alert"
+          >
+            {documentError}
+          </p>
+        )}
       </section>
     </div>
   );
@@ -3239,7 +3594,14 @@ function renderPage(
   }
 
   if (section === 'settings') {
-    return <SettingsPage user={user} />;
+    return (
+      <SettingsPage
+        user={user}
+        employment={
+          data.employment
+        }
+      />
+    );
   }
 
   return (
@@ -3254,7 +3616,6 @@ function renderPage(
 export default function LinkerPortal() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [
     assignmentData,
     setAssignmentData,
@@ -3346,6 +3707,11 @@ export default function LinkerPortal() {
               result.applications,
             sourcedApplications:
               result.sourcedApplications,
+            employment:
+              result.employment || {
+                lineManager: null,
+                nda: null,
+              },
             summary: {
               assignedApplicants:
                 Number(
@@ -3488,144 +3854,35 @@ export default function LinkerPortal() {
   return (
     <>
       <Head>
-        <title>{metadata[0]} | ApplyLoop</title>
+        <title>
+          {metadata[0]} | ApplyLoop
+        </title>
+
         <meta
           name="description"
           content={metadata[1]}
         />
       </Head>
 
-      <div className={styles.workspace}>
-        {menuOpen && (
-          <button
-            type="button"
-            className={styles.backdrop}
-            aria-label="Close navigation"
-            onClick={() => setMenuOpen(false)}
-          />
+      <WorkspaceShell
+        navigation={navigation}
+        activeSection={section}
+        homeHref="/linker"
+        title={metadata[0]}
+        subtitle={metadata[1]}
+        workspaceLabel="Linker Workspace"
+        roleLabel="Linker"
+        user={user}
+        onLogout={logout}
+      >
+        {renderPage(
+          section,
+          user,
+          assignmentData,
+          isLoadingAssignments,
+          assignmentsError
         )}
-
-        <aside
-          className={
-            menuOpen
-              ? styles.sidebarOpen
-              : styles.sidebar
-          }
-        >
-          <div className={styles.brandRow}>
-            <Link
-              href="/linker"
-              className={styles.brand}
-            >
-              <img src="/logo.svg" alt="" />
-              <span>ApplyLoop</span>
-            </Link>
-
-            <button
-              type="button"
-              className={styles.closeMenu}
-              aria-label="Close navigation"
-              onClick={() => setMenuOpen(false)}
-            >
-              <FiX />
-            </button>
-          </div>
-
-          <nav aria-label="Linker workspace">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-
-              const itemSection =
-                item.href === '/linker'
-                  ? 'dashboard'
-                  : item.href.split('/').pop();
-
-              const active =
-                itemSection === section;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={
-                    active
-                      ? styles.navActive
-                      : styles.navItem
-                  }
-                  aria-current={
-                    active ? 'page' : undefined
-                  }
-                  onClick={() =>
-                    setMenuOpen(false)
-                  }
-                >
-                  <Icon aria-hidden="true" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className={styles.account}>
-            <span className={styles.avatar}>
-              {(user?.name || user?.email || 'L')
-                .charAt(0)
-                .toUpperCase()}
-            </span>
-
-            <span className={styles.accountText}>
-              <strong>
-                {user?.name || 'Linker'}
-              </strong>
-              <small>
-                {user?.email ||
-                  'Authenticated account'}
-              </small>
-            </span>
-
-            <button
-              type="button"
-              aria-label="Sign out"
-              onClick={logout}
-            >
-              <FiLogOut />
-            </button>
-          </div>
-        </aside>
-
-        <main className={styles.main}>
-          <header className={styles.mobileHeader}>
-            <button
-              type="button"
-              aria-label="Open navigation"
-              onClick={() => setMenuOpen(true)}
-            >
-              <FiMenu />
-            </button>
-
-            <Link href="/linker">
-              ApplyLoop
-            </Link>
-          </header>
-
-          <div className={styles.content}>
-            <header className={styles.pageHeader}>
-              <div>
-                <h1>{metadata[0]}</h1>
-                <p>{metadata[1]}</p>
-              </div>
-            </header>
-
-            {renderPage(
-              section,
-              user,
-              assignmentData,
-              isLoadingAssignments,
-              assignmentsError
-            )}
-          </div>
-        </main>
-      </div>
+      </WorkspaceShell>
     </>
   );
 }

@@ -148,6 +148,9 @@ function formatRequest(request) {
     clientId: request.client_id,
     applicantId:
       request.target_applicant_id,
+    allocationId:
+      request.linker_work_allocation_id ||
+      null,
     jobLink: request.job_url,
     comment: request.comment,
     company:
@@ -191,6 +194,7 @@ async function listRequests(
         'id',
         'client_id',
         'target_applicant_id',
+        'linker_work_allocation_id',
         'job_url',
         'comment',
         'job_company',
@@ -247,6 +251,11 @@ async function createRequest(
   const applicantId = validateId(
     req.body?.applicantId,
     'Applicant'
+  );
+
+  const allocationId = validateId(
+    req.body?.allocationId,
+    'Work Allocation'
   );
 
   const clientId = validateId(
@@ -343,10 +352,12 @@ async function createRequest(
     data: requestRows,
     error: requestError,
   } = await supabase.rpc(
-    'create_linker_job_request_with_details',
+    'create_linker_allocation_job_request_with_details',
     {
       p_linker_user_id:
         profile.id,
+      p_allocation_id:
+        allocationId,
       p_applicant_id:
         applicantId,
       p_client_id:
@@ -408,12 +419,26 @@ async function createRequest(
 
     if (
       message.includes(
-        'applicant is not assigned to you'
+        'work allocation is not assigned to you'
+      ) ||
+      message.includes(
+        'work allocation is not active'
       )
     ) {
       throw new ApiError(
         403,
-        'This Applicant is not assigned to you.'
+        'This Work Allocation is no longer available.'
+      );
+    }
+
+    if (
+      message.includes(
+        'applicant is not part of this work allocation'
+      )
+    ) {
+      throw new ApiError(
+        403,
+        'This Applicant is not eligible for the selected Work Allocation.'
       );
     }
 
@@ -433,12 +458,15 @@ async function createRequest(
 
     if (
       message.includes(
+        'no longer assigned to this client'
+      ) ||
+      message.includes(
         'client is not assigned'
       )
     ) {
       throw new ApiError(
         403,
-        'This Client is not assigned to the selected Applicant.'
+        'The selected Applicant is no longer assigned to this Client.'
       );
     }
 

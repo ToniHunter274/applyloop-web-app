@@ -5,16 +5,22 @@ import {
   useState,
 } from 'react';
 import {
+  FiBriefcase,
   FiCheck,
   FiCopy,
+  FiDownload,
+  FiFileText,
   FiLink,
   FiPlus,
   FiSearch,
+  FiUpload,
   FiUserCheck,
   FiUsers,
   FiX,
 } from 'react-icons/fi';
 import { createClient } from '../../lib/supabase/client';
+import LinkerWorkAllocationModal from './LinkerWorkAllocationModal';
+import LinkerEmploymentModal from './LinkerEmploymentModal';
 
 const inputClassName =
   'mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
@@ -421,418 +427,6 @@ function AddLinkerModal({
   );
 }
 
-function AssignmentModal({
-  linker,
-  onClose,
-  onChanged,
-  focusApplicantId = null,
-  focusApplicantName = '',
-}) {
-  const [applicants, setApplicants] =
-    useState([]);
-
-  const [search, setSearch] =
-    useState('');
-
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState('');
-
-  const [message, setMessage] =
-    useState('');
-
-  const [
-    changingApplicantId,
-    setChangingApplicantId,
-  ] = useState(null);
-
-  const loadApplicants = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const accessToken =
-        await getAccessToken();
-
-      const response =
-        await fetch(
-          `/api/admin/linkers/${linker.id}/assignments`,
-          {
-            headers: {
-              Authorization:
-                `Bearer ${accessToken}`,
-            },
-          }
-        );
-
-      const result =
-        await response
-          .json()
-          .catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-            'Applicants could not be loaded.'
-        );
-      }
-
-      setApplicants(
-        result.applicants || []
-      );
-    } catch (loadError) {
-      setError(
-        loadError?.message ||
-          'Applicants could not be loaded.'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [linker.id]);
-
-  useEffect(() => {
-    loadApplicants();
-  }, [loadApplicants]);
-
-  const visibleApplicants =
-    useMemo(() => {
-      const query =
-        search
-          .trim()
-          .toLowerCase();
-
-      const candidates =
-        focusApplicantId
-          ? applicants.filter(
-              (applicant) =>
-                applicant.id ===
-                focusApplicantId
-            )
-          : applicants;
-
-      if (!query) {
-        return candidates;
-      }
-
-      return candidates.filter(
-        (applicant) =>
-          [
-            applicant.fullName,
-            applicant.email,
-            applicant.assignedTeam,
-            applicant
-              .currentAssignment
-              ?.linkerName,
-          ].some((value) =>
-            String(value || '')
-              .toLowerCase()
-              .includes(query)
-          )
-      );
-    }, [
-      applicants,
-      search,
-      focusApplicantId,
-    ]);
-
-  const assignApplicant =
-    async (applicant) => {
-      setChangingApplicantId(
-        applicant.id
-      );
-      setError('');
-      setMessage('');
-
-      try {
-        const accessToken =
-          await getAccessToken();
-
-        const response =
-          await fetch(
-            `/api/admin/linkers/${linker.id}/assignments`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization:
-                  `Bearer ${accessToken}`,
-                'Content-Type':
-                  'application/json',
-              },
-              body: JSON.stringify({
-                applicantId:
-                  applicant.id,
-              }),
-            }
-          );
-
-        const result =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ||
-              'The Applicant could not be assigned.'
-          );
-        }
-
-        setMessage(
-          `${applicant.fullName} is now assigned to ${linker.fullName}.`
-        );
-
-        await loadApplicants();
-        onChanged();
-      } catch (assignError) {
-        setError(
-          assignError?.message ||
-            'The Applicant could not be assigned.'
-        );
-      } finally {
-        setChangingApplicantId(
-          null
-        );
-      }
-    };
-
-  const unassignApplicant =
-    async (applicant) => {
-      const assignmentId =
-        applicant
-          .currentAssignment?.id;
-
-      if (!assignmentId) {
-        return;
-      }
-
-      setChangingApplicantId(
-        applicant.id
-      );
-      setError('');
-      setMessage('');
-
-      try {
-        const accessToken =
-          await getAccessToken();
-
-        const response =
-          await fetch(
-            `/api/admin/linkers/${linker.id}/assignments`,
-            {
-              method:
-                'DELETE',
-              headers: {
-                Authorization:
-                  `Bearer ${accessToken}`,
-                'Content-Type':
-                  'application/json',
-              },
-              body: JSON.stringify({
-                assignmentId,
-              }),
-            }
-          );
-
-        const result =
-          await response
-            .json()
-            .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ||
-              'The Applicant could not be unassigned.'
-          );
-        }
-
-        setMessage(
-          `${applicant.fullName} was unassigned from ${linker.fullName}.`
-        );
-
-        await loadApplicants();
-        onChanged();
-      } catch (unassignError) {
-        setError(
-          unassignError?.message ||
-            'The Applicant could not be unassigned.'
-        );
-      } finally {
-        setChangingApplicantId(
-          null
-        );
-      }
-    };
-
-  return (
-    <ModalShell
-      title={`Applicants for ${linker.fullName}`}
-      subtitle="Each Applicant can have one active Linker. Client access will continue to flow through the Applicant's assigned clients."
-      onClose={onClose}
-      disableClose={
-        Boolean(
-          changingApplicantId
-        )
-      }
-    >
-      <div className="p-6 sm:p-8">
-        {focusApplicantId && (
-          <div className="mb-5 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-blue-50 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
-              Coverage intervention
-            </p>
-
-            <p className="mt-1 text-sm font-bold text-slate-900">
-              Assign{' '}
-              {focusApplicantName ||
-                'this Applicant'}{' '}
-              to {linker.fullName}
-            </p>
-
-            <p className="mt-1 text-xs leading-5 text-slate-600">
-              Only the Applicant requiring Linker
-              coverage is shown below.
-            </p>
-          </div>
-        )}
-
-        <div className="relative">
-          <FiSearch className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-          <input
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
-            placeholder="Search Applicants..."
-            className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
-        </div>
-
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-            {message}
-          </div>
-        )}
-
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
-          {isLoading ? (
-            <div className="px-6 py-12 text-center text-sm font-medium text-slate-500">
-              Loading Applicants...
-            </div>
-          ) : visibleApplicants.length ===
-            0 ? (
-            <div className="px-6 py-12 text-center text-sm font-medium text-slate-500">
-              No Applicants found.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-200">
-              {visibleApplicants.map(
-                (applicant) => {
-                  const busy =
-                    changingApplicantId ===
-                    applicant.id;
-
-                  return (
-                    <div
-                      key={
-                        applicant.id
-                      }
-                      className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900">
-                          {
-                            applicant.fullName
-                          }
-                        </p>
-
-                        <p className="mt-1 text-sm text-slate-500">
-                          {
-                            applicant.email
-                          }
-                        </p>
-
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-                            {
-                              applicant.availability
-                            }
-                          </span>
-
-                          {applicant.currentAssignment && (
-                            <span className="rounded-full bg-blue-50 px-2.5 py-1 font-semibold text-blue-700">
-                              Linker:{' '}
-                              {
-                                applicant
-                                  .currentAssignment
-                                  .linkerName
-                              }
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex-shrink-0">
-                        {applicant.isAssignedToThisLinker ? (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() =>
-                              unassignApplicant(
-                                applicant
-                              )
-                            }
-                            className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {busy
-                              ? 'Removing...'
-                              : 'Unassign'}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={
-                              busy ||
-                              !applicant.canAssign
-                            }
-                            onClick={() =>
-                              assignApplicant(
-                                applicant
-                              )
-                            }
-                            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                          >
-                            {applicant
-                              .currentAssignment
-                              ? 'Already Assigned'
-                              : busy
-                                ? 'Assigning...'
-                                : 'Assign'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </ModalShell>
-  );
-}
-
 export default function LinkerManagementPage({
   managementContext = null,
 }) {
@@ -854,8 +448,13 @@ export default function LinkerManagementPage({
   ] = useState(false);
 
   const [
-    assignmentLinker,
-    setAssignmentLinker,
+    workAllocationLinker,
+    setWorkAllocationLinker,
+  ] = useState(null);
+
+  const [
+    employmentLinker,
+    setEmploymentLinker,
   ] = useState(null);
 
   const [refreshKey, setRefreshKey] =
@@ -977,7 +576,11 @@ export default function LinkerManagementPage({
       (total, linker) =>
         total +
         Number(
-          linker.activeAssignments ||
+          (
+                            linker.activeAllocations ??
+                            linker.activeAssignments ??
+                            0
+                          ) ||
             0
         ),
       0
@@ -1025,7 +628,7 @@ export default function LinkerManagementPage({
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Create Linker accounts and connect each Linker to the Applicants they support.
+            Create Linker accounts and allocate flexible Client workloads across one or many eligible Applicants.
           </p>
         </div>
 
@@ -1074,7 +677,7 @@ export default function LinkerManagementPage({
           </p>
 
           <p className="mt-1 text-sm font-medium text-slate-500">
-            Applicant Assignments
+            Active Work Allocations
           </p>
         </div>
       </div>
@@ -1122,7 +725,7 @@ export default function LinkerManagementPage({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
+            <table className="w-full min-w-[920px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-left">
                   <th className="px-6 py-4 text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1182,39 +785,60 @@ export default function LinkerManagementPage({
                       <td className="px-6 py-5">
                         <p className="font-bold text-slate-900">
                           {
-                            linker.activeAssignments
+                            (
+                            linker.activeAllocations ??
+                            linker.activeAssignments ??
+                            0
+                          )
                           }
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          active assignments
+                          active allocations
                         </p>
                       </td>
 
                       <td className="px-6 py-5 text-right">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAssignmentLinker(
-                              linker
-                            )
-                          }
-                          disabled={
-                            isCoverageIntervention &&
-                            linker.accountStatus !==
-                              'active'
-                          }
-                          className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                        >
-                          <FiLink className="h-4 w-4" />
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setWorkAllocationLinker(
+                                linker
+                              )
+                            }
+                            disabled={
+                              isCoverageIntervention &&
+                              linker.accountStatus !==
+                                'active'
+                            }
+                            className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                          >
+                            <FiLink className="h-4 w-4" />
 
-                          {isCoverageIntervention
-                            ? linker.accountStatus ===
-                              'active'
-                              ? 'Assign Applicant'
-                              : 'Linker inactive'
-                            : 'Manage Applicants'}
-                        </button>
+                            {isCoverageIntervention
+                              ? linker.accountStatus ===
+                                'active'
+                                ? 'Create Work Allocation'
+                                : 'Linker inactive'
+                              : 'Work Allocations'}
+                          </button>
+
+                          {!isCoverageIntervention && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEmploymentLinker(
+                                  linker
+                                )
+                              }
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+                            >
+                              <FiBriefcase className="h-4 w-4" />
+                              Employment & NDA
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -1238,9 +862,9 @@ export default function LinkerManagementPage({
         }
       />
 
-      {assignmentLinker && (
-        <AssignmentModal
-          linker={assignmentLinker}
+      {workAllocationLinker && (
+        <LinkerWorkAllocationModal
+          linker={workAllocationLinker}
           focusApplicantId={
             focusApplicantId
           }
@@ -1248,7 +872,24 @@ export default function LinkerManagementPage({
             focusApplicantName
           }
           onClose={() =>
-            setAssignmentLinker(
+            setWorkAllocationLinker(
+              null
+            )
+          }
+          onChanged={() =>
+            setRefreshKey(
+              (current) =>
+                current + 1
+            )
+          }
+        />
+      )}
+
+      {employmentLinker && (
+        <LinkerEmploymentModal
+          linker={employmentLinker}
+          onClose={() =>
+            setEmploymentLinker(
               null
             )
           }
