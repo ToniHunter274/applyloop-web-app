@@ -92,18 +92,6 @@ const APPLICATIONS = [
   { id: 'APP-3419', client: 'InnovateLtd', applicant: 'Michael Brown', resume: 'v2.0', cover: 'Data Analytics Standard', status: 'Pending Review', role: 'Data Analyst' },
 ];
 
-const DASHBOARD_APPLICATIONS = [
-  ['#AND123', 'Feb 10, 2026', 'Apple Inc.', 'Software Dev.', 72, 'Anderson...', 'Offered', 'Client'],
-  ['#AND122', 'Feb 11, 2026', 'Meta', 'Software Dev.', 89, 'N/A', 'Rejected', 'Client'],
-  ['#AND219', 'Feb 13, 2026', 'Paypal', 'Software Dev.', 54, 'Anderson...', 'Interview', 'Finder'],
-  ['#AND111', 'Feb 11, 2026', 'Oracle', 'Software Dev.', 99, 'N/A', 'Rejected', 'Applicant'],
-  ['#AND101', 'Feb 11, 2026', 'Chowdeck', 'Software Dev.', 77, 'Anderson...', 'Pending', 'Finder'],
-  ['#AND102', 'Feb 12, 2026', 'First City', 'Software Dev.', 40, 'Anderson...', 'Pending', 'Finder'],
-  ['#AND105', 'Feb 12, 2026', 'Microsoft', 'Software Dev.', 29, 'Anderson...', 'Pending', 'Finder'],
-  ['#AND219', 'Feb 13, 2026', 'Paypal', 'Software Dev.', 88, 'Anderson...', 'Rejected', 'Applicant'],
-  ['#AND219', 'Feb 13, 2026', 'Paypal', 'Software Dev.', 90, 'Anderson...', 'Interview', 'Applicant'],
-].map(([id, date, company, position, score, cover, status, source]) => ({ id, date, company, position, score, cover, status, source }));
-
 const ESCALATIONS = [
   ['MegaCorp', 'John Doe', 'Overdue application - No progress', '2 days', 'High', '2026-05-18'],
   ['InnovateLtd', 'Michael Brown', 'Quality concerns raised by client', '-', 'Medium', '2026-05-19'],
@@ -212,56 +200,413 @@ function Modal({ title, subtitle, open, onClose, children, footer, wide = false 
   );
 }
 
-function DashboardPage() {
-  const [search, setSearch] = useState('');
-  const rows = useMemo(() => DASHBOARD_APPLICATIONS.filter((item) => !search || Object.values(item).join(' ').toLowerCase().includes(search.toLowerCase())), [search]);
+function DashboardPage({
+  data,
+  isLoading,
+  error,
+}) {
+  if (isLoading) {
+    return (
+      <section className={styles.largePanel}>
+        <h2>Loading team dashboard...</h2>
+        <p>
+          Loading live supervision and
+          performance data.
+        </p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className={styles.largePanel}>
+        <h2>
+          Dashboard could not be loaded
+        </h2>
+
+        <p>{error}</p>
+      </section>
+    );
+  }
+
+  const members =
+    data?.members || [];
+
+  const applicants =
+    members.filter(
+      (member) =>
+        member.roleType ===
+        'Applicant'
+    );
+
+  const linkers =
+    members.filter(
+      (member) =>
+        member.roleType ===
+        'Linker'
+    );
+
+  const activeWork =
+    members.reduce(
+      (total, member) =>
+        total +
+        Number(
+          member.activeWork || 0
+        ),
+      0
+    );
+
+  const completedApplications =
+    applicants.reduce(
+      (total, member) =>
+        total +
+        Number(
+          member.completedWork || 0
+        ),
+      0
+    );
+
+  const sourcedLinks =
+    linkers.reduce(
+      (total, member) =>
+        total +
+        Number(
+          member.completedWork || 0
+        ),
+      0
+    );
+
+  const ratedWorkItems =
+    members.reduce(
+      (total, member) =>
+        total +
+        Number(
+          member.ratingCount || 0
+        ),
+      0
+    );
+
+  const weightedRating =
+    members.reduce(
+      (total, member) =>
+        total +
+        (
+          Number(
+            member.qualityRating || 0
+          ) *
+          Number(
+            member.ratingCount || 0
+          )
+        ),
+      0
+    );
+
+  const teamRating =
+    ratedWorkItems > 0
+      ? weightedRating /
+        ratedWorkItems
+      : 0;
+
+  const availablePersonnel =
+    members.filter(
+      (member) =>
+        [
+          'available',
+          'active',
+        ].includes(
+          String(
+            member.status ||
+            member.accountStatus ||
+            ''
+          ).toLowerCase()
+        )
+    ).length;
+
   return (
     <>
-      <PageHeader search searchValue={search} onSearch={setSearch} />
-      <div className={cn(styles.stats, styles.statsFive)}>
-        <StatCard label="Total Applicants" value="24" foot="+2 from yesterday" />
-        <StatCard label="Total Applications" value="87" foot="+3 from yesterday" />
-        <StatCard label="Complete Today" value="15" foot="+3 from yesterday" />
-        <StatCard label="Overdue Tasks" value="6" foot="2 Urgent" />
-        <StatCard label="Escalations" value="3" foot="2 Urgent" />
+      <div
+        className={cn(
+          styles.stats,
+          styles.statsFive
+        )}
+      >
+        <StatCard
+          label="Team Members"
+          value={members.length}
+          foot={`${applicants.length} Applicant${
+            applicants.length === 1
+              ? ''
+              : 's'
+          } · ${linkers.length} Linker${
+            linkers.length === 1
+              ? ''
+              : 's'
+          }`}
+          icon={FiUsers}
+        />
+
+        <StatCard
+          label="Active Work"
+          value={activeWork}
+          foot="Current team workload"
+          icon={FiBriefcase}
+        />
+
+        <StatCard
+          label="Applications Completed"
+          value={completedApplications}
+          foot="Applicant completed work"
+          icon={FiCheckCircle}
+        />
+
+        <StatCard
+          label="Job Links Sourced"
+          value={sourcedLinks}
+          foot="Linker sourced opportunities"
+          icon={FiLink}
+        />
+
+        <StatCard
+          label="Team Client Rating"
+          value={
+            ratedWorkItems > 0
+              ? `${teamRating.toFixed(
+                  1
+                )}/5.0`
+              : '—'
+          }
+          foot={
+            ratedWorkItems > 0
+              ? `${ratedWorkItems} rated work item${
+                  ratedWorkItems === 1
+                    ? ''
+                    : 's'
+                }`
+              : 'No rated work yet'
+          }
+          icon={FiStar}
+        />
       </div>
+
       <div className={styles.dashboardSplit}>
         <section className={styles.panel}>
-          <h2>Team Activity Feed</h2>
+          <h2>Team Activity</h2>
+
           <div className={styles.activityList}>
-            {Array.from({ length: 4 }, (_, index) => (
-              <div className={styles.activityRow} key={index}>
-                <Avatar />
-                <div><p><strong>Olabanji David</strong> completed 3 applications for StartupHub</p><span>45 min ago</span></div>
-              </div>
-            ))}
+            {members.map(
+              (member) => (
+                <div
+                  className={
+                    styles.activityRow
+                  }
+                  key={member.id}
+                >
+                  <div>
+                    <p>
+                      <strong>
+                        {member.fullName}
+                      </strong>{' '}
+                      · {member.roleType}
+                    </p>
+
+                    <span>
+                      {Number(
+                        member.activeWork ||
+                        0
+                      )}{' '}
+                      active ·{' '}
+                      {Number(
+                        member.completedWork ||
+                        0
+                      )}{' '}
+                      {member.roleType ===
+                      'Linker'
+                        ? 'links sourced'
+                        : 'completed'}
+                    </span>
+                  </div>
+                </div>
+              )
+            )}
+
+            {members.length === 0 && (
+              <p>
+                No personnel are assigned
+                to you yet.
+              </p>
+            )}
           </div>
         </section>
+
         <section className={styles.panel}>
-          <h2>Urgent Alerts</h2>
-          <div className={styles.alertList}>
-            <AlertItem icon={FiAlertCircle} tone="red" title="4 Applications Overdue" text="TechCorp Inc. - 2 days past deadline" action="View" />
-            <AlertItem icon={FiAlertTriangle} tone="yellow" title="Low Quality Flagged" text="2 submissions from Marcus Rodriguez" action="Review" />
-            <AlertItem icon={FiTrendingUp} tone="yellow" title="Quality Score Drop" text="Emily Watson - 15% decrease this week" />
+          <h2>Supervision Snapshot</h2>
+
+          <div className={styles.activityList}>
+            <div className={styles.activityRow}>
+              <div>
+                <p>
+                  <strong>
+                    Applicant Coverage
+                  </strong>
+                </p>
+
+                <span>
+                  {applicants.length}{' '}
+                  assigned Applicant
+                  {applicants.length === 1
+                    ? ''
+                    : 's'}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.activityRow}>
+              <div>
+                <p>
+                  <strong>
+                    Linker Coverage
+                  </strong>
+                </p>
+
+                <span>
+                  {linkers.length}{' '}
+                  assigned Linker
+                  {linkers.length === 1
+                    ? ''
+                    : 's'}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.activityRow}>
+              <div>
+                <p>
+                  <strong>
+                    Available Personnel
+                  </strong>
+                </p>
+
+                <span>
+                  {availablePersonnel} of{' '}
+                  {members.length} currently
+                  available / active
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.activityRow}>
+              <div>
+                <p>
+                  <strong>
+                    Client-Rated Work
+                  </strong>
+                </p>
+
+                <span>
+                  {ratedWorkItems} work item
+                  {ratedWorkItems === 1
+                    ? ''
+                    : 's'}{' '}
+                  rated by Clients
+                </span>
+              </div>
+            </div>
           </div>
         </section>
       </div>
-      <section className={cn(styles.panel, styles.applicationsPanel)}>
-        <h2>Applications Overview</h2>
-        <div className={styles.filters}><span>Filter by:</span><select><option>All Time</option></select><select><option>All Applicants</option></select><select><option>All Clients</option></select></div>
+
+      <section
+        className={cn(
+          styles.panel,
+          styles.applicationsPanel
+        )}
+      >
+        <h2>Personnel Overview</h2>
+
         <div className={styles.tableScroll}>
           <table className={styles.dataTable}>
-            <thead><tr><th>Application ID</th><th>Application Date</th><th>Company Name</th><th>Position</th><th>Quality Score</th><th>Cover Letter</th><th>Status</th><th>Link Source</th></tr></thead>
-            <tbody>{rows.map((item, index) => <tr key={`${item.id}-${index}`}><td>{item.id}</td><td>{item.date}</td><td>{item.company}</td><td>{item.position}</td><td className={cn(styles.score, item.score >= 80 ? styles.scoreGreen : item.score < 50 ? styles.scoreRed : styles.scoreYellow)}>{item.score}%</td><td>{item.cover !== 'N/A' ? <span className={styles.pdfChip}><FiFileText /> {item.cover}</span> : item.cover}</td><td><StatusPill>{item.status}</StatusPill></td><td>{item.source}</td></tr>)}</tbody>
+            <thead>
+              <tr>
+                <th>Team Member</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Active Work</th>
+                <th>Completed / Sourced</th>
+                <th>Client Rating</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {members.map(
+                (member) => {
+                  const ratingCount =
+                    Number(
+                      member.ratingCount ||
+                      0
+                    );
+
+                  return (
+                    <tr key={member.id}>
+                      <td>
+                        <strong>
+                          {member.fullName}
+                        </strong>
+                      </td>
+
+                      <td>
+                        {member.roleType}
+                      </td>
+
+                      <td>
+                        <StatusPill>
+                          {member.status ||
+                            member.accountStatus ||
+                            'Unknown'}
+                        </StatusPill>
+                      </td>
+
+                      <td>
+                        {Number(
+                          member.activeWork ||
+                          0
+                        )}
+                      </td>
+
+                      <td>
+                        {Number(
+                          member.completedWork ||
+                          0
+                        )}
+                      </td>
+
+                      <td>
+                        {ratingCount > 0
+                          ? `${Number(
+                              member.qualityRating ||
+                                0
+                            ).toFixed(
+                              1
+                            )}/5 · ${ratingCount}`
+                          : 'Not rated'}
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
+
+              {members.length === 0 && (
+                <tr>
+                  <td colSpan="6">
+                    No assigned personnel yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </div>
       </section>
     </>
   );
-}
-
-function AlertItem({ icon: Icon, tone, title, text, action }) {
-  return <div className={styles.alertRow}><span className={cn(styles.alertIcon, styles[`alert_${tone}`])}><Icon /></span><div><strong>{title}</strong><p>{text}</p>{action && <button>{action}</button>}</div><StatusPill>High</StatusPill></div>;
 }
 
 function TeamPage({
@@ -1415,7 +1760,17 @@ export default function ChiefApplicantPortal() {
                     )
                   : section === 'settings'
                     ? <SettingsPage />
-                    : <DashboardPage />;
+                    : (
+                        <DashboardPage
+                          data={supervisionData}
+                          isLoading={
+                            isLoadingSupervision
+                          }
+                          error={
+                            supervisionError
+                          }
+                        />
+                      );
 
   return (
     <>
