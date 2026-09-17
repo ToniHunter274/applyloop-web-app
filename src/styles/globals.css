@@ -549,3 +549,500 @@ textarea:focus-visible {
     padding: 24px 20px 40px !important;
   }
 }
+
+/* ============================================================
+   APPLYLOOP PREMIUM WORKSPACE POLISH
+   Shared launch-facing visual language.
+   ============================================================ */
+
+@keyframes applyloopButtonGlance {
+  0%,
+  45% {
+    transform:
+      translateX(-240%)
+      skewX(-18deg);
+    opacity: 0;
+  }
+
+  52% {
+    opacity: 0.85;
+  }
+
+  72% {
+    transform:
+      translateX(520%)
+      skewX(-18deg);
+    opacity: 0;
+  }
+
+  100% {
+    transform:
+      translateX(520%)
+      skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+.applyloop-premium-workspace {
+  background:
+    radial-gradient(
+      circle at 92% 0%,
+      rgba(79, 70, 229, 0.075),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 15% 24%,
+      rgba(37, 99, 235, 0.04),
+      transparent 27%
+    ),
+    #f8fafc;
+}
+
+
+/* Sidebar depth */
+.applyloop-premium-workspace > aside {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fbfdff 55%,
+      #f7f9ff 100%
+    );
+
+  box-shadow:
+    12px 0 34px
+    rgba(15, 23, 42, 0.025);
+}
+
+
+/* Header gradient */
+.applyloop-premium-header {
+  background:
+    linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.985),
+      rgba(249, 251, 255, 0.98) 52%,
+      rgba(244, 247, 255, 0.97)
+    ) !important;
+
+  box-shadow:
+    0 1px 0
+      rgba(148, 163, 184, 0.08),
+    0 8px 28px
+      rgba(15, 23, 42, 0.025);
+}
+
+
+/* Bottom user/profile card */
+.applyloop-premium-profile {
+  background:
+    linear-gradient(
+      135deg,
+      #f9fbff,
+      #f5f7ff 58%,
+      #edf3ff
+    ) !important;
+
+  border:
+    1px solid
+    rgba(191, 219, 254, 0.6);
+
+  box-shadow:
+    0 8px 24px
+    rgba(37, 99, 235, 0.045);
+}
+
+
+/* ------------------------------------------------------------
+   CARDS
+   ------------------------------------------------------------ */
+
+.applyloop-premium-workspace main :is(
+  [class*="statCard"],
+  [class*="performanceCard"],
+  [class*="summaryCard"],
+  [class*="metricCard"],
+  [class*="scoreCard"]
+) {
+  background:
+    linear-gradient(
+      145deg,
+      #ffffff 0%,
+      #fbfcff 56%,
+      #f6f8ff 100%
+    );
+
+  border-color:
+    rgba(203, 213, 225, 0.74);
+
+  box-shadow:
+    0 9px 26px
+    rgba(15, 23, 42, 0.045);
+
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.applyloop-premium-workspace main :is(
+  [class*="statCard"],
+  [class*="performanceCard"],
+  [class*="summaryCard"],
+  [class*="metricCard"],
+  [class*="scoreCard"]
+):hover {
+  transform:
+    translateY(-2px);
+
+  border-color:
+    rgba(147, 197, 253, 0.78);
+
+  box-shadow:
+    0 16px 34px
+    rgba(37, 99, 235, 0.075);
+}
+
+
+/* ------------------------------------------------------------
+   PREMIUM PRIMARY BUTTONS
+   Blue → Indigo gradient + white glance
+   ------------------------------------------------------------ */
+
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class*="primaryButton"],
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-blue-600"],
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-indigo-600"] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      112deg,
+      #1d4ed8 0%,
+      #2563eb 44%,
+      #4f46e5 100%
+    ) !important;
+
+  border-color:
+    rgba(
+      37,
+      99,
+      235,
+      0.36
+    ) !important;
+
+  box-shadow:
+    0 8px 20px
+    rgba(
+      37,
+      99,
+      235,
+      0.2
+    );
+
+  transform:
+    translateY(0);
+
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease !important;
+}
+
+
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class*="primaryButton"]::after,
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-blue-600"]::after,
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-indigo-600"]::after {
+  content: "";
+
+  position: absolute;
+  z-index: 2;
+
+  top: -80%;
+  bottom: -80%;
+  left: -30%;
+
+  width: 18%;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(
+        255,
+        255,
+        255,
+        0
+      ),
+      rgba(
+        255,
+        255,
+        255,
+        0.82
+      ),
+      rgba(
+        255,
+        255,
+        255,
+        0
+      )
+    );
+
+  filter:
+    blur(1px);
+
+  animation:
+    applyloopButtonGlance
+    3.7s ease-in-out
+    infinite;
+}
+
+
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class*="primaryButton"]:hover,
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-blue-600"]:hover,
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-indigo-600"]:hover {
+  transform:
+    translateY(-1px);
+
+  filter:
+    saturate(1.06)
+    brightness(1.035);
+
+  box-shadow:
+    0 13px 27px
+    rgba(
+      37,
+      99,
+      235,
+      0.27
+    );
+}
+
+
+/* Don't animate disabled actions */
+.applyloop-premium-workspace
+button:disabled::after,
+.applyloop-premium-workspace
+[aria-disabled="true"]::after {
+  display: none;
+}
+
+.applyloop-premium-workspace
+button:disabled {
+  transform:
+    none !important;
+
+  box-shadow:
+    none;
+}
+
+
+/* ------------------------------------------------------------
+   SECONDARY ACTIONS
+   ------------------------------------------------------------ */
+
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class*="secondaryButton"]:hover,
+.applyloop-premium-workspace :is(
+  button,
+  a
+)[class~="bg-blue-50"]:hover {
+  box-shadow:
+    0 8px 18px
+    rgba(
+      37,
+      99,
+      235,
+      0.085
+    );
+}
+
+
+/* ------------------------------------------------------------
+   INPUT FOCUS
+   ------------------------------------------------------------ */
+
+.applyloop-premium-workspace :is(
+  input,
+  textarea,
+  select
+):focus {
+  border-color:
+    rgba(
+      37,
+      99,
+      235,
+      0.62
+    );
+
+  box-shadow:
+    0 0 0 4px
+    rgba(
+      59,
+      130,
+      246,
+      0.09
+    );
+}
+
+
+/* ------------------------------------------------------------
+   ACCESSIBILITY
+   ------------------------------------------------------------ */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .applyloop-premium-workspace
+  :is(
+    button,
+    a
+  )::after {
+    animation:
+      none !important;
+  }
+
+  .applyloop-premium-workspace
+  main :is(
+    [class*="statCard"],
+    [class*="performanceCard"],
+    [class*="summaryCard"],
+    [class*="metricCard"],
+    [class*="scoreCard"]
+  ) {
+    transition:
+      none;
+  }
+}
+
+/* ============================================================
+   APPLYLOOP SHARED TABLE TYPOGRAPHY
+   Match workforce tables to the Client workspace scale.
+   ============================================================ */
+
+.applyloop-premium-workspace main table {
+  width: 100%;
+  color: #334155;
+  font-size: 14px;
+}
+
+.applyloop-premium-workspace main table thead th {
+  padding-top: 15px !important;
+  padding-bottom: 15px !important;
+
+  color: #64748b !important;
+
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+
+  letter-spacing: 0.035em;
+
+  vertical-align: middle;
+}
+
+.applyloop-premium-workspace main table tbody td {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+
+  color: #334155;
+
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+
+  vertical-align: middle;
+}
+
+.applyloop-premium-workspace main table tbody td strong {
+  color: #0f172a;
+
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+
+  font-weight: 650;
+}
+
+.applyloop-premium-workspace main table tbody td small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #64748b;
+
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+.applyloop-premium-workspace main table tbody td :is(
+  button,
+  select,
+  input
+) {
+  font-size: 13px !important;
+}
+
+.applyloop-premium-workspace main table tbody tr {
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.applyloop-premium-workspace main table tbody tr:hover {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(239, 246, 255, 0.72),
+      rgba(248, 250, 252, 0.45)
+    );
+}
+
+@media (max-width: 900px) {
+  .applyloop-premium-workspace main table {
+    font-size: 13px;
+  }
+
+  .applyloop-premium-workspace main table tbody td {
+    font-size: 13px !important;
+  }
+
+  .applyloop-premium-workspace main table tbody td strong {
+    font-size: 13px !important;
+  }
+
+  .applyloop-premium-workspace main table tbody td small {
+    font-size: 11px !important;
+  }
+}
+

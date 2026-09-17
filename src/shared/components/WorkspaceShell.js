@@ -80,7 +80,7 @@ export default function WorkspaceShell({
     'ApplyLoop User';
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
+    <div className="applyloop-premium-workspace min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
       {mobileOpen && (
         <button
           type="button"
@@ -167,8 +167,8 @@ export default function WorkspaceShell({
                 }
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
                   active
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100/80'
+                    : 'text-slate-600 hover:bg-blue-50/60 hover:text-blue-700'
                 }`}
               >
                 {Icon && (
@@ -196,7 +196,7 @@ export default function WorkspaceShell({
         </nav>
 
         <div className="border-t border-slate-200 p-4">
-          <div className="rounded-xl bg-slate-50 p-4">
+          <div className="applyloop-premium-profile rounded-xl bg-slate-50 p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
                 {getInitials(
@@ -231,7 +231,7 @@ export default function WorkspaceShell({
       </aside>
 
       <div className="min-w-0 max-w-full lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <header className="applyloop-premium-header sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="flex min-h-24 items-center justify-between gap-4 px-5 py-4 sm:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button

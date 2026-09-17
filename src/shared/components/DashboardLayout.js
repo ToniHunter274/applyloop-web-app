@@ -659,7 +659,7 @@ export default function DashboardLayout({
     };
 
   return (
-    <div className="user-client-compact min-h-screen bg-slate-50 text-slate-900">
+    <div className="applyloop-premium-workspace user-client-compact min-h-screen bg-slate-50 text-slate-900">
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-slate-200/80 bg-white shadow-[0_0_30px_rgba(15,23,42,0.04)] transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-[88px] items-center justify-between border-b border-slate-100 px-6">
@@ -715,7 +715,7 @@ export default function DashboardLayout({
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
                   active
-                    ? 'bg-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/70'
+                    ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/80'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
                 }`}><Icon className="h-4 w-4" />{label}</Link>;
           })}
@@ -735,7 +735,7 @@ export default function DashboardLayout({
             data-tour="support-nav"
             className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
               router.pathname === '/support'
-                ? 'bg-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/70'
+                ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/80'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
             }`}
           >
