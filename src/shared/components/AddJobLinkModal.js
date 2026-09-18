@@ -4,42 +4,35 @@ import { FiSend } from 'react-icons/fi';
 const MAX_JOB_LINKS = 20;
 
 function extractJobLinks(value) {
-  const text = String(value || '');
+  const text =
+    String(value || '');
 
-  const starts = [
-    ...text.matchAll(
-      /https?:\/\//gi
-    ),
-  ];
-
-  return starts
-    .map((match, index) => {
-      const start =
-        match.index ?? 0;
-
-      const next =
-        starts[index + 1];
-
-      const end =
-        next?.index ??
-        text.length;
-
-      const section =
-        text
-          .slice(start, end)
-          .trim();
-
-      const candidate =
-        section
-          .split(/\s+/)[0]
-          .replace(
-            /[),.;\]}"']+$/g,
-            ''
-          );
-
-      return candidate;
-    })
-    .filter(Boolean);
+  return text
+    .split(/\s+/)
+    .map((item) =>
+      item
+        .trim()
+        .replace(
+          /^[<({["']+/g,
+          ''
+        )
+        .replace(
+          /[>)}\]",;']+$/g,
+          ''
+        )
+    )
+    .filter(Boolean)
+    .filter((candidate) =>
+      /^(?:https?:\/\/|\/\/)/i.test(
+        candidate
+      ) ||
+      /^(?:localhost|(?:\d{1,3}\.){3}\d{1,3})(?::\d{1,5})?(?:[/?#]|$)/i.test(
+        candidate
+      ) ||
+      /^(?:[a-z0-9-]+\.)+[a-z]{2,}(?::\d{1,5})?(?:[/?#]|$)/i.test(
+        candidate
+      )
+    );
 }
 
 const AddJobLinkModal = ({
@@ -173,7 +166,7 @@ const AddJobLinkModal = ({
             />
 
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Paste links together — ApplyLoop will separate them automatically.
+              Paste links separated by spaces or new lines — ApplyLoop will separate them automatically.
             </p>
 
             {jobLinksText.trim() &&

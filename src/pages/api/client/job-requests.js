@@ -4,40 +4,21 @@ import { getClientServiceState } from '../../../lib/subscriptions/clientServiceS
 import {
   findDuplicateJobLink,
   normalizeJobLink,
+  validateJobLink,
 } from '../../../lib/jobs/jobLinkDeduplication';
 
 function validateJobUrl(value) {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new ApiError(400, 'A job link is required.');
-  }
-
-  const trimmed = value.trim();
-
-  if (trimmed.length > 2000) {
-    throw new ApiError(400, 'The job link is too long.');
-  }
-
-  let url;
-
   try {
-    url = new URL(trimmed);
-  } catch {
+    return validateJobLink(
+      value
+    );
+  } catch (error) {
     throw new ApiError(
       400,
-      'Please enter a valid job link.'
+      error?.message ||
+        'Please enter a valid job link.'
     );
   }
-
-  if (
-    !['http:', 'https:'].includes(url.protocol)
-  ) {
-    throw new ApiError(
-      400,
-      'Please enter a valid HTTP or HTTPS job link.'
-    );
-  }
-
-  return url.toString();
 }
 
 function validateComment(value) {
@@ -609,10 +590,6 @@ export default async function handler(req, res) {
             : 'links'
         } sent.`
       );
-    } else {
-      messageParts.push(
-        'No new links were sent.'
-      );
     }
 
     if (summary.repeated) {
@@ -639,7 +616,7 @@ export default async function handler(req, res) {
           summary.invalid === 1
             ? 'link'
             : 'links'
-        } ignored.`
+        } rejected.`
       );
     }
 
@@ -654,7 +631,9 @@ export default async function handler(req, res) {
     }
 
     const submissionMessage =
-      messageParts.join(' ');
+      messageParts.length
+        ? messageParts.join(' ')
+        : 'No new links were sent.';
 
     if (
       !createdRequests.length

@@ -1,7 +1,10 @@
 import { ApiError } from '../../../lib/auth/requireAdmin';
 import { requireLinker } from '../../../lib/auth/requireLinker';
 import { getClientServiceState } from '../../../lib/subscriptions/clientServiceState';
-import { findDuplicateJobLink } from '../../../lib/jobs/jobLinkDeduplication';
+import {
+  findDuplicateJobLink,
+  validateJobLink,
+} from '../../../lib/jobs/jobLinkDeduplication';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -23,48 +26,17 @@ function validateId(value, label) {
 }
 
 function validateJobUrl(value) {
-  if (
-    typeof value !== 'string' ||
-    !value.trim()
-  ) {
-    throw new ApiError(
-      400,
-      'A job link is required.'
-    );
-  }
-
-  const normalized = value.trim();
-
-  if (normalized.length > 2000) {
-    throw new ApiError(
-      400,
-      'The job link is too long.'
-    );
-  }
-
-  let url;
-
   try {
-    url = new URL(normalized);
-  } catch {
+    return validateJobLink(
+      value
+    );
+  } catch (error) {
     throw new ApiError(
       400,
-      'Please enter a valid job link.'
+      error?.message ||
+        'Please enter a valid job link.'
     );
   }
-
-  if (
-    !['http:', 'https:'].includes(
-      url.protocol
-    )
-  ) {
-    throw new ApiError(
-      400,
-      'Please enter a valid HTTP or HTTPS job link.'
-    );
-  }
-
-  return url.toString();
 }
 
 function validateComment(value) {
