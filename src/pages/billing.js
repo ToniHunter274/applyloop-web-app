@@ -328,23 +328,8 @@ export default function BillingPage() {
         />
       </Head>
 
-      <DashboardLayout>
+      <DashboardLayout showSearch={false}>
         <div className="max-w-6xl pb-10">
-          <header className="mb-8">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1E50C3]">
-              Account
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-              Billing &amp; Subscription
-            </h1>
-
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Track your subscription
-              status, renewal date and
-              service availability.
-            </p>
-          </header>
 
           {isLoading ? (
             <LoadingState />
@@ -515,18 +500,18 @@ export default function BillingPage() {
               </section>
 
 
-              <section className="rounded-2xl border border-slate-200 bg-slate-950 p-6 text-white">
+              <section className="rounded-2xl border border-blue-100 bg-white p-6 text-slate-900">
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-lg text-blue-700">
                     <FiInfo />
                   </span>
 
                   <div>
-                    <h2 className="text-lg font-bold">
+                    <h2 className="text-lg font-bold text-slate-950">
                       How renewal is handled
                     </h2>
 
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                       Online payment is not
                       connected yet. ApplyLoop
                       records your renewal
@@ -534,7 +519,7 @@ export default function BillingPage() {
                       confirmed.
                     </p>
 
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
                       We will remind you
                       before your renewal
                       date and during the

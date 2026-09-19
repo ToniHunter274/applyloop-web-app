@@ -639,7 +639,7 @@ export default function Settings() {
     );
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showSearch={false}>
       <SEO title="Settings" />
 
       {isLoadingSettings && (

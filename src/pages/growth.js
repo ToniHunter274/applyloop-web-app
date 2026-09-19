@@ -641,7 +641,7 @@ export default function GrowthPage() {
         />
       </Head>
 
-      <DashboardLayout>
+      <DashboardLayout showSearch={false}>
         <div className="max-w-5xl space-y-6">
           {error && (
             <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
