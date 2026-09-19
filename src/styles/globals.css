@@ -1046,3 +1046,446 @@ button:disabled {
   }
 }
 
+
+/* ============================================================
+   APPLYLOOP ADMIN CONTENT SYSTEM
+   Makes workforce and Client pages share the Admin visual language.
+   ============================================================ */
+
+.applyloop-admin-page,
+.user-client-page-surface {
+  --applyloop-admin-border:
+    #e2e8f0;
+
+  --applyloop-admin-muted:
+    #64748b;
+
+  --applyloop-admin-text:
+    #0f172a;
+
+  --applyloop-admin-surface:
+    #ffffff;
+
+  --applyloop-admin-soft:
+    #f8fafc;
+
+  color:
+    var(
+      --applyloop-admin-text
+    );
+}
+
+
+/* ------------------------------------------------------------
+   PAGE CARDS / PANELS
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page :is(
+  [class*="_panel__"],
+  [class*="_card__"],
+  [class*="_tableCard__"],
+  [class*="_clientCard__"],
+  [class*="_recordCard__"],
+  [class*="_settingsCard__"],
+  [class*="_copySection__"],
+  [class*="_formSection__"],
+  [class*="_workshopPanel__"],
+  [class*="_settingsSection__"],
+  [class*="_securityPanel__"],
+  [class*="_uploadCard__"],
+  [class*="_queueHeaderCard__"],
+  [class*="_detailPanel__"],
+  [class*="_auditPanel__"],
+  [class*="_reportCard__"]
+) {
+  border:
+    1px solid
+    var(
+      --applyloop-admin-border
+    ) !important;
+
+  border-radius:
+    16px !important;
+
+  background:
+    var(
+      --applyloop-admin-surface
+    ) !important;
+
+  box-shadow:
+    0 1px 2px
+    rgba(
+      15,
+      23,
+      42,
+      0.035
+    ) !important;
+}
+
+
+/* Client pages mostly use Tailwind cards */
+.user-client-page-surface
+:is(
+  section,
+  article,
+  div
+).rounded-2xl.border.bg-white {
+  border-color:
+    #e2e8f0 !important;
+
+  border-radius:
+    16px !important;
+
+  box-shadow:
+    0 1px 2px
+    rgba(
+      15,
+      23,
+      42,
+      0.035
+    );
+}
+
+
+/* ------------------------------------------------------------
+   TABLE CONTAINERS
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page :is(
+  [class*="_tableWrap__"],
+  [class*="_tableCard__"],
+  [class*="_clientTableWrap__"]
+) {
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    var(
+      --applyloop-admin-border
+    ) !important;
+
+  border-radius:
+    16px !important;
+
+  background:
+    #ffffff !important;
+
+  box-shadow:
+    0 1px 2px
+    rgba(
+      15,
+      23,
+      42,
+      0.03
+    );
+}
+
+
+/* ------------------------------------------------------------
+   TABLES
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page table,
+.user-client-page-surface table {
+  width:
+    100%;
+
+  border-collapse:
+    separate;
+
+  border-spacing:
+    0;
+
+  background:
+    #ffffff;
+
+  color:
+    #334155;
+}
+
+
+.applyloop-admin-page table thead th,
+.user-client-page-surface table thead th {
+  background:
+    #f8fafc !important;
+
+  color:
+    #64748b !important;
+
+  font-size:
+    12px !important;
+
+  font-weight:
+    700 !important;
+
+  letter-spacing:
+    0.035em;
+
+  text-transform:
+    none;
+}
+
+
+.applyloop-admin-page table tbody td,
+.user-client-page-surface table tbody td {
+  border-top:
+    1px solid
+    #f1f5f9;
+
+  color:
+    #334155;
+
+  font-size:
+    14px !important;
+}
+
+
+.applyloop-admin-page table tbody tr:hover,
+.user-client-page-surface table tbody tr:hover {
+  background:
+    #f8fafc !important;
+}
+
+
+/* ------------------------------------------------------------
+   FILTERS / TOOLBARS
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page :is(
+  [class*="_filters__"],
+  [class*="_filtersCard__"],
+  [class*="_toolbar__"],
+  [class*="_libraryToolbar__"],
+  [class*="_clientToolbar__"],
+  [class*="_pageToolbar__"]
+) {
+  border:
+    1px solid
+    #e2e8f0 !important;
+
+  border-radius:
+    14px !important;
+
+  background:
+    #ffffff !important;
+
+  box-shadow:
+    0 1px 2px
+    rgba(
+      15,
+      23,
+      42,
+      0.025
+    );
+}
+
+
+/* ------------------------------------------------------------
+   FORM CONTROLS
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page
+input:not(
+  [type="checkbox"]
+):not(
+  [type="radio"]
+):not(
+  [type="range"]
+),
+.applyloop-admin-page
+select,
+.applyloop-admin-page
+textarea,
+.user-client-page-surface
+input:not(
+  [type="checkbox"]
+):not(
+  [type="radio"]
+):not(
+  [type="range"]
+),
+.user-client-page-surface
+select,
+.user-client-page-surface
+textarea {
+  border:
+    1px solid
+    #cbd5e1 !important;
+
+  border-radius:
+    12px !important;
+
+  background:
+    #ffffff;
+
+  color:
+    #334155;
+
+  font-family:
+    inherit;
+
+  font-size:
+    14px !important;
+
+  box-shadow:
+    none;
+}
+
+
+.applyloop-admin-page
+input:not(
+  [type="checkbox"]
+):not(
+  [type="radio"]
+):not(
+  [type="range"]
+),
+.applyloop-admin-page
+select,
+.user-client-page-surface
+input:not(
+  [type="checkbox"]
+):not(
+  [type="radio"]
+):not(
+  [type="range"]
+),
+.user-client-page-surface
+select {
+  min-height:
+    42px;
+}
+
+
+.applyloop-admin-page
+textarea,
+.user-client-page-surface
+textarea {
+  line-height:
+    1.55;
+}
+
+
+.applyloop-admin-page
+:is(
+  input,
+  select,
+  textarea
+):focus,
+.user-client-page-surface
+:is(
+  input,
+  select,
+  textarea
+):focus {
+  border-color:
+    #93c5fd !important;
+
+  outline:
+    none;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(
+      59,
+      130,
+      246,
+      0.09
+    ) !important;
+}
+
+
+/* ------------------------------------------------------------
+   HEADINGS
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page :is(
+  [class*="_sectionTitle__"],
+  [class*="_tableSectionTitle__"],
+  [class*="_settingsSectionTitle__"],
+  [class*="_profileSectionTitle__"]
+) {
+  color:
+    #0f172a !important;
+
+  font-size:
+    15px !important;
+
+  font-weight:
+    700 !important;
+
+  letter-spacing:
+    -0.01em;
+}
+
+
+.applyloop-admin-page :is(
+  [class*="_tableHeading__"],
+  [class*="_sectionHead__"],
+  [class*="_panelHeading__"]
+) :is(
+  h2,
+  h3
+) {
+  color:
+    #0f172a;
+
+  font-size:
+    16px;
+
+  font-weight:
+    700;
+
+  letter-spacing:
+    -0.015em;
+}
+
+
+/* ------------------------------------------------------------
+   EMPTY / STATUS STATES
+   ------------------------------------------------------------ */
+
+.applyloop-admin-page :is(
+  [class*="_emptyState__"],
+  [class*="_clientEmpty__"],
+  [class*="_feedbackEmpty__"],
+  [class*="_figmaTableEmpty__"],
+  [class*="_applicantTableEmpty__"],
+  [class*="_statusPanel__"],
+  [class*="_errorPanel__"]
+) {
+  border-radius:
+    16px !important;
+
+  border-color:
+    #e2e8f0 !important;
+
+  background:
+    #ffffff !important;
+}
+
+
+/* ------------------------------------------------------------
+   RESPONSIVE CONSISTENCY
+   ------------------------------------------------------------ */
+
+@media (
+  max-width:
+  900px
+) {
+  .applyloop-admin-page,
+  .user-client-page-surface {
+    font-size:
+      14px;
+  }
+
+  .applyloop-admin-page
+  table tbody td,
+  .user-client-page-surface
+  table tbody td {
+    font-size:
+      13px !important;
+  }
+}
+

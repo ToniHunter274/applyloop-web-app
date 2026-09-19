@@ -167,8 +167,8 @@ export default function WorkspaceShell({
                 }
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
                   active
-                    ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100/80'
-                    : 'text-slate-600 hover:bg-blue-50/60 hover:text-blue-700'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 {Icon && (
@@ -282,7 +282,9 @@ export default function WorkspaceShell({
         <main className="min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
           <WorkspaceAnnouncements />
 
-          {children}
+          <div className="applyloop-admin-page">
+            {children}
+          </div>
         </main>
       </div>
     </div>

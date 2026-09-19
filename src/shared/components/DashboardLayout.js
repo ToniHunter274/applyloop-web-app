@@ -660,9 +660,9 @@ export default function DashboardLayout({
 
   return (
     <div className="applyloop-premium-workspace user-client-compact min-h-screen bg-slate-50 text-slate-900">
-      {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/35 md:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-slate-200/80 bg-white shadow-[0_0_30px_rgba(15,23,42,0.04)] transition-transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-        <div className="flex h-[88px] items-center justify-between border-b border-slate-100 px-6">
+      {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+        <div className="flex h-24 items-center justify-between border-b border-slate-200 px-6">
           <Link
             href={
               isClientPreview
@@ -679,16 +679,23 @@ export default function DashboardLayout({
             <img
               src="/logo.svg"
               alt="ApplyLoop"
-              className="h-8 w-8"
+              className="h-12 w-12 rounded-xl object-cover"
             />
-            <span className="text-base font-bold tracking-tight text-slate-950">
-              ApplyLoop
-            </span>
+
+            <div className="min-w-0">
+              <p className="truncate text-xl font-bold tracking-tight text-slate-950">
+                ApplyLoop
+              </p>
+
+              <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
+                Client Workspace
+              </p>
+            </div>
           </Link>
-          <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-500 md:hidden"><FiX /></button>
+          <button onClick={() => setMobileOpen(false)} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 lg:hidden"><FiX /></button>
         </div>
 
-        <nav className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
+        <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
           {navItems.map(({ icon: Icon, label, href, tour }) => {
             const active =
               router.pathname === href ||
@@ -713,11 +720,11 @@ export default function DashboardLayout({
                 href={targetHref}
                 data-tour={tour}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
+                className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
                   active
-                    ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/80'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
-                }`}><Icon className="h-4 w-4" />{label}</Link>;
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}><Icon className="h-5 w-5" />{label}</Link>;
           })}
         </nav>
         <div className="shrink-0 border-t border-slate-100 p-4">
@@ -733,10 +740,10 @@ export default function DashboardLayout({
                 : '/support'
             }
             data-tour="support-nav"
-            className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
+            className={`mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition ${
               router.pathname === '/support'
-                ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100/80'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             <FiHelpCircle />
@@ -750,7 +757,7 @@ export default function DashboardLayout({
                   (value) => !value
                 )
               }
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
+              className="applyloop-premium-profile flex w-full items-center gap-3 rounded-xl bg-slate-50 p-4 text-left transition hover:bg-slate-100"
             >
               <Avatar
                 name={displayUser?.name}
@@ -796,10 +803,31 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <div className="md:pl-[264px]">
-        <header className="user-client-compact-header sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-xl">
-          <div className="flex min-h-[88px] items-center justify-between gap-4 px-5 sm:px-7 lg:px-9">
-            <div className="flex min-w-0 items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 md:hidden"><FiMenu className="h-[18px] w-[18px]" /></button><div className="min-w-0"><h1 className="truncate text-xl font-bold tracking-[-0.025em] text-slate-950 lg:text-2xl">{title}</h1><p className="mt-1 hidden truncate text-sm text-slate-500 sm:block">{subtitle}</p></div></div>
+      <div className="min-w-0 max-w-full lg:pl-64">
+        <header className="applyloop-premium-header user-client-compact-header sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div className="flex min-h-24 items-center justify-between gap-4 px-5 py-4 sm:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                onClick={() => setMobileOpen(true)}
+                className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm lg:hidden"
+              >
+                <FiMenu className="h-5 w-5" />
+              </button>
+
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">
+                  Client
+                </p>
+
+                <h1 className="mt-1 truncate text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+                  {title}
+                </h1>
+
+                <p className="mt-1 hidden truncate text-sm text-slate-500 sm:block">
+                  {subtitle}
+                </p>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               {showSearch && (
                 <form
@@ -958,7 +986,7 @@ export default function DashboardLayout({
             </div>
           </div>
         </header>
-        <main className="user-client-compact-main mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+        <main className="user-client-compact-main min-w-0 max-w-full overflow-x-hidden px-5 py-9 sm:px-8 lg:py-10">
           {isClientPreview && (
             <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div>
