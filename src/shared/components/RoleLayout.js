@@ -45,7 +45,7 @@ export default function RoleLayout({ role, children, actions }) {
         <title>{title} | ApplyLoop</title>
         <meta name="description" content={subtitle} />
       </Head>
-      <div className="role-compact min-h-screen bg-[#e8eefc] text-slate-900">
+      <div className="applyloop-glance-scope role-compact min-h-screen bg-[#e8eefc] text-slate-900">
         {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-30 bg-slate-950/35 lg:hidden" onClick={() => setMobileOpen(false)} />}
 
         <aside className={`fixed inset-y-0 left-0 z-40 flex w-[235px] flex-col border-r border-slate-200 bg-white transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>

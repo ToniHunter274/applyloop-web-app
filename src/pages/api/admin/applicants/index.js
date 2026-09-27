@@ -82,7 +82,7 @@ function validateActiveTasks(value) {
   if (!normalized) {
     throw new ApiError(
       400,
-      'Active Tasks is required.'
+      'Daily Application Target is required.'
     );
   }
 
@@ -94,7 +94,7 @@ function validateActiveTasks(value) {
   ) {
     throw new ApiError(
       400,
-      'Active Tasks must be a whole number of 1 or more.'
+      'Daily Application Target must be a whole number of 1 or more.'
     );
   }
 

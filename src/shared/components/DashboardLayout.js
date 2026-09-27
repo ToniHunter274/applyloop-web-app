@@ -659,7 +659,7 @@ export default function DashboardLayout({
     };
 
   return (
-    <div className="applyloop-premium-workspace user-client-compact min-h-screen bg-slate-50 text-slate-900">
+    <div className="applyloop-glance-scope applyloop-premium-workspace user-client-compact min-h-screen bg-slate-50 text-slate-900">
       {mobileOpen && <button className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="flex h-24 items-center justify-between border-b border-slate-200 px-6">

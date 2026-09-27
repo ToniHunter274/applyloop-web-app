@@ -25,7 +25,6 @@ import styles from './LinkerPortal.module.css';
 
 const validSections = new Set([
   'dashboard',
-  'clients',
   'applicants',
   'record-link',
   'job-links',

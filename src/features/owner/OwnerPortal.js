@@ -1298,6 +1298,26 @@ export function ApplicantsManagementPage({
     savingAvailabilityApplicantId,
     setSavingAvailabilityApplicantId,
   ] = useState(null);
+
+  const [
+    targetApplicant,
+    setTargetApplicant,
+  ] = useState(null);
+
+  const [
+    targetDraft,
+    setTargetDraft,
+  ] = useState('');
+
+  const [
+    isSavingTarget,
+    setIsSavingTarget,
+  ] = useState(false);
+
+  const [
+    targetError,
+    setTargetError,
+  ] = useState('');
   const [
     chatApplicant,
     setChatApplicant,
@@ -1897,6 +1917,119 @@ export function ApplicantsManagementPage({
       }
     };
 
+  const saveDailyApplicationTarget =
+    async () => {
+      if (!targetApplicant) {
+        return;
+      }
+
+      const nextTarget =
+        Number(targetDraft);
+
+      if (
+        !Number.isInteger(
+          nextTarget
+        ) ||
+        nextTarget < 1
+      ) {
+        setTargetError(
+          'Enter a whole number of 1 or more.'
+        );
+        return;
+      }
+
+      setIsSavingTarget(true);
+      setTargetError('');
+      setListError('');
+
+      try {
+        const accessToken =
+          await getOwnerAccessToken();
+
+        const response =
+          await fetch(
+            `/api/admin/applicants/${targetApplicant.id}/target`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                dailyApplicationTarget:
+                  nextTarget,
+              }),
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The Daily Application Target could not be updated.'
+          );
+        }
+
+        const savedTarget =
+          Number(
+            result.applicant
+              ?.activeTasks ||
+              nextTarget
+          );
+
+        setApplicants(
+          (current) =>
+            current.map(
+              (applicant) =>
+                applicant.id ===
+                targetApplicant.id
+                  ? {
+                      ...applicant,
+                      activeTasks:
+                        savedTarget,
+                    }
+                  : applicant
+            )
+        );
+
+        setStatsApplicant(
+          (current) =>
+            current?.id ===
+            targetApplicant.id
+              ? {
+                  ...current,
+                  activeTasks:
+                    savedTarget,
+                }
+              : current
+        );
+
+        setTargetApplicant(
+          null
+        );
+
+        setTargetDraft('');
+        setTargetError('');
+      } catch (error) {
+        setTargetError(
+          error?.message ||
+            'The Daily Application Target could not be updated.'
+        );
+      } finally {
+        setIsSavingTarget(
+          false
+        );
+      }
+    };
+
   const updateApplicantAccountStatus = async () => {
     if (!statusApplicant) {
       return;
@@ -2356,7 +2489,7 @@ export function ApplicantsManagementPage({
       tone: 'green',
     },
     {
-      label: 'AVG COMPLETION RATE',
+      label: 'AVG TARGET COMPLETION',
       value:
         averageCompletionRate === 0
           ? '0%'
@@ -2602,9 +2735,9 @@ export function ApplicantsManagementPage({
                         'TEAM MEMBER',
                         'ASSIGNED CLIENTS',
                         'STATUS',
-                        'ACTIVE TASKS',
+                        'DAILY APPLICATION TARGET',
                         'CLIENT RATING',
-                        'COMPLETION RATE',
+                        'AVG TARGET COMPLETION',
                         'ACTION',
                       ].map((heading) => (
                         <th
@@ -2835,9 +2968,31 @@ export function ApplicantsManagementPage({
                             </td>
 
                             <td className="px-5 py-5">
-                              <span className="inline-flex min-w-[44px] items-center justify-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTargetApplicant(
+                                    applicant
+                                  );
+
+                                  setTargetDraft(
+                                    String(
+                                      applicant.activeTasks ||
+                                        ''
+                                    )
+                                  );
+
+                                  setTargetError(
+                                    ''
+                                  );
+                                }}
+                                title="Edit Daily Application Target"
+                                className="inline-flex min-w-[58px] items-center justify-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
+                              >
                                 {applicant.activeTasks}
-                              </span>
+
+                                <FiEdit2 className="h-3.5 w-3.5" />
+                              </button>
                             </td>
 
                             <td className="px-5 py-5">
@@ -3654,6 +3809,104 @@ export function ApplicantsManagementPage({
               )}
             </div>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(
+          targetApplicant
+        )}
+        onClose={() => {
+          if (!isSavingTarget) {
+            setTargetApplicant(
+              null
+            );
+
+            setTargetDraft('');
+            setTargetError('');
+          }
+        }}
+        title="Daily Application Target"
+        subtitle={
+          targetApplicant
+            ?.fullName ||
+          'Applicant'
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="text-sm font-semibold text-slate-700">
+              Applications expected per working day
+            </label>
+
+            <input
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={
+                targetDraft
+              }
+              onChange={
+                (event) => {
+                  setTargetDraft(
+                    event.target
+                      .value
+                  );
+
+                  setTargetError(
+                    ''
+                  );
+                }
+              }
+              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              This controls the Applicant&apos;s Daily Application Pipeline and target-completion calculations.
+            </p>
+          </div>
+
+          {targetError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {targetError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
+            <button
+              type="button"
+              onClick={() => {
+                setTargetApplicant(
+                  null
+                );
+
+                setTargetDraft('');
+                setTargetError('');
+              }}
+              disabled={
+                isSavingTarget
+              }
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                saveDailyApplicationTarget
+              }
+              disabled={
+                isSavingTarget
+              }
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSavingTarget
+                ? 'Saving...'
+                : 'Save Target'}
+            </button>
+          </div>
         </div>
       </Modal>
 
@@ -6250,7 +6503,7 @@ export function AddNewApplicantModal({
               />
 
               <label className="text-sm font-semibold text-slate-700">
-                Active Tasks
+                Daily Application Target
                 <span className="ml-1 text-red-500">
                   *
                 </span>
@@ -6394,7 +6647,7 @@ function WorkerPerformanceModal({
 
   const metrics = [
     {
-      label: 'Active Tasks',
+      label: 'Daily Application Target',
       value: String(
         applicant.activeTasks || 0
       ),
@@ -6407,7 +6660,7 @@ function WorkerPerformanceModal({
         'text-blue-700',
     },
     {
-      label: 'Completion Rate',
+      label: 'Average Target Completion',
       value: `${completionRate.toFixed(
         1
       )}%`,

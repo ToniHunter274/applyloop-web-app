@@ -128,7 +128,7 @@ async function requireApplicant(req) {
     error: applicantError,
   } = await supabase
     .from('applicants')
-    .select('id, user_id')
+    .select('id, user_id, active_tasks')
     .eq('user_id', user.id)
     .single();
 
@@ -180,6 +180,9 @@ async function getClients(req, res) {
         ) || {};
 
   const performance = {
+    dailyTarget: Number(
+      applicant.active_tasks || 0
+    ),
     completedTasks: Number(
       performanceRow.completed_tasks ||
         0

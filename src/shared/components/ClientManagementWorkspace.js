@@ -1897,6 +1897,7 @@ function ClientServiceTeamPanel({
                             {!applicant.linker ? (
                               <button
                                 type="button"
+                                data-no-glance
                                 onClick={() =>
                                   intervene(
                                     'linkers',
@@ -2855,7 +2856,7 @@ export default function ClientManagementWorkspace({
     <>
       <section
         className={cn(
-          'mx-auto w-full min-w-0 max-w-full',
+          'client-management-explicit-glance mx-auto w-full min-w-0 max-w-full',
           mode === 'owner' && 'pt-6 sm:pt-8'
         )}
       >

@@ -138,7 +138,6 @@ export const ROLE_NAVIGATION = {
   ]),
   [USER_ROLES.LINKER]: withBase('linker', [
     { label: 'Dashboard', href: '', icon: FiHome },
-    { label: 'Assigned Clients', href: 'clients', icon: FiBriefcase },
     { label: 'Assigned Applicants', href: 'applicants', icon: FiUsers },
     { label: 'Send Job Link', href: 'record-link', icon: FiLink },
     { label: 'Job Links', href: 'job-links', icon: FiLink },
@@ -271,7 +270,6 @@ export const ROLE_PAGE_META = {
   },
   [USER_ROLES.LINKER]: {
     dashboard: ['Dashboard', 'Review assigned work and sent job links.'],
-    clients: ['Assigned Clients', 'Review clients assigned to your Linker workspace.'],
     applicants: ['Assigned Applicants', 'Review applicants connected to your assignments.'],
     'record-link': ['Send Job Link', 'Send a verified employer opportunity to an assigned Applicant for a Client.'],
     'job-links': ['Job Links', 'Track every job link you have sent and its Applicant progress.'],

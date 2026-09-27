@@ -91,8 +91,8 @@ export default function WorkspaceAnnouncements() {
   ] = useState([]);
 
   const [
-    dismissed,
-    setDismissed,
+    collapsed,
+    setCollapsed,
   ] = useState([]);
 
   useEffect(() => {
@@ -141,9 +141,7 @@ export default function WorkspaceAnnouncements() {
                 () => ({})
               );
 
-          if (
-            !response.ok
-          ) {
+          if (!response.ok) {
             return;
           }
 
@@ -184,28 +182,38 @@ export default function WorkspaceAnnouncements() {
     };
   }, []);
 
-  const visible =
-    announcements.filter(
-      (announcement) =>
-        !dismissed.includes(
-          announcement.id
-        )
-    );
-
   if (
-    visible.length === 0
+    announcements.length ===
+    0
   ) {
     return null;
   }
 
+  const expanded =
+    announcements.filter(
+      (announcement) =>
+        !collapsed.includes(
+          announcement.id
+        )
+    );
+
+  const collapsedItems =
+    announcements.filter(
+      (announcement) =>
+        collapsed.includes(
+          announcement.id
+        )
+    );
+
+  const ticker =
+    collapsedItems[0] || null;
+
   return (
     <div className="mb-7 space-y-3">
-      {visible
+      {expanded
         .slice(0, 3)
         .map(
-          (
-            announcement
-          ) => {
+          (announcement) => {
             const tone =
               TONES[
                 announcement.tone
@@ -234,7 +242,9 @@ export default function WorkspaceAnnouncements() {
                       <p
                         className={`text-[10px] font-bold uppercase tracking-[0.14em] ${tone.meta}`}
                       >
-                        {tone.label}
+                        {
+                          tone.label
+                        }
                       </p>
 
                       <span className="text-[10px] text-slate-400">
@@ -261,16 +271,20 @@ export default function WorkspaceAnnouncements() {
 
                 <button
                   type="button"
-                  aria-label="Dismiss announcement"
-                  title="Dismiss"
+                  data-no-glance
+                  aria-label="Collapse announcement"
+                  title="Collapse to ticker"
                   onClick={() =>
-                    setDismissed(
-                      (
-                        current
-                      ) => [
-                        ...current,
-                        announcement.id,
-                      ]
+                    setCollapsed(
+                      (current) =>
+                        current.includes(
+                          announcement.id
+                        )
+                          ? current
+                          : [
+                              ...current,
+                              announcement.id,
+                            ]
                     )
                   }
                   className="absolute right-3 top-3 rounded-lg p-1.5 opacity-50 transition hover:bg-white/60 hover:opacity-100"
@@ -281,6 +295,47 @@ export default function WorkspaceAnnouncements() {
             );
           }
         )}
+
+      {ticker && (
+        <button
+          type="button"
+          data-no-glance
+          title="Click to expand update"
+          onClick={() =>
+            setCollapsed(
+              (current) =>
+                current.filter(
+                  (id) =>
+                    id !==
+                    ticker.id
+                )
+            )
+          }
+          className="block w-full overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700">
+              Update
+            </span>
+
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <span
+                className="inline-block min-w-max whitespace-nowrap text-xs font-medium text-slate-600"
+                style={{
+                  animation:
+                    'applyloopAnnouncementTicker 24s linear infinite',
+                }}
+              >
+                {ticker.title}
+                {'  —  '}
+                {ticker.message}
+                {'     •     '}
+                Click to expand
+              </span>
+            </div>
+          </div>
+        </button>
+      )}
     </div>
   );
 }

@@ -50,6 +50,7 @@ import styles from './ApplicantPortal.module.css';
 const classNames = (...values) => values.filter(Boolean).join(' ');
 
 const EMPTY_APPLICANT_PERFORMANCE = {
+  dailyTarget: 0,
   completedTasks: 0,
   clientSatisfaction: 0,
   ratingCount: 0,
@@ -511,12 +512,44 @@ function Dashboard({
   applications,
   applicationTotal,
   clients,
+  performance =
+    EMPTY_APPLICANT_PERFORMANCE,
   onChangeRecord,
   onOpenApplication,
   readOnly = false,
 }) {
-  const [search, setSearch] = useState('');
-  const [clientFilter, setClientFilter] = useState('');
+  const [
+    search,
+    setSearch,
+  ] = useState('');
+
+  const [
+    clientFilter,
+    setClientFilter,
+  ] = useState('');
+
+  const dailyTarget =
+    Number(
+      performance.dailyTarget || 0
+    );
+
+  const todayCompleted =
+    Number(
+      performance.todayCompleted || 0
+    );
+
+  const todayCompletionRate =
+    Number(
+      performance.todayCompletionRate ||
+        0
+    );
+
+  const remainingToday =
+    Math.max(
+      0,
+      dailyTarget -
+        todayCompleted
+    );
 
   return (
     <>
@@ -529,11 +562,19 @@ function Dashboard({
         showHeading={false}
         showNotification={false}
       />
-      <div className={styles.statsGrid}>
+
+      <div
+        className={
+          styles.statsGrid
+        }
+      >
         <StatCard
           label="Total Clients"
-          value={clients.length}
+          value={
+            clients.length
+          }
         />
+
         <StatCard
           label="Active Clients"
           value={
@@ -544,38 +585,205 @@ function Dashboard({
             ).length
           }
         />
+
         <StatCard
           label="Completed Applications"
-          value={applicationTotal}
+          value={
+            applicationTotal
+          }
         />
+
         <StatCard
           label="Client Feedback"
           value={
             clients.reduce(
-              (total, client) =>
+              (
+                total,
+                client
+              ) =>
                 total +
                 Number(
-                  client.feedbacks || 0
+                  client.feedbacks ||
+                    0
                 ),
               0
             )
           }
         />
       </div>
-      <div className={styles.sectionTitleRow}>
-        <h2 className={styles.sectionTitle}>All Assigned Clients</h2>
-        <select className={styles.selectPlain} value={clientFilter} onChange={(event) => setClientFilter(event.target.value)}>
-          <option value="">Select Client</option>
-          {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+
+      <section className="mb-7 mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-950">
+              Daily Application Pipeline
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Track today&apos;s Application workload against your daily target.
+            </p>
+          </div>
+
+          <div className="text-left sm:text-right">
+            <strong className="block text-2xl font-bold text-slate-950">
+              {todayCompletionRate.toFixed(
+                1
+              )}
+              %
+            </strong>
+
+            <span className="text-xs text-slate-500">
+              today&apos;s target completion
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-[#1E50C3] transition-all"
+            style={{
+              width:
+                `${Math.min(
+                  100,
+                  todayCompletionRate
+                )}%`,
+            }}
+          />
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Daily Target
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-slate-950">
+              {dailyTarget > 0
+                ? dailyTarget
+                : '—'}
+            </strong>
+
+            <small className="mt-1 block text-xs text-slate-400">
+              Applications expected today
+            </small>
+          </div>
+
+          <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+              Completed Today
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-blue-800">
+              {todayCompleted}
+            </strong>
+
+            <small className="mt-1 block text-xs text-blue-500">
+              Applications recorded today
+            </small>
+          </div>
+
+          <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              Remaining Today
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-amber-800">
+              {dailyTarget > 0
+                ? remainingToday
+                : '—'}
+            </strong>
+
+            <small className="mt-1 block text-xs text-amber-600">
+              Applications still needed
+            </small>
+          </div>
+
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              Today&apos;s Progress
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-emerald-800">
+              {todayCompletionRate.toFixed(
+                1
+              )}
+              %
+            </strong>
+
+            <small className="mt-1 block text-xs text-emerald-600">
+              {dailyTarget > 0
+                ? `${todayCompleted} of ${dailyTarget} completed`
+                : 'No daily target configured'}
+            </small>
+          </div>
+        </div>
+      </section>
+
+      <div
+        className={
+          styles.sectionTitleRow
+        }
+      >
+        <h2
+          className={
+            styles.sectionTitle
+          }
+        >
+          All Assigned Clients
+        </h2>
+
+        <select
+          className={
+            styles.selectPlain
+          }
+          value={
+            clientFilter
+          }
+          onChange={
+            (event) =>
+              setClientFilter(
+                event.target.value
+              )
+          }
+        >
+          <option value="">
+            Select Client
+          </option>
+
+          {clients.map(
+            (client) => (
+              <option
+                key={
+                  client.id
+                }
+                value={
+                  client.id
+                }
+              >
+                {client.name}
+              </option>
+            )
+          )}
         </select>
       </div>
+
       <ApplicationTable
-        records={applications}
+        records={
+          applications
+        }
         search={search}
-        clientFilter={clientFilter}
-        onChangeRecord={onChangeRecord}
-        onOpen={onOpenApplication}
-        readOnly={readOnly}
+        clientFilter={
+          clientFilter
+        }
+        onChangeRecord={
+          onChangeRecord
+        }
+        onOpen={
+          onOpenApplication
+        }
+        readOnly={
+          readOnly
+        }
       />
     </>
   );
@@ -1588,30 +1796,52 @@ function WorkshopPage({
     useState('');
   const [jobDescription, setJobDescription] =
     useState('');
+
   const [resumeStatus, setResumeStatus] =
     useState('');
   const [isOpeningResume, setIsOpeningResume] =
     useState(false);
+
   const [
     isGeneratingTailoredResume,
     setIsGeneratingTailoredResume,
   ] = useState(false);
+
   const [
     tailoredResume,
     setTailoredResume,
   ] = useState('');
+
   const [
     tailoredResumePreviewUrl,
     setTailoredResumePreviewUrl,
   ] = useState('');
+
   const [
     tailoredResumeFingerprint,
     setTailoredResumeFingerprint,
   ] = useState('');
+
   const [
     resumeGenerationError,
     setResumeGenerationError,
   ] = useState('');
+
+  const [
+    resumePreviewOpen,
+    setResumePreviewOpen,
+  ] = useState(false);
+
+  const [
+    resumeReviewPromptOpen,
+    setResumeReviewPromptOpen,
+  ] = useState(false);
+
+  const [
+    resumeReviewed,
+    setResumeReviewed,
+  ] = useState(false);
+
   const [
     activeJobRequestId,
     setActiveJobRequestId,
@@ -1643,7 +1873,10 @@ function WorkshopPage({
   const activeJobRequests =
     selectedClientJobRequests.filter(
       (request) =>
-        ['new', 'in_review'].includes(
+        [
+          'new',
+          'in_review',
+        ].includes(
           request.status
         )
     );
@@ -1712,7 +1945,10 @@ function WorkshopPage({
 
     if (
       !handoffRequest ||
-      !['new', 'in_review'].includes(
+      ![
+        'new',
+        'in_review',
+      ].includes(
         handoffRequest.status
       )
     ) {
@@ -1727,23 +1963,23 @@ function WorkshopPage({
     );
 
     setCompanyName(
-      handoffRequest
-        .jobCompany || ''
+      handoffRequest.jobCompany ||
+        ''
     );
 
     setPosition(
-      handoffRequest
-        .jobPosition || ''
+      handoffRequest.jobPosition ||
+        ''
     );
 
     setJobLocation(
-      handoffRequest
-        .jobLocation || ''
+      handoffRequest.jobLocation ||
+        ''
     );
 
     setJobUrl(
-      handoffRequest
-        .jobLink || ''
+      handoffRequest.jobLink ||
+        ''
     );
 
     setJobDescription('');
@@ -1757,6 +1993,9 @@ function WorkshopPage({
     setTailoredResumePreviewUrl('');
     setTailoredResumeFingerprint('');
     setResumeGenerationError('');
+    setResumePreviewOpen(false);
+    setResumeReviewPromptOpen(false);
+    setResumeReviewed(false);
 
     if (
       handoffRequest.status ===
@@ -1788,10 +2027,12 @@ function WorkshopPage({
     Boolean(
       selectedClient &&
         Number(
-          selectedClient.applications || 0
+          selectedClient.applications ||
+            0
         ) >=
           Number(
-            selectedClient.applicationLimit || 0
+            selectedClient.applicationLimit ||
+              0
           )
     );
 
@@ -1805,16 +2046,6 @@ function WorkshopPage({
       jobDescription.trim(),
     ]);
 
-  const canGenerateTailoredResume =
-    Boolean(
-      selectedClient?.hasResume &&
-      companyName.trim() &&
-      position.trim() &&
-      jobDescription.trim().length >= 80 &&
-      !isPreview &&
-      !isGeneratingTailoredResume
-    );
-
   const tailoredResumeIsCurrent =
     Boolean(
       tailoredResume &&
@@ -1822,122 +2053,459 @@ function WorkshopPage({
         resumeFingerprint
     );
 
+  const validJobUrl =
+    /^https?:\/\/\S+/i.test(
+      jobUrl.trim()
+    );
+
+  const coreJobDetailsComplete =
+    Boolean(
+      selectedClient &&
+      companyName.trim() &&
+      position.trim() &&
+      jobLocation.trim() &&
+      validJobUrl &&
+      jobDescription
+        .trim()
+        .length >= 80
+    );
+
+  const canGenerateTailoredResume =
+    Boolean(
+      selectedClient?.hasResume &&
+      coreJobDetailsComplete &&
+      !isPreview &&
+      !isGeneratingTailoredResume
+    );
+
+  const canMarkApplied =
+    Boolean(
+      coreJobDetailsComplete &&
+      tailoredResumeIsCurrent &&
+      resumeReviewed &&
+      !isRecordingApplication &&
+      !isQuotaReached &&
+      !isPreview
+    );
+
   const targetRoles =
     selectedClient?.targetRoles?.length
-      ? selectedClient.targetRoles.join(', ')
+      ? selectedClient.targetRoles.join(
+          ', '
+        )
       : 'Not provided';
 
   const targetMarkets =
     selectedClient?.targetMarkets?.length
-      ? selectedClient.targetMarkets.join(', ')
+      ? selectedClient.targetMarkets.join(
+          ', '
+        )
       : 'Not provided';
 
   const preferredLocations =
     selectedClient?.locations?.length
-      ? selectedClient.locations.join(', ')
+      ? selectedClient.locations.join(
+          ', '
+        )
       : 'Not provided';
 
-  const handleClientChange = (event) => {
-    setSelectedClientId(event.target.value);
-    setCompanyName('');
-    setPosition('');
-    setJobLocation('');
-    setJobUrl('');
-    setJobDescription('');
-    setResumeStatus('');
-    setTailoredResume('');
-    setTailoredResumePreviewUrl('');
-    setTailoredResumeFingerprint('');
-    setResumeGenerationError('');
-    setActiveJobRequestId('');
-    setWorkflowStatus('');
-    jobLinkHandoffRef.current = '';
-  };
-
-  const openClientResume = async () => {
-    if (!selectedClient?.hasResume) {
-      setResumeStatus(
-        'This client does not have a resume on file.'
-      );
-      return;
+  const analysis = useMemo(() => {
+    if (
+      !selectedClient ||
+      jobDescription
+        .trim()
+        .length < 40
+    ) {
+      return {
+        resumeScore: 0,
+        applicabilityScore: 0,
+        matchedResume: [],
+        missingResume: [],
+        preferenceMatches: [],
+        preferenceMisses: [],
+      };
     }
 
-    if (isPreview) {
-      setResumeStatus(
-        'Applicant preview is read-only.'
+    const stopWords = new Set([
+      'and',
+      'the',
+      'with',
+      'for',
+      'from',
+      'this',
+      'that',
+      'your',
+      'role',
+      'work',
+      'type',
+      'not',
+      'provided',
+      'full',
+      'time',
+      'years',
+      'year',
+      'experience',
+    ]);
+
+    const tokenize =
+      (value) =>
+        String(value || '')
+          .toLowerCase()
+          .replace(
+            /[^a-z0-9+#.]+/g,
+            ' '
+          )
+          .split(/\s+/)
+          .map(
+            (item) =>
+              item.trim()
+          )
+          .filter(
+            (item) =>
+              item.length >= 3 &&
+              !stopWords.has(item)
+          );
+
+    const jobText =
+      [
+        position,
+        jobLocation,
+        jobDescription,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+    const resumeSource =
+      [
+        ...(selectedClient
+          .targetRoles || []),
+        selectedClient
+          .specialization,
+        selectedClient
+          .targetIndustries,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+    const resumeKeywords = [
+      ...new Set(
+        tokenize(
+          resumeSource
+        )
+      ),
+    ].slice(
+      0,
+      18
+    );
+
+    const matchedResume =
+      resumeKeywords.filter(
+        (keyword) =>
+          jobText.includes(
+            keyword
+          )
       );
-      return;
-    }
 
-    if (isOpeningResume) {
-      return;
-    }
+    const missingResume =
+      resumeKeywords
+        .filter(
+          (keyword) =>
+            !jobText.includes(
+              keyword
+            )
+        )
+        .slice(
+          0,
+          6
+        );
 
-    setIsOpeningResume(true);
-    setResumeStatus('');
+    const resumeScore =
+      resumeKeywords.length > 0
+        ? Math.min(
+            100,
+            Math.round(
+              (
+                matchedResume.length /
+                resumeKeywords.length
+              ) *
+                100
+            )
+          )
+        : 0;
 
-    const resumeWindow =
-      window.open(
-        'about:blank',
-        '_blank'
+    const preferenceValues = [
+      selectedClient.workType,
+      selectedClient
+        .employmentType,
+      ...(
+        selectedClient
+          .locations || []
+      ),
+      ...(
+        selectedClient
+          .targetMarkets || []
+      ),
+    ]
+      .map(
+        (item) =>
+          String(
+            item || ''
+          ).trim()
+      )
+      .filter(
+        (item) =>
+          item &&
+          item.toLowerCase() !==
+            'not provided'
       );
 
-    try {
-      const accessToken =
-        await getApplicantAccessToken();
+    const uniquePreferences = [
+      ...new Set(
+        preferenceValues
+      ),
+    ];
 
-      const response = await fetch(
-        `/api/applicant/clients/${encodeURIComponent(
-          selectedClient.id
-        )}/resume`,
-        {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
-          },
+    const preferenceText =
+      [
+        position,
+        jobLocation,
+        jobDescription,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+    const preferenceMatches =
+      uniquePreferences.filter(
+        (value) =>
+          preferenceText.includes(
+            value.toLowerCase()
+          )
+      );
+
+    const preferenceMisses =
+      uniquePreferences
+        .filter(
+          (value) =>
+            !preferenceText.includes(
+              value.toLowerCase()
+            )
+        )
+        .slice(
+          0,
+          5
+        );
+
+    const applicabilityScore =
+      uniquePreferences.length > 0
+        ? Math.min(
+            100,
+            Math.round(
+              (
+                preferenceMatches.length /
+                uniquePreferences.length
+              ) *
+                100
+            )
+          )
+        : 0;
+
+    return {
+      resumeScore,
+      applicabilityScore,
+      matchedResume:
+        matchedResume.slice(
+          0,
+          6
+        ),
+      missingResume,
+      preferenceMatches,
+      preferenceMisses,
+    };
+  }, [
+    jobDescription,
+    jobLocation,
+    position,
+    selectedClient,
+  ]);
+
+  const scoreTone =
+    (value) => {
+      if (value >= 70) {
+        return {
+          wrap:
+            'border-emerald-200 bg-emerald-50',
+          text:
+            'text-emerald-700',
+        };
+      }
+
+      if (value >= 45) {
+        return {
+          wrap:
+            'border-amber-200 bg-amber-50',
+          text:
+            'text-amber-700',
+        };
+      }
+
+      return {
+        wrap:
+          'border-red-200 bg-red-50',
+        text:
+          'text-red-600',
+      };
+    };
+
+  const resumeTone =
+    scoreTone(
+      analysis.resumeScore
+    );
+
+  const applicabilityTone =
+    scoreTone(
+      analysis.applicabilityScore
+    );
+
+  const averageScore =
+    Math.round(
+      (
+        analysis.resumeScore +
+        analysis.applicabilityScore
+      ) /
+        2
+    );
+
+  const recommendation =
+    jobDescription
+      .trim()
+      .length < 40
+      ? 'Add the job description to analyze this opportunity.'
+      : averageScore >= 70
+        ? 'Very good match. The role aligns well with the Client profile and preferences.'
+        : averageScore >= 45
+          ? 'Moderate match. Review the gaps before proceeding with the application.'
+          : 'Low match. Review the role carefully and confirm it fits the Client before applying.';
+
+  const handleClientChange =
+    (event) => {
+      setSelectedClientId(
+        event.target.value
+      );
+
+      setCompanyName('');
+      setPosition('');
+      setJobLocation('');
+      setJobUrl('');
+      setJobDescription('');
+      setResumeStatus('');
+      setTailoredResume('');
+      setTailoredResumePreviewUrl('');
+      setTailoredResumeFingerprint('');
+      setResumeGenerationError('');
+      setResumePreviewOpen(false);
+      setResumeReviewPromptOpen(false);
+      setResumeReviewed(false);
+      setActiveJobRequestId('');
+      setWorkflowStatus('');
+
+      jobLinkHandoffRef.current =
+        '';
+    };
+
+  const openClientResume =
+    async () => {
+      if (
+        !selectedClient?.hasResume
+      ) {
+        setResumeStatus(
+          'This Client does not have a resume on file.'
+        );
+        return;
+      }
+
+      if (isPreview) {
+        setResumeStatus(
+          'Applicant preview is read-only.'
+        );
+        return;
+      }
+
+      if (isOpeningResume) {
+        return;
+      }
+
+      setIsOpeningResume(true);
+      setResumeStatus('');
+
+      const resumeWindow =
+        window.open(
+          'about:blank',
+          '_blank'
+        );
+
+      try {
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            `/api/applicant/clients/${encodeURIComponent(
+              selectedClient.id
+            )}/resume`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The Client resume could not be opened.'
+          );
         }
-      );
 
-      const result = await response
-        .json()
-        .catch(() => ({}));
+        if (!result.url) {
+          throw new Error(
+            'The Client resume URL was not returned.'
+          );
+        }
 
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-            'The client resume could not be opened.'
+        if (resumeWindow) {
+          resumeWindow.opener =
+            null;
+
+          resumeWindow.location.href =
+            result.url;
+        } else {
+          window.location.assign(
+            result.url
+          );
+        }
+      } catch (error) {
+        if (resumeWindow) {
+          resumeWindow.close();
+        }
+
+        setResumeStatus(
+          error?.message ||
+            'The Client resume could not be opened.'
+        );
+      } finally {
+        setIsOpeningResume(
+          false
         );
       }
-
-      if (!result.url) {
-        throw new Error(
-          'The client resume URL was not returned.'
-        );
-      }
-
-      if (resumeWindow) {
-        resumeWindow.opener = null;
-        resumeWindow.location.href =
-          result.url;
-      } else {
-        window.location.assign(
-          result.url
-        );
-      }
-    } catch (error) {
-      if (resumeWindow) {
-        resumeWindow.close();
-      }
-
-      setResumeStatus(
-        error?.message ||
-          'The client resume could not be opened.'
-      );
-    } finally {
-      setIsOpeningResume(false);
-    }
-  };
-
+    };
 
   const generateTailoredResume =
     async () => {
@@ -1948,32 +2516,20 @@ function WorkshopPage({
         return;
       }
 
-      if (!selectedClient.hasResume) {
+      if (
+        !selectedClient.hasResume
+      ) {
         setResumeGenerationError(
           'This Client does not have a resume on file.'
         );
         return;
       }
 
-      if (!companyName.trim()) {
-        setResumeGenerationError(
-          'Enter the company name first.'
-        );
-        return;
-      }
-
-      if (!position.trim()) {
-        setResumeGenerationError(
-          'Enter the position first.'
-        );
-        return;
-      }
-
       if (
-        jobDescription.trim().length < 80
+        !coreJobDetailsComplete
       ) {
         setResumeGenerationError(
-          'Paste a fuller job description before generating the resume.'
+          'Complete the company, position, location, valid job URL and job description first.'
         );
         return;
       }
@@ -1985,44 +2541,55 @@ function WorkshopPage({
         return;
       }
 
-      setIsGeneratingTailoredResume(true);
+      setIsGeneratingTailoredResume(
+        true
+      );
+
       setResumeGenerationError('');
       setTailoredResumePreviewUrl('');
+      setResumeReviewed(false);
+      setResumeReviewPromptOpen(
+        false
+      );
 
       try {
         const accessToken =
           await getApplicantAccessToken();
 
-        const response = await fetch(
-          '/api/applicant/tailored-resume',
-          {
-            method: 'POST',
-            headers: {
-              Authorization:
-                `Bearer ${accessToken}`,
-              'Content-Type':
-                'application/json',
-            },
-            body: JSON.stringify({
-              clientId:
-                selectedClient.id,
-              company:
-                companyName.trim(),
-              position:
-                position.trim(),
-              location:
-                jobLocation.trim(),
-              jobUrl:
-                jobUrl.trim(),
-              jobDescription:
-                jobDescription.trim(),
-            }),
-          }
-        );
+        const response =
+          await fetch(
+            '/api/applicant/tailored-resume',
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                clientId:
+                  selectedClient.id,
+                company:
+                  companyName.trim(),
+                position:
+                  position.trim(),
+                location:
+                  jobLocation.trim(),
+                jobUrl:
+                  jobUrl.trim(),
+                jobDescription:
+                  jobDescription.trim(),
+              }),
+            }
+          );
 
-        const result = await response
-          .json()
-          .catch(() => ({}));
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
 
         if (!response.ok) {
           throw new Error(
@@ -2032,15 +2599,25 @@ function WorkshopPage({
         }
 
         if (
-          result.mode === 'placeholder' &&
+          result.mode ===
+            'placeholder' &&
           result.resumeUrl
         ) {
           setTailoredResume('');
-          setTailoredResumeFingerprint('');
+          setTailoredResumeFingerprint(
+            ''
+          );
           setTailoredResumePreviewUrl(
             result.resumeUrl
           );
-          setResumeGenerationError('');
+          setResumePreviewOpen(
+            true
+          );
+
+          setResumeGenerationError(
+            'The AI provider is unavailable, so ApplyLoop opened the source resume instead. Mark as Applied will remain locked.'
+          );
+
           return;
         }
 
@@ -2050,7 +2627,9 @@ function WorkshopPage({
           );
         }
 
-        setTailoredResumePreviewUrl('');
+        setTailoredResumePreviewUrl(
+          ''
+        );
 
         setTailoredResume(
           result.resumeText
@@ -2058,6 +2637,14 @@ function WorkshopPage({
 
         setTailoredResumeFingerprint(
           resumeFingerprint
+        );
+
+        setResumePreviewOpen(
+          true
+        );
+
+        setResumeReviewPromptOpen(
+          true
         );
       } catch (error) {
         setResumeGenerationError(
@@ -2078,11 +2665,15 @@ function WorkshopPage({
       }
 
       try {
-        await navigator.clipboard.writeText(
-          tailoredResume
-        );
+        await navigator
+          .clipboard
+          .writeText(
+            tailoredResume
+          );
 
-        setResumeGenerationError('');
+        setResumeGenerationError(
+          ''
+        );
       } catch {
         setResumeGenerationError(
           'The resume could not be copied automatically.'
@@ -2090,248 +2681,257 @@ function WorkshopPage({
       }
     };
 
+  const handleRecordApplication =
+    async () => {
+      if (!canMarkApplied) {
+        return;
+      }
+
+      const completedJobRequestId =
+        activeJobRequestId;
+
+      const nextJobQueue =
+        activeClients.flatMap(
+          (client) => {
+            const applicationLimit =
+              Number(
+                client.applicationLimit ||
+                  0
+              );
+
+            const currentApplications =
+              Number(
+                client.applications ||
+                  0
+              );
+
+            const applicationsAfterRecord =
+              currentApplications +
+              (
+                client.id ===
+                  selectedClient.id
+                  ? 1
+                  : 0
+              );
+
+            const hasCapacity =
+              applicationsAfterRecord <
+              applicationLimit;
+
+            if (!hasCapacity) {
+              return [];
+            }
+
+            return (
+              client.jobRequests ||
+              []
+            )
+              .filter(
+                (request) =>
+                  request.id !==
+                    completedJobRequestId &&
+                  [
+                    'new',
+                    'in_review',
+                  ].includes(
+                    request.status
+                  )
+              )
+              .map(
+                (request) => ({
+                  client,
+                  request,
+                })
+              );
+          }
+        );
+
+      const nextJob =
+        completedJobRequestId
+          ? (
+              nextJobQueue.find(
+                (entry) =>
+                  entry.client.id ===
+                  selectedClient.id
+              ) ||
+              nextJobQueue[0] ||
+              null
+            )
+          : null;
+
+      const recorded =
+        await onRecordApplication(
+          selectedClient,
+          companyName,
+          position,
+          jobLocation,
+          jobUrl,
+          jobDescription,
+          completedJobRequestId,
+          tailoredResume
+        );
+
+      if (!recorded) {
+        return;
+      }
+
+      setTailoredResume('');
+      setTailoredResumePreviewUrl('');
+      setTailoredResumeFingerprint('');
+      setResumeGenerationError('');
+      setResumeStatus('');
+      setResumePreviewOpen(false);
+      setResumeReviewPromptOpen(false);
+      setResumeReviewed(false);
+
+      if (
+        completedJobRequestId &&
+        nextJob
+      ) {
+        const {
+          client:
+            nextClient,
+          request:
+            nextRequest,
+        } = nextJob;
+
+        setSelectedClientId(
+          nextClient.id
+        );
+
+        setCompanyName(
+          nextRequest.jobCompany ||
+            ''
+        );
+
+        setPosition(
+          nextRequest.jobPosition ||
+            ''
+        );
+
+        setJobLocation(
+          nextRequest.jobLocation ||
+            ''
+        );
+
+        setJobUrl(
+          nextRequest.jobLink ||
+            ''
+        );
+
+        setJobDescription('');
+
+        setActiveJobRequestId(
+          nextRequest.id
+        );
+
+        setWorkflowStatus(
+          `Application recorded. Next job link loaded for ${nextClient.name}.`
+        );
+
+        jobLinkHandoffRef.current =
+          `${nextClient.id}:${nextRequest.id}`;
+
+        if (
+          nextRequest.status ===
+            'new' &&
+          onUpdateJobRequest
+        ) {
+          try {
+            await Promise.resolve(
+              onUpdateJobRequest(
+                nextRequest.id,
+                'in_review'
+              )
+            );
+          } catch (error) {
+            setResumeStatus(
+              error?.message ||
+                'The next job link loaded, but its status could not be updated.'
+            );
+          }
+        }
+
+        router.replace(
+          {
+            pathname:
+              '/applicant/workshop',
+            query: {
+              clientId:
+                nextClient.id,
+              jobRequestId:
+                nextRequest.id,
+            },
+          },
+          undefined,
+          {
+            shallow: true,
+          }
+        );
+
+        return;
+      }
+
+      setCompanyName('');
+      setPosition('');
+      setJobLocation('');
+      setJobUrl('');
+      setJobDescription('');
+      setActiveJobRequestId('');
+
+      if (
+        completedJobRequestId
+      ) {
+        setWorkflowStatus(
+          'Application recorded. There are no more active job links waiting right now.'
+        );
+
+        jobLinkHandoffRef.current =
+          '';
+
+        router.replace(
+          '/applicant/workshop',
+          undefined,
+          {
+            shallow: true,
+          }
+        );
+      } else {
+        setWorkflowStatus(
+          'Application recorded. The Workshop is ready for another Applicant-sourced opportunity.'
+        );
+      }
+    };
 
   return (
     <>
       <PageHeader
-        title="Application Workshop"
-        subtitle="Review client preferences and record verified job applications"
-        showHeading={false}
-        showNotification={false}
+        title="Prompt Center"
+        subtitle="Analyze job fit, generate tailored documents and prepare a verified application."
+        showHeading
+        showNotification
         action={
           selectedClient &&
           !isPreview ? (
             <button
               type="button"
-              className={styles.primaryButton}
-              disabled={
-                isRecordingApplication ||
-                isQuotaReached
+              onClick={
+                handleRecordApplication
               }
-              onClick={async () => {
-                const completedJobRequestId =
-                  activeJobRequestId;
-
-                /*
-                 * Build the next-link queue before recording.
-                 * Prefer another link for the current Client,
-                 * then continue with another eligible Client.
-                 *
-                 * For the current Client we calculate capacity
-                 * after this Application is recorded so we never
-                 * automatically load work beyond the Client limit.
-                 */
-                const nextJobQueue =
-                  activeClients.flatMap(
-                    (client) => {
-                      const applicationLimit =
-                        Number(
-                          client.applicationLimit ||
-                            0
-                        );
-
-                      const currentApplications =
-                        Number(
-                          client.applications ||
-                            0
-                        );
-
-                      const applicationsAfterRecord =
-                        currentApplications +
-                        (
-                          client.id ===
-                            selectedClient.id
-                            ? 1
-                            : 0
-                        );
-
-                      const hasCapacity =
-                        applicationsAfterRecord <
-                        applicationLimit;
-
-                      if (!hasCapacity) {
-                        return [];
-                      }
-
-                      return (
-                        client.jobRequests ||
-                        []
-                      )
-                        .filter(
-                          (request) =>
-                            request.id !==
-                              completedJobRequestId &&
-                            [
-                              'new',
-                              'in_review',
-                            ].includes(
-                              request.status
-                            )
-                        )
-                        .map(
-                          (request) => ({
-                            client,
-                            request,
-                          })
-                        );
-                    }
-                  );
-
-                const nextJob =
-                  completedJobRequestId
-                    ? (
-                        nextJobQueue.find(
-                          (entry) =>
-                            entry.client.id ===
-                            selectedClient.id
-                        ) ||
-                        nextJobQueue[0] ||
-                        null
-                      )
-                    : null;
-
-                const recorded =
-                  await onRecordApplication(
-                    selectedClient,
-                    companyName,
-                    position,
-                    jobLocation,
-                    jobUrl,
-                    jobDescription,
-                    completedJobRequestId,
-                    tailoredResumeIsCurrent
-                      ? tailoredResume
-                      : ''
-                  );
-
-                if (!recorded) {
-                  return;
-                }
-
-                setTailoredResume('');
-                setTailoredResumePreviewUrl('');
-                setTailoredResumeFingerprint('');
-                setResumeGenerationError('');
-                setResumeStatus('');
-
-                if (
-                  completedJobRequestId &&
-                  nextJob
-                ) {
-                  const {
-                    client:
-                      nextClient,
-                    request:
-                      nextRequest,
-                  } = nextJob;
-
-                  setSelectedClientId(
-                    nextClient.id
-                  );
-
-                  setCompanyName(
-                    nextRequest
-                      .jobCompany || ''
-                  );
-
-                  setPosition(
-                    nextRequest
-                      .jobPosition || ''
-                  );
-
-                  setJobLocation(
-                    nextRequest
-                      .jobLocation || ''
-                  );
-
-                  setJobUrl(
-                    nextRequest
-                      .jobLink || ''
-                  );
-
-                  setJobDescription('');
-
-                  setActiveJobRequestId(
-                    nextRequest.id
-                  );
-
-                  setWorkflowStatus(
-                    `Application recorded. Next job link loaded for ${nextClient.name}.`
-                  );
-
-                  jobLinkHandoffRef.current =
-                    `${nextClient.id}:${nextRequest.id}`;
-
-                  if (
-                    nextRequest.status ===
-                      'new' &&
-                    onUpdateJobRequest
-                  ) {
-                    try {
-                      await Promise.resolve(
-                        onUpdateJobRequest(
-                          nextRequest.id,
-                          'in_review'
-                        )
-                      );
-                    } catch (error) {
-                      setResumeStatus(
-                        error?.message ||
-                          'The next job link loaded, but its status could not be updated.'
-                      );
-                    }
-                  }
-
-                  router.replace(
-                    {
-                      pathname:
-                        '/applicant/workshop',
-                      query: {
-                        clientId:
-                          nextClient.id,
-                        jobRequestId:
-                          nextRequest.id,
-                      },
-                    },
-                    undefined,
-                    {
-                      shallow: true,
-                    }
-                  );
-
-                  return;
-                }
-
-                setCompanyName('');
-                setPosition('');
-                setJobLocation('');
-                setJobUrl('');
-                setJobDescription('');
-                setActiveJobRequestId('');
-
-                if (
-                  completedJobRequestId
-                ) {
-                  setWorkflowStatus(
-                    'Application recorded. There are no more active job links waiting right now.'
-                  );
-
-                  jobLinkHandoffRef.current =
-                    '';
-
-                  router.replace(
-                    '/applicant/workshop',
-                    undefined,
-                    {
-                      shallow: true,
-                    }
-                  );
-                } else {
-                  setWorkflowStatus(
-                    'Application recorded. The Workshop is ready for another Applicant-sourced opportunity.'
-                  );
-                }
-              }}
+              disabled={
+                !canMarkApplied
+              }
+              title={
+                canMarkApplied
+                  ? 'Record this application as applied'
+                  : 'Complete the job details, generate a current tailored resume and confirm that it has been reviewed.'
+              }
+              className={classNames(
+                'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition',
+                canMarkApplied
+                  ? 'bg-[#1E50C3] text-white shadow-sm hover:bg-[#1A45A7]'
+                  : 'cursor-not-allowed border border-slate-200 bg-slate-200 text-slate-500 shadow-none'
+              )}
             >
               <FiSave />
 
@@ -2339,30 +2939,40 @@ function WorkshopPage({
                 ? 'Application Limit Reached'
                 : isRecordingApplication
                   ? 'Recording...'
-                  : activeJobRequestId
-                    ? 'Mark as Applied'
-                    : 'Record Application'}
+                  : 'Mark as Applied'}
             </button>
           ) : null
         }
       />
 
       <section
-        className={styles.workshopPanel}
+        className={
+          styles.workshopPanel
+        }
       >
         <div
-          className={styles.clientSelector}
+          className={
+            styles.clientSelector
+          }
         >
           <label
-            className={styles.fieldLabel}
+            className={
+              styles.fieldLabel
+            }
           >
             Select Client
           </label>
 
           <select
-            value={selectedClientId}
-            onChange={handleClientChange}
-            disabled={isRecordingApplication}
+            value={
+              selectedClientId
+            }
+            onChange={
+              handleClientChange
+            }
+            disabled={
+              isRecordingApplication
+            }
           >
             <option value="">
               Select a client
@@ -2371,10 +2981,16 @@ function WorkshopPage({
             {activeClients.map(
               (client) => (
                 <option
-                  key={client.id}
-                  value={client.id}
+                  key={
+                    client.id
+                  }
+                  value={
+                    client.id
+                  }
                 >
-                  {client.name}
+                  {
+                    client.name
+                  }
                 </option>
               )
             )}
@@ -2388,7 +3004,9 @@ function WorkshopPage({
             }
           >
             <Avatar
-              name={selectedClient.name}
+              name={
+                selectedClient.name
+              }
             />
 
             <div
@@ -2397,154 +3015,93 @@ function WorkshopPage({
               }
             >
               <strong>
-                {selectedClient.name}
+                {
+                  selectedClient.name
+                }
               </strong>
 
               <p>
-                Target Roles: {targetRoles}
+                Target Roles:{' '}
+                {targetRoles}
               </p>
 
               <p>
                 Work Arrangement:{' '}
-                {selectedClient.workType} |
-                Employment Type:{' '}
-                {selectedClient.employmentType} |
-                Salary:{' '}
-                {selectedClient.salaryExpectation}
+                {
+                  selectedClient.workType
+                }{' '}
+                | Employment Type:{' '}
+                {
+                  selectedClient.employmentType
+                }{' '}
+                | Salary:{' '}
+                {
+                  selectedClient.salaryExpectation
+                }
               </p>
 
               <p>
                 Target Markets:{' '}
-                {targetMarkets} |
-                Industries:{' '}
-                {selectedClient.targetIndustries} |
-                Specialization:{' '}
-                {selectedClient.specialization}
+                {
+                  targetMarkets
+                }{' '}
+                | Industries:{' '}
+                {
+                  selectedClient.targetIndustries
+                }{' '}
+                | Specialization:{' '}
+                {
+                  selectedClient.specialization
+                }
               </p>
 
               <p>
                 Preferred Locations:{' '}
-                {preferredLocations} |
-                Work Authorization:{' '}
-                {selectedClient.workAuthorization} |
-                Sponsorship:{' '}
-                {selectedClient.sponsorship} |
-                Experience:{' '}
-                {selectedClient.yearsExperience}
+                {
+                  preferredLocations
+                }{' '}
+                | Sponsorship:{' '}
+                {
+                  selectedClient.sponsorship
+                }{' '}
+                | Experience:{' '}
+                {
+                  selectedClient.yearsExperience
+                }
               </p>
             </div>
 
             <button
               type="button"
-              className={styles.resumeLink}
-              onClick={openClientResume}
+              data-no-glance
+              className={
+                styles.resumeLink
+              }
+              onClick={
+                openClientResume
+              }
               disabled={
                 isOpeningResume ||
                 !selectedClient.hasResume ||
                 isPreview
               }
-              title={
-                selectedClient.hasResume
-                  ? 'Open client resume'
-                  : 'No resume is available'
-              }
             >
               {isOpeningResume
                 ? 'Opening...'
-                : selectedClient.hasResume
+                : selectedClient
+                    .hasResume
                   ? "Client's Resume"
                   : 'Resume Unavailable'}
             </button>
           </div>
         )}
-
-        {selectedClient && (
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-blue-900/40 dark:bg-blue-900/20">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <FiLink className="shrink-0 text-[#1E50C3]" />
-
-                <strong className="text-sm text-gray-900 dark:text-white">
-                  {activeJobRequests.length > 0
-                    ? `${activeJobRequests.length} active job link${activeJobRequests.length === 1 ? '' : 's'} available`
-                    : 'No active job links waiting'}
-                </strong>
-              </div>
-
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Job opportunities are managed in the dedicated Job Links workspace.
-              </p>
-            </div>
-
-            <Link
-              href="/applicant/job-links"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3] transition hover:bg-blue-100 dark:border-blue-800 dark:bg-gray-900 dark:hover:bg-blue-900/30"
-            >
-              View Job Links
-              <FiArrowRight />
-            </Link>
-          </div>
-        )}
-
-        {selectedClient &&
-          !activeJobRequestId && (
-            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-purple-100 bg-purple-50 px-5 py-4 dark:border-purple-900/40 dark:bg-purple-900/20">
-              <FiBriefcase className="mt-0.5 shrink-0 text-purple-600" />
-
-              <div>
-                <strong className="text-sm text-gray-900 dark:text-white">
-                  Applicant-Sourced Application
-                </strong>
-
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Use this mode when you found the opportunity yourself. Add the job details below and ApplyLoop will record the Application with Applicant as its source.
-                </p>
-              </div>
-            </div>
-          )}
-
-        {activeJobRequestId && (
-          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-green-100 bg-green-50 px-5 py-4 dark:border-green-900/40 dark:bg-green-900/20">
-            <FiCheckCircle className="mt-0.5 shrink-0 text-green-600" />
-
-            <div>
-              <strong className="text-sm text-gray-900 dark:text-white">
-                Job link loaded into Workshop
-              </strong>
-
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Client, company, position, location and job URL were prefilled from Job Links. Add the job description and complete the application. After you mark it as applied, the next available job link will load automatically.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {workflowStatus && (
-          <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            <FiCheckCircle className="mt-0.5 shrink-0" />
-
-            <span>
-              {workflowStatus}
-            </span>
-          </div>
-        )}
-
-        {resumeStatus && (
-          <p
-            style={{
-              marginTop: 12,
-              color: '#d14343',
-              fontSize: 12,
-            }}
-          >
-            {resumeStatus}
-          </p>
-        )}
       </section>
 
       {!selectedClient ? (
         <section
-          className={styles.workshopPanel}
+          className={
+            styles.workshopPanel
+          }
         >
           <div
             className={
@@ -2558,279 +3115,770 @@ function WorkshopPage({
             </h3>
 
             <p>
-              Select a client above to
-              review their preferences
-              and record an application.
+              Select a Client above
+              to load their
+              preferences, resume
+              and application
+              workflow.
             </p>
           </div>
         </section>
       ) : (
-        <section
-          className={styles.workshopPanel}
-        >
-          <div
-            className={styles.field}
-            style={{ marginBottom: 14 }}
-          >
-            <label>
-              Company Name
-            </label>
+        <>
+          {activeJobRequests.length >
+            0 && (
+            <section className="mb-5 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <FiLink className="mt-0.5 shrink-0 text-[#1E50C3]" />
 
-            <input
-              value={companyName}
-              onChange={(event) =>
-                setCompanyName(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. Microsoft"
-              required
-              aria-required="true"
-            />
-          </div>
+                <div>
+                  <strong className="text-sm text-slate-900">
+                    {
+                      activeJobRequests.length
+                    }{' '}
+                    active job link
+                    {activeJobRequests.length ===
+                    1
+                      ? ''
+                      : 's'}{' '}
+                    available
+                  </strong>
 
-          <div
-            className={styles.field}
-            style={{ marginBottom: 14 }}
-          >
-            <label>
-              Position
-            </label>
-
-            <input
-              value={position}
-              onChange={(event) =>
-                setPosition(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. Frontend Developer"
-              required
-              aria-required="true"
-            />
-          </div>
-
-          <div
-            className={styles.field}
-            style={{ marginBottom: 14 }}
-          >
-            <label>
-              Job Location
-            </label>
-
-            <input
-              value={jobLocation}
-              onChange={(event) =>
-                setJobLocation(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. Remote, New York, NY"
-              required
-              aria-required="true"
-            />
-          </div>
-
-          <div
-            className={styles.field}
-            style={{ marginBottom: 14 }}
-          >
-            <label>
-              Job Posting URL
-            </label>
-
-            <input
-              value={jobUrl}
-              onChange={(event) =>
-                setJobUrl(
-                  event.target.value
-                )
-              }
-              placeholder="https://..."
-            />
-
-            {/^https?:\/\//i.test(
-              jobUrl.trim()
-            ) && (
-              <div className="mt-2 flex justify-end">
-                <a
-                  href={jobUrl.trim()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3] transition hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:hover:bg-blue-900/30"
-                >
-                  Open Job ↗
-                </a>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Select work
+                    from Job Links
+                    or continue with
+                    this opportunity.
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className={styles.field}>
-            <label>
-              Job Description
-            </label>
+              <Link
+                href="/applicant/job-links"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3]"
+              >
+                View Job Links
+                <FiArrowRight />
+              </Link>
+            </section>
+          )}
 
-            <textarea
-              value={jobDescription}
-              onChange={(event) =>
-                setJobDescription(
-                  event.target.value
-                )
-              }
-              placeholder="Paste the job description here"
-            />
-          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <section
+              className={classNames(
+                'rounded-2xl border p-5',
+                resumeTone.wrap
+              )}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500">
+                    Resume Match Score
+                  </p>
 
-          <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/40 dark:bg-blue-900/20">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <FiFileText className="text-[#1E50C3]" />
+                  <p
+                    className={classNames(
+                      'mt-1 text-3xl font-bold',
+                      resumeTone.text
+                    )}
+                  >
+                    {
+                      analysis.resumeScore
+                    }
+                    %
+                  </p>
 
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                    Tailored Resume
-                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Estimated from
+                    Client profile and
+                    job alignment.
+                  </p>
                 </div>
 
-                <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 dark:text-gray-400">
-                  Generate a job-specific version from the Client&apos;s existing resume. For now, this button displays the Client&apos;s submitted resume as a temporary preview.
-                </p>
+                <FiTarget
+                  className={classNames(
+                    'h-6 w-6',
+                    resumeTone.text
+                  )}
+                />
+              </div>
+            </section>
+
+            <section
+              className={classNames(
+                'rounded-2xl border p-5',
+                applicabilityTone.wrap
+              )}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500">
+                    Applicability Score
+                  </p>
+
+                  <p
+                    className={classNames(
+                      'mt-1 text-3xl font-bold',
+                      applicabilityTone.text
+                    )}
+                  >
+                    {
+                      analysis.applicabilityScore
+                    }
+                    %
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Based on Client
+                    preferences vs.
+                    job details.
+                  </p>
+                </div>
+
+                <FiBriefcase
+                  className={classNames(
+                    'h-6 w-6',
+                    applicabilityTone.text
+                  )}
+                />
+              </div>
+            </section>
+          </div>
+
+          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div
+                className={
+                  styles.field
+                }
+              >
+                <label>
+                  Company Name
+                </label>
+
+                <input
+                  value={
+                    companyName
+                  }
+                  onChange={
+                    (event) =>
+                      setCompanyName(
+                        event.target
+                          .value
+                      )
+                  }
+                  placeholder="e.g. Microsoft"
+                />
               </div>
 
+              <div
+                className={
+                  styles.field
+                }
+              >
+                <label>
+                  Position
+                </label>
+
+                <input
+                  value={
+                    position
+                  }
+                  onChange={
+                    (event) =>
+                      setPosition(
+                        event.target
+                          .value
+                      )
+                  }
+                  placeholder="e.g. Software Engineer"
+                />
+              </div>
+
+              <div
+                className={
+                  styles.field
+                }
+              >
+                <label>
+                  Job Location
+                </label>
+
+                <input
+                  value={
+                    jobLocation
+                  }
+                  onChange={
+                    (event) =>
+                      setJobLocation(
+                        event.target
+                          .value
+                      )
+                  }
+                  placeholder="e.g. Remote"
+                />
+              </div>
+
+              <div
+                className={
+                  styles.field
+                }
+              >
+                <label>
+                  Job Posting URL
+                </label>
+
+                <input
+                  value={
+                    jobUrl
+                  }
+                  onChange={
+                    (event) =>
+                      setJobUrl(
+                        event.target
+                          .value
+                      )
+                  }
+                  placeholder="https://..."
+                />
+
+                {jobUrl.trim() &&
+                  !validJobUrl && (
+                  <p className="mt-2 text-xs font-medium text-red-600">
+                    Enter a complete
+                    http:// or https://
+                    job URL.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div
+              className={`${styles.field} mt-5`}
+            >
+              <label>
+                Job Description
+              </label>
+
+              <textarea
+                value={
+                  jobDescription
+                }
+                onChange={
+                  (event) =>
+                    setJobDescription(
+                      event.target
+                        .value
+                    )
+                }
+                placeholder="Paste the complete job description here..."
+              />
+
+              <p className="mt-2 text-xs text-slate-400">
+                {
+                  jobDescription
+                    .trim()
+                    .length
+                }{' '}
+                characters — at least
+                80 are required.
+              </p>
+            </div>
+          </section>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center gap-2">
+                <FiFileText className="text-[#1E50C3]" />
+
+                <h3 className="text-sm font-bold text-slate-900">
+                  Resume Analysis
+                </h3>
+              </div>
+
+              <p className="mt-4 text-xs font-semibold text-emerald-700">
+                Matching signals
+              </p>
+
+              {analysis
+                .matchedResume
+                .length > 0 ? (
+                <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                  {analysis.matchedResume.map(
+                    (item) => (
+                      <li
+                        key={
+                          item
+                        }
+                        className="flex items-center gap-2"
+                      >
+                        <FiCheckCircle className="text-emerald-500" />
+                        {item}
+                      </li>
+                    )
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  No strong profile
+                  matches detected yet.
+                </p>
+              )}
+
+              <p className="mt-4 text-xs font-semibold text-amber-700">
+                Keywords to highlight
+              </p>
+
+              {analysis
+                .missingResume
+                .length > 0 ? (
+                <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                  {analysis.missingResume.map(
+                    (item) => (
+                      <li
+                        key={
+                          item
+                        }
+                      >
+                        • {item}
+                      </li>
+                    )
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  No additional
+                  keywords identified.
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center gap-2">
+                <FiTarget className="text-[#1E50C3]" />
+
+                <h3 className="text-sm font-bold text-slate-900">
+                  Preference Alignment
+                </h3>
+              </div>
+
+              <p className="mt-4 text-xs font-semibold text-emerald-700">
+                Matches
+              </p>
+
+              {analysis
+                .preferenceMatches
+                .length > 0 ? (
+                <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                  {analysis.preferenceMatches.map(
+                    (item) => (
+                      <li
+                        key={
+                          item
+                        }
+                        className="flex items-center gap-2"
+                      >
+                        <FiCheckCircle className="text-emerald-500" />
+                        {item}
+                      </li>
+                    )
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  No Client
+                  preference matches
+                  detected yet.
+                </p>
+              )}
+
+              {analysis
+                .preferenceMisses
+                .length > 0 && (
+                <>
+                  <p className="mt-4 text-xs font-semibold text-amber-700">
+                    Review
+                  </p>
+
+                  <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                    {analysis.preferenceMisses.map(
+                      (item) => (
+                        <li
+                          key={
+                            item
+                          }
+                        >
+                          • {item}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </>
+              )}
+            </section>
+          </div>
+
+          {isGeneratingTailoredResume && (
+            <section className="mt-5 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                    <FiRefreshCw className="animate-spin" />
+                  </span>
+
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      Request
+                      Processing
+                    </p>
+
+                    <p className="text-xs text-slate-500">
+                      Hugging Face is
+                      analyzing the
+                      resume and job
+                      description.
+                    </p>
+                  </div>
+                </div>
+
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  Analyzing
+                </span>
+              </div>
+
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full w-2/3 animate-pulse rounded-full bg-[#1E50C3]" />
+              </div>
+            </section>
+          )}
+
+          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+            <h3 className="text-sm font-bold text-slate-900">
+              Generate Documents
+            </h3>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={generateTailoredResume}
-                disabled={!canGenerateTailoredResume}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={
+                  generateTailoredResume
+                }
+                disabled={
+                  !canGenerateTailoredResume
+                }
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
               >
                 <FiFileText />
 
                 {isGeneratingTailoredResume
                   ? 'Generating...'
-                  : tailoredResume
+                  : tailoredResumeIsCurrent
                     ? 'Regenerate Tailored Resume'
-                    : tailoredResumePreviewUrl
-                      ? 'Refresh Resume Preview'
-                      : 'Generate Tailored Resume'}
+                    : 'Generate Tailored Resume'}
+              </button>
+
+              <button
+                type="button"
+                disabled
+                title="Cover-letter generation will be added later."
+                className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-400"
+              >
+                <FiFileText />
+                Generate Cover Letter
               </button>
             </div>
 
-            {!selectedClient.hasResume ? (
-              <p className="mt-3 text-xs font-medium text-amber-700">
-                A Client resume is required before a tailored version can be generated.
+            {tailoredResume &&
+              !resumePreviewOpen && (
+              <button
+                type="button"
+                onClick={() =>
+                  setResumePreviewOpen(
+                    true
+                  )
+                }
+                className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#1E50C3]"
+              >
+                <FiFileText />
+                Reopen Tailored Resume
+              </button>
+            )}
+
+            <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+              <strong className="text-xs text-slate-600">
+                Recommendation:
+              </strong>
+
+              <p className="mt-1 text-sm text-slate-600">
+                {
+                  recommendation
+                }
               </p>
-            ) : !companyName.trim() ||
-              !position.trim() ||
-              jobDescription.trim().length < 80 ? (
-              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Add the company, position and a complete job description to enable generation.
+            </div>
+
+            {!canMarkApplied && (
+              <p className="mt-3 text-xs text-slate-500">
+                Mark as Applied
+                unlocks after all job
+                details are complete,
+                a current tailored
+                resume has been
+                generated, and the
+                Applicant confirms the
+                resume was reviewed.
               </p>
-            ) : null}
+            )}
+
+            {resumeReviewed &&
+              tailoredResumeIsCurrent && (
+              <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                <FiCheckCircle />
+                Tailored resume
+                reviewed — Mark as
+                Applied is ready.
+              </div>
+            )}
 
             {resumeGenerationError && (
               <div
                 role="alert"
                 className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
               >
-                {resumeGenerationError}
+                {
+                  resumeGenerationError
+                }
               </div>
             )}
-          </div>
+          </section>
 
-          {tailoredResumePreviewUrl && (
-            <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <FiCheckCircle className="text-green-600" />
+          {tailoredResumePreviewUrl &&
+            resumePreviewOpen && (
+            <section className="relative mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+              <button
+                type="button"
+                data-no-glance
+                aria-label="Close resume preview"
+                onClick={() =>
+                  setResumePreviewOpen(
+                    false
+                  )
+                }
+                className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <FiX />
+              </button>
 
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      Resume Preview
-                    </h3>
-                  </div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Source Resume
+                Preview
+              </h3>
 
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Temporary preview of the Client&apos;s submitted resume. Real AI tailoring will replace this later.
-                  </p>
-                </div>
-
-                <a
-                  href={tailoredResumePreviewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#1E50C3] transition hover:bg-gray-50"
-                >
-                  Open Resume
-                  <FiExternalLink />
-                </a>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                 <iframe
-                  src={tailoredResumePreviewUrl}
+                  src={
+                    tailoredResumePreviewUrl
+                  }
                   title="Client resume preview"
-                  className="h-[720px] w-full bg-white"
+                  className="h-[650px] w-full bg-white"
                 />
               </div>
-
-              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                This temporary preview is not saved as a tailored resume when the Application is recorded.
-              </p>
             </section>
           )}
 
-          {tailoredResume && (
-            <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <FiCheckCircle className="text-green-600" />
+          {tailoredResume &&
+            resumePreviewOpen && (
+            <section className="relative mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+              <button
+                type="button"
+                data-no-glance
+                aria-label="Close tailored resume preview"
+                onClick={() =>
+                  setResumePreviewOpen(
+                    false
+                  )
+                }
+                className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <FiX />
+              </button>
 
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      Tailored Resume Preview
-                    </h3>
-                  </div>
+              <div className="pr-12">
+                <div className="flex items-center gap-2">
+                  <FiCheckCircle className="text-emerald-600" />
 
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Review and edit this version before using it for the application.
-                  </p>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Tailored Resume
+                    Preview
+                  </h3>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={copyTailoredResume}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700"
-                >
-                  <FiCopy />
-                  Copy Resume
-                </button>
+                <p className="mt-1 text-xs text-slate-500">
+                  Review and edit the
+                  Hugging Face
+                  generated version
+                  before applying.
+                </p>
               </div>
 
               {!tailoredResumeIsCurrent && (
                 <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
-                  The job details have changed since this resume was generated. Regenerate it before using it.
+                  Job details changed
+                  after this resume was
+                  generated. Generate a
+                  fresh version before
+                  applying.
                 </div>
               )}
 
               <textarea
-                value={tailoredResume}
-                onChange={(event) =>
-                  setTailoredResume(
-                    event.target.value
-                  )
+                value={
+                  tailoredResume
                 }
-                rows={28}
+                onChange={
+                  (event) => {
+                    setTailoredResume(
+                      event.target
+                        .value
+                    );
+
+                    setResumeReviewed(
+                      false
+                    );
+                  }
+                }
+                rows={26}
                 spellCheck
-                className="mt-4 min-h-[560px] w-full resize-y rounded-xl border border-gray-200 bg-white p-5 font-mono text-sm leading-6 text-gray-800 outline-none focus:border-blue-500"
+                className="mt-4 min-h-[520px] w-full resize-y rounded-xl border border-slate-200 bg-white p-5 font-sans text-sm leading-6 text-slate-800 outline-none focus:border-blue-500"
                 aria-label="Tailored resume preview"
               />
 
-              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                This working copy is separate from the Client&apos;s original resume.
-              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={
+                    copyTailoredResume
+                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  <FiCopy />
+                  Copy Resume
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResumeReviewed(
+                      true
+                    );
+
+                    setResumeReviewPromptOpen(
+                      false
+                    );
+                  }}
+                  className={classNames(
+                    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold',
+                    resumeReviewed
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-[#1E50C3] text-white'
+                  )}
+                >
+                  <FiCheckCircle />
+
+                  {resumeReviewed
+                    ? 'Resume Reviewed'
+                    : 'I Have Reviewed This Resume'}
+                </button>
+              </div>
             </section>
           )}
-        </section>
+
+          {workflowStatus && (
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <FiCheckCircle className="mt-0.5 shrink-0" />
+              {
+                workflowStatus
+              }
+            </div>
+          )}
+
+          {resumeStatus && (
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <FiAlertCircle className="mt-0.5 shrink-0" />
+              {
+                resumeStatus
+              }
+            </div>
+          )}
+        </>
+      )}
+
+      {resumeReviewPromptOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resume-review-title"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1E50C3]">
+              <FiFileText />
+            </div>
+
+            <h2
+              id="resume-review-title"
+              className="mt-4 text-xl font-bold text-slate-950"
+            >
+              Has the tailored
+              resume been reviewed?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Mark as Applied will
+              remain locked until the
+              Applicant confirms that
+              the generated resume has
+              been reviewed.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setResumeReviewPromptOpen(
+                    false
+                  );
+
+                  setResumePreviewOpen(
+                    true
+                  );
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"
+              >
+                Not Yet — Review It
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setResumeReviewed(
+                    true
+                  );
+
+                  setResumeReviewPromptOpen(
+                    false
+                  );
+
+                  setResumePreviewOpen(
+                    true
+                  );
+                }}
+                className="rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Yes, I Reviewed It
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </>
   );
@@ -3396,14 +4444,56 @@ function PerformancePage({
   const totalApplications =
     applications.length;
 
-  const countStatus = (status) =>
-    applications.filter(
-      (application) =>
-        application.status === status
-    ).length;
+  const dailyTarget =
+    Number(
+      performance.dailyTarget || 0
+    );
+
+  const todayCompleted =
+    Number(
+      performance.todayCompleted || 0
+    );
+
+  const todayCompletionRate =
+    Number(
+      performance.todayCompletionRate ||
+        0
+    );
+
+  const averageCompletionRate =
+    Number(
+      performance.completionRate || 0
+    );
+
+  const monitoredWorkdays =
+    Number(
+      performance.monitoredWorkdays ||
+        0
+    );
+
+  const clientSatisfaction =
+    Number(
+      performance.clientSatisfaction ||
+        0
+    );
+
+  const ratingCount =
+    Number(
+      performance.ratingCount || 0
+    );
+
+  const countStatus =
+    (status) =>
+      applications.filter(
+        (application) =>
+          application.status ===
+          status
+      ).length;
 
   const rejected =
-    countStatus('Rejected');
+    countStatus(
+      'Rejected'
+    );
 
   const interviews =
     countStatus(
@@ -3415,138 +4505,257 @@ function PerformancePage({
       'Offer Received'
     );
 
-  const percentage = (value) =>
-    totalApplications > 0
-      ? (
-          (
-            value /
-            totalApplications
-          ) * 100
-        ).toFixed(1)
-      : '0.0';
+  const rate =
+    (value, total) =>
+      total > 0
+        ? (
+            (
+              value /
+              total
+            ) *
+            100
+          )
+        : 0;
 
-  const clientSatisfaction =
-    Number(
-      performance
-        .clientSatisfaction || 0
+  const interviewRate =
+    rate(
+      interviews,
+      totalApplications
     );
 
-  const ratingCount =
-    Number(
-      performance.ratingCount || 0
+  const offerRate =
+    rate(
+      offers,
+      totalApplications
     );
 
-  const completionRate =
-    Number(
-      performance
-        .completionRate || 0
+  const rejectionRate =
+    rate(
+      rejected,
+      totalApplications
     );
+
+  const getPeriodStats =
+    (days) => {
+      const cutoff =
+        new Date();
+
+      cutoff.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+      cutoff.setDate(
+        cutoff.getDate() -
+          (days - 1)
+      );
+
+      const rows =
+        applications.filter(
+          (application) => {
+            const date =
+              new Date(
+                application.appliedAt ||
+                application.createdAt ||
+                ''
+              );
+
+            return (
+              !Number.isNaN(
+                date.getTime()
+              ) &&
+              date >= cutoff
+            );
+          }
+        );
+
+      const advanced =
+        rows.filter(
+          (application) =>
+            [
+              'Interview Scheduled',
+              'Offer Received',
+            ].includes(
+              application.status
+            )
+        ).length;
+
+      const periodRejected =
+        rows.filter(
+          (application) =>
+            application.status ===
+            'Rejected'
+        ).length;
+
+      return {
+        total:
+          rows.length,
+
+        advanced,
+
+        qualityRate:
+          rate(
+            advanced,
+            rows.length
+          ),
+
+        rejectionRate:
+          rate(
+            periodRejected,
+            rows.length
+          ),
+      };
+    };
+
+  const periods = [
+    [
+      'This Week',
+      getPeriodStats(7),
+    ],
+    [
+      'Last 30 Days',
+      getPeriodStats(30),
+    ],
+    [
+      'Last 90 Days',
+      getPeriodStats(90),
+    ],
+  ];
+
+  const achievements = [
+    todayCompletionRate >= 100
+      ? {
+          title:
+            'Daily Target Met',
+          description:
+            `${todayCompleted} Application${
+              todayCompleted === 1
+                ? ''
+                : 's'
+            } completed today`,
+        }
+      : null,
+
+    averageCompletionRate >= 80
+      ? {
+          title:
+            'Consistent Application Pace',
+          description:
+            `${averageCompletionRate.toFixed(
+              1
+            )}% average completion across monitored workdays`,
+        }
+      : null,
+
+    ratingCount >= 3 &&
+    clientSatisfaction >= 4
+      ? {
+          title:
+            'Strong Client Quality',
+          description:
+            `${clientSatisfaction.toFixed(
+              1
+            )}/5 across ${ratingCount} Client ratings`,
+        }
+      : null,
+
+    interviews >= 1
+      ? {
+          title:
+            'Interview Conversion',
+          description:
+            `${interviewRate.toFixed(
+              1
+            )}% of recorded Applications reached interview`,
+        }
+      : null,
+
+    offers >= 1
+      ? {
+          title:
+            'Offer Conversion',
+          description:
+            `${offerRate.toFixed(
+              1
+            )}% of recorded Applications reached offer`,
+        }
+      : null,
+  ].filter(Boolean);
 
   return (
     <>
       <PageHeader
         title="Performance"
-        subtitle="Live productivity and Client satisfaction metrics"
+        subtitle="Track Application pace and the quality of submitted work."
         showHeading={false}
         showNotification={false}
       />
 
-      <div
-        className={
-          styles.performanceStats
-        }
-      >
-        <div
-          className={
-            styles.performanceCard
-          }
-        >
-          <span>
-            Recorded Applications
+      <div className="grid gap-4 md:grid-cols-3">
+        <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Today&apos;s Application Rate
           </span>
 
-          <strong>
-            {totalApplications}
+          <strong className="mt-3 block text-3xl font-bold text-slate-950">
+            {todayCompletionRate.toFixed(
+              1
+            )}
+            %
           </strong>
 
-          <small>
-            {completionRate.toFixed(1)}%
-            {' '}workload completion
+          <small className="mt-2 block text-sm text-slate-500">
+            {dailyTarget > 0
+              ? `${todayCompleted} of ${dailyTarget} daily target`
+              : `${todayCompleted} completed today`}
           </small>
-        </div>
+        </section>
 
-        <div
-          className={
-            styles.performanceCard
-          }
-        >
-          <span>Total Rejections</span>
-
-          <strong>{rejected}</strong>
-
-          <small>
-            {percentage(rejected)}%
-            {' '}rejection rate
-          </small>
-        </div>
-
-        <div
-          className={
-            styles.performanceCard
-          }
-        >
-          <span>Total Interviews</span>
-
-          <strong>{interviews}</strong>
-
-          <small>
-            {percentage(interviews)}%
-            {' '}interview rate
-          </small>
-        </div>
-
-        <div
-          className={
-            styles.performanceCard
-          }
-        >
-          <span>Total Offers</span>
-
-          <strong>{offers}</strong>
-
-          <small
-            className={
-              styles.statPositive
-            }
-          >
-            {percentage(offers)}%
-            {' '}offer rate
-          </small>
-        </div>
-
-        <div
-          className={
-            styles.performanceCard
-          }
-        >
-          <span>
-            Client Satisfaction
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Average Target Completion
           </span>
 
-          <strong>
+          <strong className="mt-3 block text-3xl font-bold text-slate-950">
+            {averageCompletionRate.toFixed(
+              1
+            )}
+            %
+          </strong>
+
+          <small className="mt-2 block text-sm text-slate-500">
+            Across
+            {' '}
+            {monitoredWorkdays}
+            {' '}
+            monitored workday
+            {monitoredWorkdays === 1
+              ? ''
+              : 's'}
+          </small>
+        </section>
+
+        <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Client Quality Rating
+          </span>
+
+          <strong className="mt-3 block text-3xl font-bold text-slate-950">
             {ratingCount === 0
-              ? 'No ratings yet'
+              ? '—'
               : ratingRevealed
                 ? `${clientSatisfaction.toFixed(
                     1
-                  )}/5.0`
+                  )}/5`
                 : 'Concealed'}
           </strong>
 
-          <small>
+          <small className="mt-2 block text-sm text-slate-500">
             {ratingCount === 0
-              ? 'Waiting for Client feedback'
-              : `Based on ${ratingCount} Client rating${
+              ? 'No Client ratings yet'
+              : `Based on ${ratingCount} rating${
                   ratingCount === 1
                     ? ''
                     : 's'
@@ -3556,23 +4765,311 @@ function PerformancePage({
           {ratingCount > 0 && (
             <button
               type="button"
+              data-no-glance
               onClick={() =>
                 setRatingRevealed(
                   (current) =>
                     !current
                 )
               }
-              className={
-                styles.textButton
-              }
+              className="mt-3 text-sm font-semibold text-[#1E50C3]"
             >
               {ratingRevealed
                 ? 'Hide rating'
                 : 'Show rating'}
             </button>
           )}
-        </div>
+        </section>
       </div>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-bold text-slate-950">
+          Application Rate
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          How quickly the Applicant is completing the expected Application workload.
+        </p>
+
+        <div className="mt-5 space-y-6">
+          <div>
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <div>
+                <strong className="text-slate-900">
+                  Today
+                </strong>
+
+                <span className="ml-2 text-slate-500">
+                  {dailyTarget > 0
+                    ? `${todayCompleted} / ${dailyTarget}`
+                    : `${todayCompleted} completed`}
+                </span>
+              </div>
+
+              <strong className="text-[#1E50C3]">
+                {todayCompletionRate.toFixed(
+                  1
+                )}
+                %
+              </strong>
+            </div>
+
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-[#1E50C3]"
+                style={{
+                  width:
+                    `${Math.min(
+                      100,
+                      todayCompletionRate
+                    )}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <div>
+                <strong className="text-slate-900">
+                  Average Target Completion
+                </strong>
+
+                <span className="ml-2 text-slate-500">
+                  Last
+                  {' '}
+                  {monitoredWorkdays}
+                  {' '}
+                  monitored workday
+                  {monitoredWorkdays === 1
+                    ? ''
+                    : 's'}
+                </span>
+              </div>
+
+              <strong className="text-[#1E50C3]">
+                {averageCompletionRate.toFixed(
+                  1
+                )}
+                %
+              </strong>
+            </div>
+
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-[#1E50C3]"
+                style={{
+                  width:
+                    `${Math.min(
+                      100,
+                      averageCompletionRate
+                    )}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-bold text-slate-950">
+          Application Quality
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Quality signals from Client ratings and Application outcomes.
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-blue-50 px-4 py-4">
+            <span className="text-xs font-semibold text-blue-600">
+              Interview Conversion
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-blue-800">
+              {interviewRate.toFixed(
+                1
+              )}
+              %
+            </strong>
+
+            <small className="mt-1 block text-xs text-blue-500">
+              {interviews}
+              {' '}
+              interview
+              {interviews === 1
+                ? ''
+                : 's'}
+              {' '}
+              from
+              {' '}
+              {totalApplications}
+              {' '}
+              Applications
+            </small>
+          </div>
+
+          <div className="rounded-xl bg-emerald-50 px-4 py-4">
+            <span className="text-xs font-semibold text-emerald-600">
+              Offer Conversion
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-emerald-800">
+              {offerRate.toFixed(
+                1
+              )}
+              %
+            </strong>
+
+            <small className="mt-1 block text-xs text-emerald-600">
+              {offers}
+              {' '}
+              offer
+              {offers === 1
+                ? ''
+                : 's'}
+              {' '}
+              from
+              {' '}
+              {totalApplications}
+              {' '}
+              Applications
+            </small>
+          </div>
+
+          <div className="rounded-xl bg-red-50 px-4 py-4">
+            <span className="text-xs font-semibold text-red-500">
+              Rejection Rate
+            </span>
+
+            <strong className="mt-2 block text-2xl font-bold text-red-700">
+              {rejectionRate.toFixed(
+                1
+              )}
+              %
+            </strong>
+
+            <small className="mt-1 block text-xs text-red-500">
+              {rejected}
+              {' '}
+              rejected Application
+              {rejected === 1
+                ? ''
+                : 's'}
+            </small>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div>
+          <h2 className="text-base font-bold text-slate-950">
+            Recent Performance
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Recent Application volume and quality trend.
+          </p>
+        </div>
+
+        <div className="mt-5 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+          {periods.map(
+            ([label, values]) => (
+              <article
+                key={label}
+                className="grid gap-4 px-4 py-4 sm:grid-cols-[1.3fr_repeat(3,1fr)] sm:items-center"
+              >
+                <strong className="text-sm text-slate-900">
+                  {label}
+                </strong>
+
+                <div>
+                  <span className="block text-xs text-slate-400">
+                    Applications
+                  </span>
+
+                  <strong className="mt-1 block text-sm text-[#1E50C3]">
+                    {values.total}
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="block text-xs text-slate-400">
+                    Advanced
+                  </span>
+
+                  <strong className="mt-1 block text-sm text-emerald-700">
+                    {values.advanced}
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="block text-xs text-slate-400">
+                    Quality Rate
+                  </span>
+
+                  <strong className="mt-1 block text-sm text-slate-900">
+                    {values.qualityRate.toFixed(
+                      1
+                    )}
+                    %
+                  </strong>
+                </div>
+              </article>
+            )
+          )}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div>
+          <h2 className="text-base font-bold text-slate-950">
+            Achievements
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Verified milestones based on Application pace and quality.
+          </p>
+        </div>
+
+        {achievements.length >
+        0 ? (
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {achievements.map(
+              (achievement) => (
+                <article
+                  key={
+                    achievement.title
+                  }
+                  className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4"
+                >
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm">
+                    <FiCheckCircle />
+                  </span>
+
+                  <div>
+                    <strong className="text-sm text-slate-950">
+                      {
+                        achievement.title
+                      }
+                    </strong>
+
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      {
+                        achievement.description
+                      }
+                    </p>
+                  </div>
+                </article>
+              )
+            )}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-5 py-6 text-sm text-slate-500">
+            Achievements will appear as daily targets are met and Application quality improves.
+          </div>
+        )}
+      </section>
     </>
   );
 }
@@ -4336,6 +5833,10 @@ export default function ApplicantPortal() {
             );
 
             setApplicantPerformance({
+              dailyTarget: Number(
+                result.performance
+                  ?.dailyTarget || 0
+              ),
               completedTasks: Number(
                 result.performance
                   ?.completedTasks || 0
@@ -5223,6 +6724,9 @@ export default function ApplicantPortal() {
     page = <Dashboard
       clients={assignedClients}
       applications={visibleApplications}
+      performance={
+        applicantPerformance
+      }
       applicationTotal={
         Number(
           applicationSummary

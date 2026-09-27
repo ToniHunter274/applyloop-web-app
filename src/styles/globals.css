@@ -1488,4 +1488,483 @@ textarea {
       13px !important;
   }
 }
+/* ============================================================
+   APPLYLOOP COLOR-PRESERVING BUTTON GLANCE
 
+   This adds only the moving white sheen.
+   It does NOT set button background, border or text colors.
+   ============================================================ */
+
+@keyframes applyloopWhiteGlance {
+  0%,
+  48% {
+    background-position:
+      220% 0;
+
+    opacity:
+      0;
+  }
+
+  55% {
+    opacity:
+      1;
+  }
+
+  78% {
+    background-position:
+      -120% 0;
+
+    opacity:
+      1;
+  }
+
+  88%,
+  100% {
+    background-position:
+      -120% 0;
+
+    opacity:
+      0;
+  }
+}
+
+
+/*
+ * Normal buttons.
+ *
+ * Toggle/switch/tab controls are excluded because several
+ * components use ::after internally to draw their UI.
+ */
+
+:where(
+  .applyloop-glance-scope
+)
+button:not(
+  [class*="toggle" i]
+):not(
+  [class*="switch" i]
+):not(
+  [class*="tab" i]
+):not(
+  [class*="absolute" i]
+) {
+  position:
+    relative;
+
+  isolation:
+    isolate;
+}
+
+
+:where(
+  .applyloop-glance-scope
+)
+button:not(
+  [class*="toggle" i]
+):not(
+  [class*="switch" i]
+):not(
+  [class*="tab" i]
+):not(
+  [class*="absolute" i]
+)::after {
+  content:
+    "";
+
+  position:
+    absolute !important;
+
+  inset:
+    0 !important;
+
+  width:
+    auto !important;
+
+  border-radius:
+    inherit;
+
+  pointer-events:
+    none;
+
+  opacity:
+    0;
+
+  background-image:
+    linear-gradient(
+      112deg,
+      transparent 0%,
+      transparent 36%,
+      rgba(
+        203,
+        213,
+        225,
+        0.12
+      ) 43%,
+      rgba(
+        255,
+        255,
+        255,
+        0.9
+      ) 50%,
+      rgba(
+        203,
+        213,
+        225,
+        0.12
+      ) 57%,
+      transparent 64%,
+      transparent 100%
+    ) !important;
+
+  background-size:
+    260% 100% !important;
+
+  background-position:
+    220% 0;
+
+  animation:
+    applyloopWhiteGlance
+    7s ease-in-out
+    infinite !important;
+
+  transform:
+    none !important;
+
+  filter:
+    none !important;
+}
+
+
+/*
+ * Links that visually behave as buttons.
+ * Existing colors remain untouched.
+ */
+
+:where(
+  .applyloop-glance-scope
+)
+a:is(
+  [class*="button" i],
+  [class*="btn" i],
+  [class~="inline-flex"]
+) {
+  position:
+    relative;
+
+  isolation:
+    isolate;
+}
+
+
+:where(
+  .applyloop-glance-scope
+)
+a:is(
+  [class*="button" i],
+  [class*="btn" i],
+  [class~="inline-flex"]
+)::after {
+  content:
+    "";
+
+  position:
+    absolute !important;
+
+  inset:
+    0 !important;
+
+  border-radius:
+    inherit;
+
+  pointer-events:
+    none;
+
+  opacity:
+    0;
+
+  background-image:
+    linear-gradient(
+      112deg,
+      transparent 0%,
+      transparent 36%,
+      rgba(
+        203,
+        213,
+        225,
+        0.12
+      ) 43%,
+      rgba(
+        255,
+        255,
+        255,
+        0.9
+      ) 50%,
+      rgba(
+        203,
+        213,
+        225,
+        0.12
+      ) 57%,
+      transparent 64%,
+      transparent 100%
+    ) !important;
+
+  background-size:
+    260% 100% !important;
+
+  animation:
+    applyloopWhiteGlance
+    7s ease-in-out
+    infinite !important;
+}
+
+
+/* Disabled buttons remain still. */
+
+:where(
+  .applyloop-glance-scope
+)
+button:disabled::after {
+  display:
+    none !important;
+}
+
+
+/* Respect accessibility preference. */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  :where(
+    .applyloop-glance-scope
+  )
+  :is(
+    button,
+    a
+  )::after {
+    animation:
+      none !important;
+  }
+}
+
+
+/* Sidebar items should not use the white glance effect. */
+:where(
+  .applyloop-glance-scope
+)
+aside :is(
+  button,
+  a
+)::after {
+  display:
+    none !important;
+
+  animation:
+    none !important;
+}
+
+
+/* Absolute-positioned utility buttons keep their native layout. */
+:where(
+  .applyloop-glance-scope
+)
+button[class*="absolute" i]::after {
+  display:
+    none !important;
+
+  animation:
+    none !important;
+}
+
+
+/* ------------------------------------------------------------
+   GLANCE EXCEPTIONS
+
+   Some elements are buttons for accessibility/interaction
+   reasons but visually behave as text, navigation or display
+   controls. data-no-glance keeps their original presentation.
+   ------------------------------------------------------------ */
+
+:where(
+  .applyloop-glance-scope
+)
+[data-no-glance]::after {
+  display:
+    none !important;
+
+  animation:
+    none !important;
+}
+
+
+/* Never allow the glance overlay to alter pointer behaviour. */
+
+:where(
+  .applyloop-glance-scope
+)
+:is(
+  button,
+  a
+)::after {
+  pointer-events:
+    none !important;
+}
+/* ============================================================
+   CLIENT MANAGEMENT EXPLICIT GLANCE
+
+   On Client Management, generic buttons stay still.
+   Only deliberate action buttons carrying .shine-button
+   receive the white glance.
+   ============================================================ */
+
+.client-management-explicit-glance
+:is(
+  button,
+  a
+)::after {
+  display:
+    none !important;
+
+  animation:
+    none !important;
+}
+
+
+/* Re-enable the effect only for intended action buttons. */
+
+.client-management-explicit-glance
+.shine-button {
+  position:
+    relative;
+
+  isolation:
+    isolate;
+
+  overflow:
+    hidden;
+}
+
+
+.client-management-explicit-glance
+.shine-button::after {
+  content:
+    "";
+
+  display:
+    block !important;
+
+  position:
+    absolute !important;
+
+  inset:
+    0 !important;
+
+  width:
+    auto !important;
+
+  border-radius:
+    inherit;
+
+  pointer-events:
+    none !important;
+
+  opacity:
+    0;
+
+  background-image:
+    linear-gradient(
+      112deg,
+      transparent 0%,
+      transparent 36%,
+      rgba(
+        203,
+        213,
+        225,
+        0.12
+      ) 43%,
+      rgba(
+        255,
+        255,
+        255,
+        0.9
+      ) 50%,
+      rgba(
+        203,
+        213,
+        225,
+        0.12
+      ) 57%,
+      transparent 64%,
+      transparent 100%
+    ) !important;
+
+  background-size:
+    260% 100% !important;
+
+  background-position:
+    220% 0;
+
+  animation:
+    applyloopWhiteGlance
+    7s ease-in-out
+    infinite !important;
+
+  transform:
+    none !important;
+
+  filter:
+    none !important;
+}
+
+
+/* Disabled deliberate actions remain still. */
+
+.client-management-explicit-glance
+.shine-button:disabled::after {
+  display:
+    none !important;
+
+  animation:
+    none !important;
+}
+
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .client-management-explicit-glance
+  .shine-button::after {
+    animation:
+      none !important;
+  }
+}
+
+
+/* APPLYLOOP OWNER UPDATE TICKER */
+
+@keyframes applyloopAnnouncementTicker {
+  0% {
+    transform:
+      translateX(100%);
+  }
+
+  100% {
+    transform:
+      translateX(-100%);
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  [style*="applyloopAnnouncementTicker"] {
+    animation:
+      none !important;
+
+    transform:
+      none !important;
+  }
+}

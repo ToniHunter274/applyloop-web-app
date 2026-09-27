@@ -80,7 +80,7 @@ export default function WorkspaceShell({
     'ApplyLoop User';
 
   return (
-    <div className="applyloop-premium-workspace min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
+    <div className="applyloop-glance-scope applyloop-premium-workspace min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
       {mobileOpen && (
         <button
           type="button"

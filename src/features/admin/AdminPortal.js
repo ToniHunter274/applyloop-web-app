@@ -104,7 +104,7 @@ export default function AdminPortal() {
         />
       </Head>
 
-      <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
+      <div className="applyloop-glance-scope min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-white lg:block">
           <div className="flex h-24 items-center border-b border-slate-200 px-6">
             <div className="flex items-center gap-3">
