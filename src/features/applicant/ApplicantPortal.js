@@ -22,6 +22,7 @@ import {
   FiLock,
   FiLogOut,
   FiMessageSquare,
+  FiPlus,
   FiRefreshCw,
   FiSave,
   FiSearch,
@@ -1852,6 +1853,31 @@ function WorkshopPage({
     setWorkflowStatus,
   ] = useState('');
 
+  const [
+    applicationDrafts,
+    setApplicationDrafts,
+  ] = useState([]);
+
+  const [
+    activeDraftId,
+    setActiveDraftId,
+  ] = useState('');
+
+  const [
+    isLoadingDrafts,
+    setIsLoadingDrafts,
+  ] = useState(false);
+
+  const [
+    isRunningFitAnalysis,
+    setIsRunningFitAnalysis,
+  ] = useState(false);
+
+  const [
+    draftError,
+    setDraftError,
+  ] = useState('');
+
   const jobLinkHandoffRef =
     useRef('');
 
@@ -1996,6 +2022,8 @@ function WorkshopPage({
     setResumePreviewOpen(false);
     setResumeReviewPromptOpen(false);
     setResumeReviewed(false);
+    setActiveDraftId('');
+    setDraftError('');
 
     if (
       handoffRequest.status ===
@@ -2109,282 +2137,651 @@ function WorkshopPage({
         )
       : 'Not provided';
 
-  const analysis = useMemo(() => {
-    if (
-      !selectedClient ||
-      jobDescription
-        .trim()
-        .length < 40
-    ) {
-      return {
-        resumeScore: 0,
-        applicabilityScore: 0,
-        matchedResume: [],
-        missingResume: [],
-        preferenceMatches: [],
-        preferenceMisses: [],
-      };
-    }
+  const activeDraft =
+    applicationDrafts.find(
+      (draft) =>
+        draft.id ===
+        activeDraftId
+    ) || null;
 
-    const stopWords = new Set([
-      'and',
-      'the',
-      'with',
-      'for',
-      'from',
-      'this',
-      'that',
-      'your',
-      'role',
-      'work',
-      'type',
-      'not',
-      'provided',
-      'full',
-      'time',
-      'years',
-      'year',
-      'experience',
+  const formDraftFingerprint =
+    JSON.stringify([
+      selectedClientId,
+      companyName.trim(),
+      position.trim(),
+      jobLocation.trim(),
+      jobUrl.trim(),
+      jobDescription.trim(),
     ]);
 
-    const tokenize =
-      (value) =>
-        String(value || '')
-          .toLowerCase()
-          .replace(
-            /[^a-z0-9+#.]+/g,
-            ' '
-          )
-          .split(/\s+/)
-          .map(
-            (item) =>
-              item.trim()
-          )
-          .filter(
-            (item) =>
-              item.length >= 3 &&
-              !stopWords.has(item)
-          );
+  const activeDraftFingerprint =
+    activeDraft
+      ? JSON.stringify([
+          activeDraft.clientId,
+          String(
+            activeDraft.company ||
+              ''
+          ).trim(),
+          String(
+            activeDraft.position ||
+              ''
+          ).trim(),
+          String(
+            activeDraft.location ||
+              ''
+          ).trim(),
+          String(
+            activeDraft.jobUrl ||
+              ''
+          ).trim(),
+          String(
+            activeDraft.jobDescription ||
+              ''
+          ).trim(),
+        ])
+      : '';
 
-    const jobText =
-      [
-        position,
-        jobLocation,
-        jobDescription,
-      ]
-        .join(' ')
-        .toLowerCase();
-
-    const resumeSource =
-      [
-        ...(selectedClient
-          .targetRoles || []),
-        selectedClient
-          .specialization,
-        selectedClient
-          .targetIndustries,
-      ]
-        .filter(Boolean)
-        .join(' ');
-
-    const resumeKeywords = [
-      ...new Set(
-        tokenize(
-          resumeSource
-        )
-      ),
-    ].slice(
-      0,
-      18
+  const activeDraftIsCurrent =
+    Boolean(
+      activeDraft &&
+      formDraftFingerprint ===
+        activeDraftFingerprint
     );
 
-    const matchedResume =
-      resumeKeywords.filter(
-        (keyword) =>
-          jobText.includes(
-            keyword
-          )
-      );
+  const fitAnalysisIsCurrent =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.fitStatus ===
+        'completed'
+    );
 
-    const missingResume =
-      resumeKeywords
-        .filter(
-          (keyword) =>
-            !jobText.includes(
-              keyword
-            )
+  const fitScore =
+    fitAnalysisIsCurrent
+      ? Number(
+          activeDraft
+            ?.applicabilityScore ||
+            0
         )
-        .slice(
-          0,
-          6
-        );
+      : 0;
 
-    const resumeScore =
-      resumeKeywords.length > 0
-        ? Math.min(
-            100,
-            Math.round(
-              (
-                matchedResume.length /
-                resumeKeywords.length
-              ) *
-                100
-            )
-          )
-        : 0;
+  const fitDirective =
+    fitAnalysisIsCurrent
+      ? activeDraft
+          ?.applicabilityDirective ||
+        'Review'
+      : '';
 
-    const preferenceValues = [
-      selectedClient.workType,
-      selectedClient
-        .employmentType,
-      ...(
-        selectedClient
-          .locations || []
-      ),
-      ...(
-        selectedClient
-          .targetMarkets || []
-      ),
-    ]
-      .map(
-        (item) =>
-          String(
-            item || ''
-          ).trim()
-      )
-      .filter(
-        (item) =>
-          item &&
-          item.toLowerCase() !==
-            'not provided'
-      );
+  const fitSummary =
+    fitAnalysisIsCurrent
+      ? activeDraft
+          ?.fitAnalysis
+          ?.summary ||
+        ''
+      : '';
 
-    const uniquePreferences = [
-      ...new Set(
-        preferenceValues
-      ),
-    ];
+  const preferenceAlignment =
+    fitAnalysisIsCurrent
+      ? activeDraft
+          ?.preferenceAlignment ||
+        []
+      : [];
 
-    const preferenceText =
-      [
-        position,
-        jobLocation,
-        jobDescription,
-      ]
-        .join(' ')
-        .toLowerCase();
+  const fitStrengths =
+    fitAnalysisIsCurrent
+      ? activeDraft
+          ?.fitAnalysis
+          ?.strengths ||
+        []
+      : [];
 
-    const preferenceMatches =
-      uniquePreferences.filter(
-        (value) =>
-          preferenceText.includes(
-            value.toLowerCase()
-          )
-      );
+  const fitConcerns =
+    fitAnalysisIsCurrent
+      ? activeDraft
+          ?.fitAnalysis
+          ?.concerns ||
+        []
+      : [];
 
-    const preferenceMisses =
-      uniquePreferences
-        .filter(
-          (value) =>
-            !preferenceText.includes(
-              value.toLowerCase()
-            )
-        )
-        .slice(
-          0,
-          5
-        );
+  const preferenceCounts =
+    preferenceAlignment.reduce(
+      (counts, item) => {
+        if (
+          item.status === 'match'
+        ) {
+          counts.match += 1;
+        } else if (
+          item.status ===
+          'conflict'
+        ) {
+          counts.conflict += 1;
+        } else {
+          counts.unknown += 1;
+        }
 
-    const applicabilityScore =
-      uniquePreferences.length > 0
-        ? Math.min(
-            100,
-            Math.round(
-              (
-                preferenceMatches.length /
-                uniquePreferences.length
-              ) *
-                100
-            )
-          )
-        : 0;
+        return counts;
+      },
+      {
+        match: 0,
+        conflict: 0,
+        unknown: 0,
+      }
+    );
 
-    return {
-      resumeScore,
-      applicabilityScore,
-      matchedResume:
-        matchedResume.slice(
-          0,
-          6
-        ),
-      missingResume,
-      preferenceMatches,
-      preferenceMisses,
-    };
-  }, [
-    jobDescription,
-    jobLocation,
-    position,
-    selectedClient,
-  ]);
-
-  const scoreTone =
-    (value) => {
-      if (value >= 70) {
-        return {
+  const fitTone =
+    fitScore >= 70
+      ? {
           wrap:
             'border-emerald-200 bg-emerald-50',
           text:
             'text-emerald-700',
-        };
+        }
+      : fitScore >= 45
+        ? {
+            wrap:
+              'border-amber-200 bg-amber-50',
+            text:
+              'text-amber-700',
+          }
+        : {
+            wrap:
+              'border-red-200 bg-red-50',
+            text:
+              'text-red-600',
+          };
+
+  const directiveTone =
+    fitDirective === 'Proceed'
+      ? 'bg-emerald-100 text-emerald-700'
+      : fitDirective === 'Decline'
+        ? 'bg-red-100 text-red-700'
+        : 'bg-amber-100 text-amber-700';
+
+  const mergeDraft =
+    (nextDraft) => {
+      if (!nextDraft?.id) {
+        return;
       }
 
-      if (value >= 45) {
-        return {
-          wrap:
-            'border-amber-200 bg-amber-50',
-          text:
-            'text-amber-700',
-        };
-      }
+      setApplicationDrafts(
+        (current) => {
+          const exists =
+            current.some(
+              (draft) =>
+                draft.id ===
+                nextDraft.id
+            );
 
-      return {
-        wrap:
-          'border-red-200 bg-red-50',
-        text:
-          'text-red-600',
-      };
+          if (!exists) {
+            return [
+              nextDraft,
+              ...current,
+            ];
+          }
+
+          return current.map(
+            (draft) =>
+              draft.id ===
+                nextDraft.id
+                ? nextDraft
+                : draft
+          );
+        }
+      );
     };
 
-  const resumeTone =
-    scoreTone(
-      analysis.resumeScore
-    );
+  useEffect(() => {
+    if (isPreview) {
+      return undefined;
+    }
 
-  const applicabilityTone =
-    scoreTone(
-      analysis.applicabilityScore
-    );
+    let cancelled =
+      false;
 
-  const averageScore =
-    Math.round(
-      (
-        analysis.resumeScore +
-        analysis.applicabilityScore
-      ) /
-        2
-    );
+    const loadDrafts =
+      async () => {
+        setIsLoadingDrafts(
+          true
+        );
 
-  const recommendation =
-    jobDescription
-      .trim()
-      .length < 40
-      ? 'Add the job description to analyze this opportunity.'
-      : averageScore >= 70
-        ? 'Very good match. The role aligns well with the Client profile and preferences.'
-        : averageScore >= 45
-          ? 'Moderate match. Review the gaps before proceeding with the application.'
-          : 'Low match. Review the role carefully and confirm it fits the Client before applying.';
+        setDraftError('');
+
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const response =
+            await fetch(
+              '/api/applicant/application-drafts',
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(
+                () => ({})
+              );
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ||
+                'Applications in progress could not be loaded.'
+            );
+          }
+
+          if (!cancelled) {
+            setApplicationDrafts(
+              result.drafts ||
+                []
+            );
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setDraftError(
+              error?.message ||
+                'Applications in progress could not be loaded.'
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingDrafts(
+              false
+            );
+          }
+        }
+      };
+
+    loadDrafts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isPreview,
+  ]);
+
+  const getDraftStage =
+    (draft) => {
+      if (
+        draft.auditStatus ===
+        'auditing'
+      ) {
+        return 'Auditing resume';
+      }
+
+      if (
+        draft.resumeStatus ===
+        'generating'
+      ) {
+        return 'Generating resume';
+      }
+
+      if (
+        draft.fitStatus ===
+        'analyzing'
+      ) {
+        return 'Checking fit';
+      }
+
+      if (
+        draft.auditStatus ===
+        'completed'
+      ) {
+        return 'ATS audit complete';
+      }
+
+      if (
+        draft.resumeStatus ===
+        'completed'
+      ) {
+        return 'Resume ready';
+      }
+
+      if (
+        draft.fitStatus ===
+        'completed'
+      ) {
+        return 'Fit checked';
+      }
+
+      return 'In progress';
+    };
+
+  const openApplicationDraft =
+    (draft) => {
+      const draftClient =
+        activeClients.find(
+          (client) =>
+            client.id ===
+            draft.clientId
+        );
+
+      if (!draftClient) {
+        setDraftError(
+          'This application belongs to a Client who is no longer available in your workspace.'
+        );
+        return;
+      }
+
+      setActiveDraftId(
+        draft.id
+      );
+
+      setSelectedClientId(
+        draft.clientId
+      );
+
+      setCompanyName(
+        draft.company || ''
+      );
+
+      setPosition(
+        draft.position || ''
+      );
+
+      setJobLocation(
+        draft.location || ''
+      );
+
+      setJobUrl(
+        draft.jobUrl || ''
+      );
+
+      setJobDescription(
+        draft.jobDescription ||
+          ''
+      );
+
+      setActiveJobRequestId(
+        draft.jobRequestId ||
+          ''
+      );
+
+      setTailoredResume(
+        draft.tailoredResumeText ||
+          ''
+      );
+
+      setTailoredResumePreviewUrl(
+        ''
+      );
+
+      const draftResumeFingerprint =
+        JSON.stringify([
+          draft.clientId,
+          String(
+            draft.company || ''
+          ).trim(),
+          String(
+            draft.position || ''
+          ).trim(),
+          String(
+            draft.location || ''
+          ).trim(),
+          String(
+            draft.jobUrl || ''
+          ).trim(),
+          String(
+            draft.jobDescription ||
+              ''
+          ).trim(),
+        ]);
+
+      setTailoredResumeFingerprint(
+        draft.tailoredResumeText
+          ? draftResumeFingerprint
+          : ''
+      );
+
+      setResumeReviewed(
+        Boolean(
+          draft.resumeReviewedAt
+        )
+      );
+
+      setResumePreviewOpen(
+        false
+      );
+
+      setResumeReviewPromptOpen(
+        false
+      );
+
+      setResumeGenerationError(
+        ''
+      );
+
+      setDraftError('');
+
+      setWorkflowStatus(
+        'Application loaded.'
+      );
+
+      jobLinkHandoffRef.current =
+        draft.jobRequestId
+          ? `${draft.clientId}:${draft.jobRequestId}`
+          : '';
+    };
+
+  const startNewApplication =
+    () => {
+      setActiveDraftId('');
+      setSelectedClientId('');
+      setCompanyName('');
+      setPosition('');
+      setJobLocation('');
+      setJobUrl('');
+      setJobDescription('');
+      setActiveJobRequestId('');
+      setTailoredResume('');
+      setTailoredResumePreviewUrl('');
+      setTailoredResumeFingerprint('');
+      setResumeGenerationError('');
+      setResumeStatus('');
+      setResumePreviewOpen(false);
+      setResumeReviewPromptOpen(false);
+      setResumeReviewed(false);
+      setWorkflowStatus('');
+      setDraftError('');
+
+      jobLinkHandoffRef.current =
+        '';
+    };
+
+  const saveApplicationDraft =
+    async () => {
+      if (!selectedClient) {
+        throw new Error(
+          'Choose a Client first.'
+        );
+      }
+
+      const accessToken =
+        await getApplicantAccessToken();
+
+      const payload = {
+        clientId:
+          selectedClient.id,
+
+        jobRequestId:
+          activeJobRequestId ||
+          null,
+
+        company:
+          companyName.trim(),
+
+        position:
+          position.trim(),
+
+        location:
+          jobLocation.trim(),
+
+        jobUrl:
+          jobUrl.trim(),
+
+        jobDescription:
+          jobDescription.trim(),
+      };
+
+      const isExisting =
+        Boolean(
+          activeDraftId
+        );
+
+      const endpoint =
+        isExisting
+          ? `/api/applicant/application-drafts/${encodeURIComponent(
+              activeDraftId
+            )}`
+          : '/api/applicant/application-drafts';
+
+      const response =
+        await fetch(
+          endpoint,
+          {
+            method:
+              isExisting
+                ? 'PATCH'
+                : 'POST',
+
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+
+              'Content-Type':
+                'application/json',
+            },
+
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(
+            () => ({})
+          );
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The application could not be saved.'
+        );
+      }
+
+      if (!result.draft) {
+        throw new Error(
+          'The saved application was not returned.'
+        );
+      }
+
+      setActiveDraftId(
+        result.draft.id
+      );
+
+      mergeDraft(
+        result.draft
+      );
+
+      return result.draft;
+    };
+
+  const runFitAnalysis =
+    async () => {
+      if (
+        !coreJobDetailsComplete
+      ) {
+        setDraftError(
+          'Complete the company, position, location, job URL and Job Description before checking fit.'
+        );
+        return;
+      }
+
+      if (
+        isRunningFitAnalysis ||
+        isPreview
+      ) {
+        return;
+      }
+
+      setIsRunningFitAnalysis(
+        true
+      );
+
+      setDraftError('');
+
+      try {
+        const savedDraft =
+          await saveApplicationDraft();
+
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            `/api/applicant/application-drafts/${encodeURIComponent(
+              savedDraft.id
+            )}/fit-analysis`,
+            {
+              method: 'POST',
+
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+
+                'Content-Type':
+                  'application/json',
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'The opportunity could not be checked right now.'
+          );
+        }
+
+        if (result.draft) {
+          mergeDraft(
+            result.draft
+          );
+
+          setActiveDraftId(
+            result.draft.id
+          );
+        }
+
+        setWorkflowStatus(
+          'Job fit checked.'
+        );
+      } catch (error) {
+        setDraftError(
+          error?.message ||
+            'The opportunity could not be checked right now.'
+        );
+      } finally {
+        setIsRunningFitAnalysis(
+          false
+        );
+      }
+    };
 
   const handleClientChange =
     (event) => {
@@ -2407,6 +2804,8 @@ function WorkshopPage({
       setResumeReviewed(false);
       setActiveJobRequestId('');
       setWorkflowStatus('');
+      setActiveDraftId('');
+      setDraftError('');
 
       jobLinkHandoffRef.current =
         '';
@@ -2907,7 +3306,7 @@ function WorkshopPage({
     <>
       <PageHeader
         title="Prompt Center"
-        subtitle="Analyze job fit, generate tailored documents and prepare a verified application."
+        subtitle="Prepare each application, check Client fit and complete the resume review before applying."
         showHeading
         showNotification
         action={
@@ -2944,6 +3343,121 @@ function WorkshopPage({
           ) : null
         }
       />
+
+      {!isPreview && (
+        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Applications in Progress
+              </h2>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Move between active applications without losing your work.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                startNewApplication
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A45A7]"
+            >
+              <FiPlus />
+              New Application
+            </button>
+          </div>
+
+          {isLoadingDrafts ? (
+            <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+              <FiRefreshCw className="animate-spin" />
+              Loading applications...
+            </div>
+          ) : applicationDrafts.length >
+            0 ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {applicationDrafts.map(
+                (draft) => {
+                  const isActive =
+                    draft.id ===
+                    activeDraftId;
+
+                  return (
+                    <button
+                      key={
+                        draft.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        openApplicationDraft(
+                          draft
+                        )
+                      }
+                      className={classNames(
+                        'flex w-full items-center justify-between gap-4 rounded-xl border p-4 text-left transition',
+                        isActive
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50'
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900">
+                          {draft.company ||
+                            'Untitled application'}
+                        </p>
+
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {draft.position ||
+                            'Role not added yet'}
+                        </p>
+                      </div>
+
+                      <span
+                        className={classNames(
+                          'shrink-0 rounded-full px-3 py-1 text-xs font-semibold',
+                          draft.resumeStatus ===
+                            'generating' ||
+                          draft.fitStatus ===
+                            'analyzing' ||
+                          draft.auditStatus ===
+                            'auditing'
+                            ? 'bg-blue-100 text-blue-700'
+                            : draft.auditStatus ===
+                                  'completed' ||
+                                draft.resumeStatus ===
+                                  'completed'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-100 text-slate-600'
+                        )}
+                      >
+                        {
+                          getDraftStage(
+                            draft
+                          )
+                        }
+                      </span>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">
+              No applications in progress yet.
+            </p>
+          )}
+
+          {draftError && (
+            <div
+              role="alert"
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+            >
+              {draftError}
+            </div>
+          )}
+        </section>
+      )}
 
       <section
         className={
@@ -3163,88 +3677,6 @@ function WorkshopPage({
             </section>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <section
-              className={classNames(
-                'rounded-2xl border p-5',
-                resumeTone.wrap
-              )}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">
-                    Resume Match Score
-                  </p>
-
-                  <p
-                    className={classNames(
-                      'mt-1 text-3xl font-bold',
-                      resumeTone.text
-                    )}
-                  >
-                    {
-                      analysis.resumeScore
-                    }
-                    %
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    Estimated from
-                    Client profile and
-                    job alignment.
-                  </p>
-                </div>
-
-                <FiTarget
-                  className={classNames(
-                    'h-6 w-6',
-                    resumeTone.text
-                  )}
-                />
-              </div>
-            </section>
-
-            <section
-              className={classNames(
-                'rounded-2xl border p-5',
-                applicabilityTone.wrap
-              )}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">
-                    Applicability Score
-                  </p>
-
-                  <p
-                    className={classNames(
-                      'mt-1 text-3xl font-bold',
-                      applicabilityTone.text
-                    )}
-                  >
-                    {
-                      analysis.applicabilityScore
-                    }
-                    %
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    Based on Client
-                    preferences vs.
-                    job details.
-                  </p>
-                </div>
-
-                <FiBriefcase
-                  className={classNames(
-                    'h-6 w-6',
-                    applicabilityTone.text
-                  )}
-                />
-              </div>
-            </section>
-          </div>
-
           <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div
@@ -3386,137 +3818,281 @@ function WorkshopPage({
             </div>
           </section>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="flex items-center gap-2">
-                <FiFileText className="text-[#1E50C3]" />
-
+          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Resume Analysis
+                  Job Fit
                 </h3>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  Check this opportunity against the Client&apos;s saved preferences.
+                </p>
               </div>
 
-              <p className="mt-4 text-xs font-semibold text-emerald-700">
-                Matching signals
-              </p>
+              <button
+                type="button"
+                onClick={
+                  runFitAnalysis
+                }
+                disabled={
+                  !coreJobDetailsComplete ||
+                  isRunningFitAnalysis ||
+                  isPreview
+                }
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              >
+                {isRunningFitAnalysis ? (
+                  <>
+                    <FiRefreshCw className="animate-spin" />
+                    Checking Fit...
+                  </>
+                ) : (
+                  <>
+                    <FiTarget />
+                    Check Job Fit
+                  </>
+                )}
+              </button>
+            </div>
 
-              {analysis
-                .matchedResume
-                .length > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                  {analysis.matchedResume.map(
-                    (item) => (
-                      <li
-                        key={
-                          item
-                        }
-                        className="flex items-center gap-2"
-                      >
-                        <FiCheckCircle className="text-emerald-500" />
-                        {item}
-                      </li>
-                    )
-                  )}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  No strong profile
-                  matches detected yet.
-                </p>
-              )}
-
-              <p className="mt-4 text-xs font-semibold text-amber-700">
-                Keywords to highlight
-              </p>
-
-              {analysis
-                .missingResume
-                .length > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                  {analysis.missingResume.map(
-                    (item) => (
-                      <li
-                        key={
-                          item
-                        }
-                      >
-                        • {item}
-                      </li>
-                    )
-                  )}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  No additional
-                  keywords identified.
-                </p>
-              )}
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="flex items-center gap-2">
-                <FiTarget className="text-[#1E50C3]" />
-
-                <h3 className="text-sm font-bold text-slate-900">
-                  Preference Alignment
-                </h3>
+            {activeDraft &&
+              !activeDraftIsCurrent && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                Job details have changed. Check Job Fit again to refresh the result.
               </div>
+            )}
 
-              <p className="mt-4 text-xs font-semibold text-emerald-700">
-                Matches
-              </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <FiTarget className="text-[#1E50C3]" />
 
-              {analysis
-                .preferenceMatches
-                .length > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                  {analysis.preferenceMatches.map(
-                    (item) => (
-                      <li
-                        key={
-                          item
-                        }
-                        className="flex items-center gap-2"
-                      >
-                        <FiCheckCircle className="text-emerald-500" />
-                        {item}
-                      </li>
-                    )
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Preference Alignment
+                    </h3>
+                  </div>
+
+                  {fitAnalysisIsCurrent && (
+                    <span className="text-xs font-semibold text-slate-500">
+                      {preferenceCounts.match} match
+                      {preferenceCounts.match ===
+                      1
+                        ? ''
+                        : 'es'}
+                      {' · '}
+                      {preferenceCounts.conflict} conflict
+                      {preferenceCounts.conflict ===
+                      1
+                        ? ''
+                        : 's'}
+                      {' · '}
+                      {preferenceCounts.unknown} unknown
+                    </span>
                   )}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  No Client
-                  preference matches
-                  detected yet.
-                </p>
-              )}
+                </div>
 
-              {analysis
-                .preferenceMisses
-                .length > 0 && (
-                <>
-                  <p className="mt-4 text-xs font-semibold text-amber-700">
-                    Review
+                {!fitAnalysisIsCurrent ? (
+                  <p className="mt-4 text-sm text-slate-500">
+                    Check Job Fit to see how the opportunity agrees with the Client&apos;s preferences.
                   </p>
-
-                  <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                    {analysis.preferenceMisses.map(
-                      (item) => (
-                        <li
-                          key={
-                            item
-                          }
+                ) : preferenceAlignment.length >
+                  0 ? (
+                  <div className="mt-4 space-y-3">
+                    {preferenceAlignment.map(
+                      (
+                        item,
+                        index
+                      ) => (
+                        <div
+                          key={`${item.preference}-${index}`}
+                          className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
                         >
-                          • {item}
-                        </li>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <strong className="text-sm text-slate-800">
+                              {
+                                item.preference
+                              }
+                            </strong>
+
+                            <span
+                              className={classNames(
+                                'rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide',
+                                item.status ===
+                                  'match'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : item.status ===
+                                      'conflict'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-slate-200 text-slate-600'
+                              )}
+                            >
+                              {
+                                item.status
+                              }
+                            </span>
+                          </div>
+
+                          {item.clientPreference && (
+                            <p className="mt-2 text-xs text-slate-600">
+                              <strong>
+                                Client:
+                              </strong>{' '}
+                              {
+                                item.clientPreference
+                              }
+                            </p>
+                          )}
+
+                          {item.jobEvidence && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              <strong>
+                                Job:
+                              </strong>{' '}
+                              {
+                                item.jobEvidence
+                              }
+                            </p>
+                          )}
+
+                          {item.explanation && (
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              {
+                                item.explanation
+                              }
+                            </p>
+                          )}
+                        </div>
                       )
                     )}
-                  </ul>
-                </>
-              )}
-            </section>
-          </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-500">
+                    No preference comparisons were returned.
+                  </p>
+                )}
+              </section>
+
+              <section
+                className={classNames(
+                  'rounded-2xl border p-5',
+                  fitAnalysisIsCurrent
+                    ? fitTone.wrap
+                    : 'border-slate-200 bg-white'
+                )}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500">
+                      Applicability Score
+                    </p>
+
+                    <p
+                      className={classNames(
+                        'mt-1 text-4xl font-bold',
+                        fitAnalysisIsCurrent
+                          ? fitTone.text
+                          : 'text-slate-300'
+                      )}
+                    >
+                      {fitAnalysisIsCurrent
+                        ? fitScore
+                        : '—'}
+                      {fitAnalysisIsCurrent
+                        ? '%'
+                        : ''}
+                    </p>
+                  </div>
+
+                  {fitAnalysisIsCurrent && (
+                    <span
+                      className={classNames(
+                        'rounded-full px-3 py-1 text-xs font-bold',
+                        directiveTone
+                      )}
+                    >
+                      {
+                        fitDirective
+                      }
+                    </span>
+                  )}
+                </div>
+
+                {!fitAnalysisIsCurrent ? (
+                  <p className="mt-4 text-sm text-slate-500">
+                    Applicability is decided from the Client&apos;s saved preferences and this opportunity.
+                  </p>
+                ) : (
+                  <>
+                    {fitSummary && (
+                      <p className="mt-4 text-sm leading-6 text-slate-700">
+                        {
+                          fitSummary
+                        }
+                      </p>
+                    )}
+
+                    {fitStrengths.length >
+                      0 && (
+                      <div className="mt-5">
+                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                          Strong alignment
+                        </p>
+
+                        <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                          {fitStrengths.map(
+                            (
+                              item,
+                              index
+                            ) => (
+                              <li
+                                key={`${index}-${item}`}
+                                className="flex items-start gap-2"
+                              >
+                                <FiCheckCircle className="mt-0.5 shrink-0 text-emerald-600" />
+                                <span>
+                                  {
+                                    item
+                                  }
+                                </span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {fitConcerns.length >
+                      0 && (
+                      <div className="mt-5">
+                        <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                          Points to review
+                        </p>
+
+                        <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                          {fitConcerns.map(
+                            (
+                              item,
+                              index
+                            ) => (
+                              <li
+                                key={`${index}-${item}`}
+                              >
+                                • {
+                                  item
+                                }
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            </div>
+          </section>
 
           {isGeneratingTailoredResume && (
             <section className="mt-5 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
@@ -3604,17 +4180,34 @@ function WorkshopPage({
               </button>
             )}
 
-            <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
-              <strong className="text-xs text-slate-600">
-                Recommendation:
-              </strong>
+            {fitAnalysisIsCurrent && (
+              <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <strong className="text-xs text-slate-600">
+                    Fit Directive:
+                  </strong>
 
-              <p className="mt-1 text-sm text-slate-600">
-                {
-                  recommendation
-                }
-              </p>
-            </div>
+                  <span
+                    className={classNames(
+                      'rounded-full px-2.5 py-1 text-xs font-bold',
+                      directiveTone
+                    )}
+                  >
+                    {
+                      fitDirective
+                    }
+                  </span>
+                </div>
+
+                {fitSummary && (
+                  <p className="mt-2 text-sm text-slate-600">
+                    {
+                      fitSummary
+                    }
+                  </p>
+                )}
+              </div>
+            )}
 
             {!canMarkApplied && (
               <p className="mt-3 text-xs text-slate-500">
