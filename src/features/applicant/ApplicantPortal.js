@@ -1804,11 +1804,6 @@ function WorkshopPage({
     useState(false);
 
   const [
-    isGeneratingTailoredResume,
-    setIsGeneratingTailoredResume,
-  ] = useState(false);
-
-  const [
     tailoredResume,
     setTailoredResume,
   ] = useState('');
@@ -1881,10 +1876,27 @@ function WorkshopPage({
   const jobLinkHandoffRef =
     useRef('');
 
+  const activeDraftIdRef =
+    useRef('');
+
+  useEffect(() => {
+    activeDraftIdRef.current =
+      activeDraftId;
+  }, [
+    activeDraftId,
+  ]);
+
   const activeClients =
-    clients.filter(
-      (client) =>
-        client.status === 'active'
+    useMemo(
+      () =>
+        clients.filter(
+          (client) =>
+            client.status ===
+            'active'
+        ),
+      [
+        clients,
+      ]
     );
 
   const selectedClient =
@@ -1906,6 +1918,62 @@ function WorkshopPage({
           request.status
         )
     );
+
+  const clearJobLinkHandoffFromUrl =
+    async () => {
+      const routeClientId =
+        Array.isArray(
+          router.query.clientId
+        )
+          ? router.query
+              .clientId[0]
+          : router.query
+              .clientId;
+
+      const routeJobRequestId =
+        Array.isArray(
+          router.query
+            .jobRequestId
+        )
+          ? router.query
+              .jobRequestId[0]
+          : router.query
+              .jobRequestId;
+
+      if (
+        !routeClientId &&
+        !routeJobRequestId
+      ) {
+        return;
+      }
+
+      /*
+       * Suppress the old handoff while
+       * Next removes it from the URL.
+       */
+      if (
+        routeClientId &&
+        routeJobRequestId
+      ) {
+        jobLinkHandoffRef.current =
+          `${routeClientId}:${routeJobRequestId}`;
+      }
+
+      await router.replace(
+        '/applicant/workshop',
+        undefined,
+        {
+          shallow: true,
+        }
+      );
+
+      /*
+       * Future genuine Job-Link
+       * navigation should be allowed.
+       */
+      jobLinkHandoffRef.current =
+        '';
+    };
 
   useEffect(() => {
     if (
@@ -2098,12 +2166,17 @@ function WorkshopPage({
         .length >= 80
     );
 
-  const canGenerateTailoredResume =
+  const hasCurrentApplicationWork =
     Boolean(
-      selectedClient?.hasResume &&
-      coreJobDetailsComplete &&
-      !isPreview &&
-      !isGeneratingTailoredResume
+      selectedClient &&
+      (
+        companyName.trim() ||
+        position.trim() ||
+        jobLocation.trim() ||
+        jobUrl.trim() ||
+        jobDescription.trim() ||
+        tailoredResume.trim()
+      )
     );
 
   const canMarkApplied =
@@ -2193,6 +2266,22 @@ function WorkshopPage({
       activeDraftIsCurrent &&
       activeDraft?.fitStatus ===
         'completed'
+    );
+
+  const activeResumeGenerating =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.resumeStatus ===
+        'generating'
+    );
+
+  const canGenerateTailoredResume =
+    Boolean(
+      selectedClient?.hasResume &&
+      coreJobDetailsComplete &&
+      fitAnalysisIsCurrent &&
+      !activeResumeGenerating &&
+      !isPreview
     );
 
   const fitScore =
@@ -2329,6 +2418,48 @@ function WorkshopPage({
       );
     };
 
+
+  const fetchLatestApplicationDraft =
+    async (draftId) => {
+      const accessToken =
+        await getApplicantAccessToken();
+
+      const response =
+        await fetch(
+          `/api/applicant/application-drafts/${encodeURIComponent(
+            draftId
+          )}`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+      const result =
+        await response
+          .json()
+          .catch(
+            () => ({})
+          );
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            'The application could not be refreshed.'
+        );
+      }
+
+      if (!result.draft) {
+        throw new Error(
+          'The refreshed application was not returned.'
+        );
+      }
+
+      return result.draft;
+    };
+
   useEffect(() => {
     if (isPreview) {
       return undefined;
@@ -2405,6 +2536,116 @@ function WorkshopPage({
     isPreview,
   ]);
 
+  const hasRunningDraftWork =
+    applicationDrafts.some(
+      (draft) =>
+        draft.fitStatus ===
+          'analyzing' ||
+        draft.resumeStatus ===
+          'generating' ||
+        draft.auditStatus ===
+          'auditing'
+    );
+
+  useEffect(() => {
+    if (
+      isPreview ||
+      !hasRunningDraftWork
+    ) {
+      return undefined;
+    }
+
+    let cancelled =
+      false;
+
+    const refreshDrafts =
+      async () => {
+        try {
+          const accessToken =
+            await getApplicantAccessToken();
+
+          const response =
+            await fetch(
+              '/api/applicant/application-drafts',
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+          const result =
+            await response
+              .json()
+              .catch(
+                () => ({})
+              );
+
+          if (
+            !response.ok ||
+            cancelled
+          ) {
+            return;
+          }
+
+          const refreshedDrafts =
+            result.drafts || [];
+
+          setApplicationDrafts(
+            refreshedDrafts
+          );
+
+          /*
+           * Keep the active Draft object
+           * synchronized with completed
+           * background work.
+           */
+          const refreshedActive =
+            refreshedDrafts.find(
+              (draft) =>
+                draft.id ===
+                activeDraftIdRef
+                  .current
+            );
+
+          if (
+            refreshedActive &&
+            refreshedActive.resumeStatus ===
+              'failed'
+          ) {
+            setResumeGenerationError(
+              refreshedActive
+                .lastError ||
+                'The tailored resume could not be generated.'
+            );
+          }
+        } catch (error) {
+          console.warn(
+            'Unable to refresh Applications in Progress:',
+            error
+          );
+        }
+      };
+
+    const intervalId =
+      window.setInterval(
+        refreshDrafts,
+        5000
+      );
+
+    return () => {
+      cancelled = true;
+
+      window.clearInterval(
+        intervalId
+      );
+    };
+  }, [
+    hasRunningDraftWork,
+    isPreview,
+  ]);
+
   const getDraftStage =
     (draft) => {
       if (
@@ -2426,6 +2667,27 @@ function WorkshopPage({
         'analyzing'
       ) {
         return 'Checking fit';
+      }
+
+      if (
+        draft.auditStatus ===
+        'failed'
+      ) {
+        return 'Audit failed';
+      }
+
+      if (
+        draft.resumeStatus ===
+        'failed'
+      ) {
+        return 'Resume failed';
+      }
+
+      if (
+        draft.fitStatus ===
+        'failed'
+      ) {
+        return 'Fit check failed';
       }
 
       if (
@@ -2453,7 +2715,61 @@ function WorkshopPage({
     };
 
   const openApplicationDraft =
-    (draft) => {
+    async (selectedDraft) => {
+      let draft =
+        selectedDraft;
+
+      const isSwitchingDraft =
+        draft.id !==
+        activeDraftId;
+
+      /*
+       * Save the application we are
+       * actually leaving.
+       */
+      if (
+        isSwitchingDraft &&
+        hasCurrentApplicationWork &&
+        selectedClient
+      ) {
+        try {
+          await saveApplicationDraft();
+        } catch (error) {
+          setDraftError(
+            error?.message ||
+              'Your current application could not be saved. It has not been closed.'
+          );
+
+          return;
+        }
+      }
+
+      /*
+       * The card in React may be older
+       * than the database, especially
+       * after background AI work.
+       *
+       * Always open the authoritative
+       * Supabase version.
+       */
+      try {
+        draft =
+          await fetchLatestApplicationDraft(
+            selectedDraft.id
+          );
+
+        mergeDraft(
+          draft
+        );
+      } catch (error) {
+        setDraftError(
+          error?.message ||
+            'The latest version of this application could not be loaded.'
+        );
+
+        return;
+      }
+
       const draftClient =
         activeClients.find(
           (client) =>
@@ -2553,7 +2869,13 @@ function WorkshopPage({
       );
 
       setResumeGenerationError(
-        ''
+        draft.resumeStatus ===
+          'failed'
+          ? (
+              draft.lastError ||
+              'The tailored resume could not be generated.'
+            )
+          : ''
       );
 
       setDraftError('');
@@ -2562,14 +2884,35 @@ function WorkshopPage({
         'Application loaded.'
       );
 
-      jobLinkHandoffRef.current =
-        draft.jobRequestId
-          ? `${draft.clientId}:${draft.jobRequestId}`
-          : '';
+      /*
+       * The Draft is now the source of
+       * truth. The old Job-Link URL must
+       * stop re-hydrating a different
+       * opportunity over this form.
+       */
+      await clearJobLinkHandoffFromUrl();
     };
 
   const startNewApplication =
-    () => {
+    async () => {
+      if (
+        hasCurrentApplicationWork &&
+        selectedClient
+      ) {
+        try {
+          await saveApplicationDraft();
+        } catch (error) {
+          setDraftError(
+            error?.message ||
+              'Your current application could not be saved. A new application was not opened.'
+          );
+
+          return;
+        }
+      }
+
+      await clearJobLinkHandoffFromUrl();
+
       setActiveDraftId('');
       setSelectedClientId('');
       setCompanyName('');
@@ -2594,7 +2937,7 @@ function WorkshopPage({
     };
 
   const saveApplicationDraft =
-    async () => {
+    async (overrides = {}) => {
       if (!selectedClient) {
         throw new Error(
           'Choose a Client first.'
@@ -2603,6 +2946,31 @@ function WorkshopPage({
 
       const accessToken =
         await getApplicantAccessToken();
+
+      const isExisting =
+        Boolean(
+          activeDraftId
+        );
+
+      const nextResumeText =
+        Object.prototype
+          .hasOwnProperty.call(
+            overrides,
+            'tailoredResumeText'
+          )
+          ? overrides
+              .tailoredResumeText
+          : tailoredResume;
+
+      const nextResumeReviewed =
+        Object.prototype
+          .hasOwnProperty.call(
+            overrides,
+            'resumeReviewed'
+          )
+          ? overrides
+              .resumeReviewed
+          : resumeReviewed;
 
       const payload = {
         clientId:
@@ -2628,10 +2996,29 @@ function WorkshopPage({
           jobDescription.trim(),
       };
 
-      const isExisting =
-        Boolean(
-          activeDraftId
-        );
+      /*
+       * Generated resume content is part
+       * of the Draft, not temporary page
+       * state.
+       */
+      if (
+        isExisting &&
+        activeDraft?.resumeStatus ===
+          'completed' &&
+        String(
+          nextResumeText || ''
+        ).trim()
+      ) {
+        payload.tailoredResumeText =
+          String(
+            nextResumeText
+          );
+
+        payload.resumeReviewed =
+          Boolean(
+            nextResumeReviewed
+          );
+      }
 
       const endpoint =
         isExisting
@@ -2687,6 +3074,15 @@ function WorkshopPage({
       setActiveDraftId(
         result.draft.id
       );
+
+      /*
+       * React state updates asynchronously.
+       * Keep the ref synchronized now so
+       * an in-flight AI response cannot
+       * mistake this Draft for another one.
+       */
+      activeDraftIdRef.current =
+        result.draft.id;
 
       mergeDraft(
         result.draft
@@ -2784,9 +3180,32 @@ function WorkshopPage({
     };
 
   const handleClientChange =
-    (event) => {
+    async (event) => {
+      const nextClientId =
+        event.target.value;
+
+      if (
+        nextClientId !==
+          selectedClientId &&
+        hasCurrentApplicationWork &&
+        selectedClient
+      ) {
+        try {
+          await saveApplicationDraft();
+        } catch (error) {
+          setDraftError(
+            error?.message ||
+              'Your current application could not be saved. The Client was not changed.'
+          );
+
+          return;
+        }
+      }
+
+      await clearJobLinkHandoffFromUrl();
+
       setSelectedClientId(
-        event.target.value
+        nextClientId
       );
 
       setCompanyName('');
@@ -2928,21 +3347,26 @@ function WorkshopPage({
         !coreJobDetailsComplete
       ) {
         setResumeGenerationError(
-          'Complete the company, position, location, valid job URL and job description first.'
+          'Complete the company, position, location, valid job URL and Job Description first.'
         );
         return;
       }
 
       if (
-        isGeneratingTailoredResume ||
+        !fitAnalysisIsCurrent
+      ) {
+        setResumeGenerationError(
+          'Check Job Fit before generating the tailored resume.'
+        );
+        return;
+      }
+
+      if (
+        activeResumeGenerating ||
         isPreview
       ) {
         return;
       }
-
-      setIsGeneratingTailoredResume(
-        true
-      );
 
       setResumeGenerationError('');
       setTailoredResumePreviewUrl('');
@@ -2951,35 +3375,104 @@ function WorkshopPage({
         false
       );
 
+      let generationDraft =
+        null;
+
+      let generationFingerprint =
+        '';
+
       try {
+        const savedDraft =
+          await saveApplicationDraft();
+
+        if (
+          savedDraft.fitStatus !==
+          'completed'
+        ) {
+          throw new Error(
+            'Check Job Fit before generating the tailored resume.'
+          );
+        }
+
+        generationDraft =
+          savedDraft;
+
+        const generationDraftId =
+          savedDraft.id;
+
+        generationFingerprint =
+          JSON.stringify([
+            savedDraft.clientId,
+            String(
+              savedDraft.company ||
+                ''
+            ).trim(),
+            String(
+              savedDraft.position ||
+                ''
+            ).trim(),
+            String(
+              savedDraft.location ||
+                ''
+            ).trim(),
+            String(
+              savedDraft.jobUrl ||
+                ''
+            ).trim(),
+            String(
+              savedDraft.jobDescription ||
+                ''
+            ).trim(),
+          ]);
+
+        /*
+         * Immediately mark this Draft
+         * as generating in the UI.
+         *
+         * The Applicant can now open
+         * another Draft without waiting.
+         */
+        mergeDraft({
+          ...savedDraft,
+
+          resumeStatus:
+            'generating',
+
+          resumeReviewedAt:
+            null,
+
+          auditStatus:
+            'not_started',
+
+          atsScore:
+            null,
+
+          atsAudit:
+            {},
+
+          lastError:
+            '',
+        });
+
         const accessToken =
           await getApplicantAccessToken();
 
         const response =
           await fetch(
-            '/api/applicant/tailored-resume',
+            `/api/applicant/application-drafts/${encodeURIComponent(
+              generationDraftId
+            )}/generate-resume`,
             {
-              method: 'POST',
+              method:
+                'POST',
+
               headers: {
                 Authorization:
                   `Bearer ${accessToken}`,
+
                 'Content-Type':
                   'application/json',
               },
-              body: JSON.stringify({
-                clientId:
-                  selectedClient.id,
-                company:
-                  companyName.trim(),
-                position:
-                  position.trim(),
-                location:
-                  jobLocation.trim(),
-                jobUrl:
-                  jobUrl.trim(),
-                jobDescription:
-                  jobDescription.trim(),
-              }),
             }
           );
 
@@ -2998,64 +3491,239 @@ function WorkshopPage({
         }
 
         if (
-          result.mode ===
-            'placeholder' &&
-          result.resumeUrl
+          !result.draft ||
+          !result.draft
+            .tailoredResumeText
         ) {
-          setTailoredResume('');
-          setTailoredResumeFingerprint(
-            ''
-          );
-          setTailoredResumePreviewUrl(
-            result.resumeUrl
-          );
-          setResumePreviewOpen(
-            true
-          );
-
-          setResumeGenerationError(
-            'The AI provider is unavailable, so ApplyLoop opened the source resume instead. Mark as Applied will remain locked.'
-          );
-
-          return;
-        }
-
-        if (!result.resumeText) {
           throw new Error(
             'The resume generator returned an empty result.'
           );
         }
 
-        setTailoredResumePreviewUrl(
-          ''
+        /*
+         * Always update the Draft card.
+         * Only update the visible editor
+         * when the Applicant is still
+         * looking at this same Draft.
+         */
+        mergeDraft(
+          result.draft
         );
 
-        setTailoredResume(
-          result.resumeText
+        if (
+          activeDraftIdRef
+            .current ===
+          generationDraftId
+        ) {
+          setTailoredResumePreviewUrl(
+            ''
+          );
+
+          setTailoredResume(
+            result.draft
+              .tailoredResumeText
+          );
+
+          setTailoredResumeFingerprint(
+            generationFingerprint
+          );
+
+          setResumePreviewOpen(
+            true
+          );
+
+          setResumeReviewPromptOpen(
+            true
+          );
+
+          setResumeGenerationError(
+            ''
+          );
+        }
+      } catch (error) {
+        const message =
+          error?.message ||
+          'The tailored resume could not be generated.';
+
+        /*
+         * A browser/network error does not
+         * prove the server-side generation
+         * failed.
+         *
+         * The request may have completed
+         * successfully in Supabase after
+         * the browser stopped waiting.
+         */
+        if (generationDraft) {
+          try {
+            const latestDraft =
+              await fetchLatestApplicationDraft(
+                generationDraft.id
+              );
+
+            mergeDraft(
+              latestDraft
+            );
+
+            if (
+              latestDraft.resumeStatus ===
+                'completed' &&
+              latestDraft
+                .tailoredResumeText
+            ) {
+              if (
+                activeDraftIdRef
+                  .current ===
+                latestDraft.id
+              ) {
+                const latestFingerprint =
+                  JSON.stringify([
+                    latestDraft.clientId,
+                    String(
+                      latestDraft.company ||
+                        ''
+                    ).trim(),
+                    String(
+                      latestDraft.position ||
+                        ''
+                    ).trim(),
+                    String(
+                      latestDraft.location ||
+                        ''
+                    ).trim(),
+                    String(
+                      latestDraft.jobUrl ||
+                        ''
+                    ).trim(),
+                    String(
+                      latestDraft
+                        .jobDescription ||
+                        ''
+                    ).trim(),
+                  ]);
+
+                setTailoredResume(
+                  latestDraft
+                    .tailoredResumeText
+                );
+
+                setTailoredResumeFingerprint(
+                  latestFingerprint
+                );
+
+                setResumeGenerationError(
+                  ''
+                );
+              }
+
+              return;
+            }
+
+            if (
+              latestDraft.resumeStatus ===
+                'failed'
+            ) {
+              if (
+                activeDraftIdRef
+                  .current ===
+                latestDraft.id
+              ) {
+                setResumeGenerationError(
+                  latestDraft
+                    .lastError ||
+                    message
+                );
+              }
+
+              return;
+            }
+
+            /*
+             * Still generating or the
+             * database has not reached a
+             * terminal state yet.
+             *
+             * Leave it alone. Polling will
+             * resolve the correct result.
+             */
+            if (
+              latestDraft.resumeStatus ===
+                'generating'
+            ) {
+              return;
+            }
+          } catch {
+            /*
+             * Reconciliation itself failed.
+             * Keep the optimistic
+             * "generating" state so polling
+             * can recover later.
+             */
+          }
+        }
+
+        if (
+          !generationDraft ||
+          activeDraftIdRef
+            .current ===
+            generationDraft.id
+        ) {
+          setResumeGenerationError(
+            message
+          );
+        }
+      }
+    };
+
+  const markTailoredResumeReviewed =
+    async () => {
+      if (
+        !activeDraftId ||
+        !tailoredResume.trim()
+      ) {
+        setResumeGenerationError(
+          'The tailored resume must be saved before it can be marked reviewed.'
         );
 
-        setTailoredResumeFingerprint(
-          resumeFingerprint
+        return;
+      }
+
+      try {
+        const savedDraft =
+          await saveApplicationDraft({
+            tailoredResumeText:
+              tailoredResume,
+
+            resumeReviewed:
+              true,
+          });
+
+        setResumeReviewed(
+          Boolean(
+            savedDraft
+              ?.resumeReviewedAt
+          )
+        );
+
+        setResumeReviewPromptOpen(
+          false
         );
 
         setResumePreviewOpen(
           true
         );
 
-        setResumeReviewPromptOpen(
-          true
+        setResumeGenerationError(
+          ''
         );
       } catch (error) {
         setResumeGenerationError(
           error?.message ||
-            'The tailored resume could not be generated.'
-        );
-      } finally {
-        setIsGeneratingTailoredResume(
-          false
+            'The resume review could not be saved.'
         );
       }
     };
+
 
   const copyTailoredResume =
     async () => {
@@ -3423,12 +4091,19 @@ function WorkshopPage({
                           draft.auditStatus ===
                             'auditing'
                             ? 'bg-blue-100 text-blue-700'
-                            : draft.auditStatus ===
-                                  'completed' ||
-                                draft.resumeStatus ===
-                                  'completed'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-slate-100 text-slate-600'
+                            : draft.resumeStatus ===
+                                  'failed' ||
+                                draft.fitStatus ===
+                                  'failed' ||
+                                draft.auditStatus ===
+                                  'failed'
+                              ? 'bg-red-100 text-red-700'
+                              : draft.auditStatus ===
+                                    'completed' ||
+                                  draft.resumeStatus ===
+                                    'completed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-slate-100 text-slate-600'
                         )}
                       >
                         {
@@ -4094,7 +4769,7 @@ function WorkshopPage({
             </div>
           </section>
 
-          {isGeneratingTailoredResume && (
+          {activeResumeGenerating && (
             <section className="mt-5 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -4104,21 +4779,21 @@ function WorkshopPage({
 
                   <div>
                     <p className="text-sm font-bold text-slate-900">
-                      Request
-                      Processing
+                      Generating
+                      Tailored Resume
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      Hugging Face is
-                      analyzing the
-                      resume and job
-                      description.
+                      You can open
+                      another application
+                      while this resume
+                      is being prepared.
                     </p>
                   </div>
                 </div>
 
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                  Analyzing
+                  Generating
                 </span>
               </div>
 
@@ -4146,7 +4821,7 @@ function WorkshopPage({
               >
                 <FiFileText />
 
-                {isGeneratingTailoredResume
+                {activeResumeGenerating
                   ? 'Generating...'
                   : tailoredResumeIsCurrent
                     ? 'Regenerate Tailored Resume'
@@ -4359,15 +5034,9 @@ function WorkshopPage({
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setResumeReviewed(
-                      true
-                    );
-
-                    setResumeReviewPromptOpen(
-                      false
-                    );
-                  }}
+                  onClick={
+                    markTailoredResumeReviewed
+                  }
                   className={classNames(
                     'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold',
                     resumeReviewed
@@ -4452,19 +5121,9 @@ function WorkshopPage({
 
               <button
                 type="button"
-                onClick={() => {
-                  setResumeReviewed(
-                    true
-                  );
-
-                  setResumeReviewPromptOpen(
-                    false
-                  );
-
-                  setResumePreviewOpen(
-                    true
-                  );
-                }}
+                onClick={
+                  markTailoredResumeReviewed
+                }
                 className="rounded-xl bg-[#1E50C3] px-4 py-2.5 text-sm font-semibold text-white"
               >
                 Yes, I Reviewed It

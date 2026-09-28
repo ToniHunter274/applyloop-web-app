@@ -205,6 +205,131 @@ async function updateDraft(
     }
   );
 
+  /*
+   * Resume editing belongs to the
+   * Application Draft too.
+   *
+   * Job-detail changes still take
+   * precedence because they invalidate
+   * the previously generated resume.
+   */
+  if (
+    !jobDetailsChanged &&
+    Object.prototype
+      .hasOwnProperty.call(
+        body,
+        'tailoredResumeText'
+      )
+  ) {
+    if (
+      current.resume_status !==
+      'completed'
+    ) {
+      throw new PortalApiError(
+        409,
+        'A completed tailored resume is required before it can be edited.'
+      );
+    }
+
+    const nextResumeText =
+      cleanDraftValue(
+        body.tailoredResumeText,
+        120000
+      );
+
+    if (!nextResumeText) {
+      throw new PortalApiError(
+        400,
+        'The tailored resume cannot be empty.'
+      );
+    }
+
+    updates.tailored_resume_text =
+      nextResumeText;
+
+    if (
+      nextResumeText !==
+      String(
+        current
+          .tailored_resume_text ||
+          ''
+      )
+    ) {
+      /*
+       * Editing the resume means its
+       * previous review and ATS result
+       * are no longer current.
+       */
+      updates.resume_analysis =
+        {};
+
+      updates.resume_reviewed_at =
+        null;
+
+      updates.audit_status =
+        'not_started';
+
+      updates.ats_score =
+        null;
+
+      updates.ats_audit =
+        {};
+
+      updates.last_error =
+        null;
+    }
+  }
+
+
+  if (
+    !jobDetailsChanged &&
+    Object.prototype
+      .hasOwnProperty.call(
+        body,
+        'resumeReviewed'
+      )
+  ) {
+    if (
+      typeof body.resumeReviewed !==
+      'boolean'
+    ) {
+      throw new PortalApiError(
+        400,
+        'Resume reviewed must be true or false.'
+      );
+    }
+
+    const effectiveResumeText =
+      updates
+        .tailored_resume_text ??
+      current
+        .tailored_resume_text;
+
+    if (
+      body.resumeReviewed &&
+      (
+        current.resume_status !==
+          'completed' ||
+        !String(
+          effectiveResumeText ||
+            ''
+        ).trim()
+      )
+    ) {
+      throw new PortalApiError(
+        409,
+        'A completed tailored resume must exist before it can be marked reviewed.'
+      );
+    }
+
+    updates.resume_reviewed_at =
+      body.resumeReviewed
+        ? new Date()
+            .toISOString()
+        : null;
+  }
+
+
   if (
     body.cancel === true
   ) {
