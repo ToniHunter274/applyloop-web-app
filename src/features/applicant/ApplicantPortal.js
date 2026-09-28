@@ -1824,6 +1824,16 @@ function WorkshopPage({
   ] = useState('');
 
   const [
+    resumeAnalysisError,
+    setResumeAnalysisError,
+  ] = useState('');
+
+  const [
+    atsAuditError,
+    setAtsAuditError,
+  ] = useState('');
+
+  const [
     resumePreviewOpen,
     setResumePreviewOpen,
   ] = useState(false);
@@ -2087,6 +2097,8 @@ function WorkshopPage({
     setTailoredResumePreviewUrl('');
     setTailoredResumeFingerprint('');
     setResumeGenerationError('');
+    setResumeAnalysisError('');
+    setAtsAuditError('');
     setResumePreviewOpen(false);
     setResumeReviewPromptOpen(false);
     setResumeReviewed(false);
@@ -2179,16 +2191,6 @@ function WorkshopPage({
       )
     );
 
-  const canMarkApplied =
-    Boolean(
-      coreJobDetailsComplete &&
-      tailoredResumeIsCurrent &&
-      resumeReviewed &&
-      !isRecordingApplication &&
-      !isQuotaReached &&
-      !isPreview
-    );
-
   const targetRoles =
     selectedClient?.targetRoles?.length
       ? selectedClient.targetRoles.join(
@@ -2273,6 +2275,131 @@ function WorkshopPage({
       activeDraftIsCurrent &&
       activeDraft?.resumeStatus ===
         'generating'
+    );
+
+  const resumeTextMatchesDraft =
+    Boolean(
+      activeDraftIsCurrent &&
+      String(
+        tailoredResume || ''
+      ) ===
+        String(
+          activeDraft
+            ?.tailoredResumeText ||
+            ''
+        )
+    );
+
+  const resumeAnalysis =
+    activeDraftIsCurrent &&
+    activeDraft?.resumeAnalysis &&
+    typeof activeDraft.resumeAnalysis ===
+      'object'
+      ? activeDraft.resumeAnalysis
+      : {};
+
+  const resumeAnalysisStatus =
+    resumeAnalysis?.status ||
+    'not_started';
+
+  const resumeAnalysisRunning =
+    resumeAnalysisStatus ===
+    'analyzing';
+
+  const resumeAnalysisCompleted =
+    Boolean(
+      resumeAnalysisStatus ===
+        'completed' &&
+      resumeTextMatchesDraft
+    );
+
+  const resumeAnalysisNeedsRefresh =
+    Boolean(
+      resumeAnalysisStatus ===
+        'completed' &&
+      !resumeTextMatchesDraft
+    );
+
+  const canRunResumeAnalysis =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.resumeStatus ===
+        'completed' &&
+      tailoredResumeIsCurrent &&
+      !resumeAnalysisRunning &&
+      !isPreview
+    );
+
+  const atsAudit =
+    activeDraftIsCurrent &&
+    activeDraft?.atsAudit &&
+    typeof activeDraft.atsAudit ===
+      'object'
+      ? activeDraft.atsAudit
+      : {};
+
+  const atsAuditRunning =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.auditStatus ===
+        'auditing'
+    );
+
+  const atsAuditCompleted =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.auditStatus ===
+        'completed' &&
+      atsAudit?.status ===
+        'completed' &&
+      resumeAnalysisCompleted &&
+      resumeTextMatchesDraft
+    );
+
+  const atsAuditNeedsRefresh =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.auditStatus ===
+        'completed' &&
+      !resumeAnalysisCompleted
+    );
+
+  const canRunAtsAudit =
+    Boolean(
+      activeDraftIsCurrent &&
+      activeDraft?.resumeStatus ===
+        'completed' &&
+      resumeAnalysisCompleted &&
+      tailoredResumeIsCurrent &&
+      !atsAuditRunning &&
+      !isPreview
+    );
+
+  /*
+   * Final Review is deliberately the
+   * last quality-control step.
+   *
+   * Generate Resume
+   * -> Resume Analysis
+   * -> ATS Audit
+   * -> Final Review
+   * -> Mark as Applied
+   */
+  const finalReviewReady =
+    Boolean(
+      resumeAnalysisCompleted &&
+      atsAuditCompleted &&
+      tailoredResumeIsCurrent
+    );
+
+  const canMarkApplied =
+    Boolean(
+      coreJobDetailsComplete &&
+      finalReviewReady &&
+      resumeReviewed &&
+      !isRecordingApplication &&
+      !isQuotaReached &&
+      !isPreview
     );
 
   const canGenerateTailoredResume =
@@ -2543,6 +2670,9 @@ function WorkshopPage({
           'analyzing' ||
         draft.resumeStatus ===
           'generating' ||
+        draft.resumeAnalysis
+          ?.status ===
+          'analyzing' ||
         draft.auditStatus ===
           'auditing'
     );
@@ -2620,6 +2750,37 @@ function WorkshopPage({
                 'The tailored resume could not be generated.'
             );
           }
+
+          if (
+            refreshedActive
+              ?.resumeAnalysis
+              ?.status ===
+              'failed'
+          ) {
+            setResumeAnalysisError(
+              refreshedActive
+                .resumeAnalysis
+                ?.error ||
+                refreshedActive
+                  .lastError ||
+                'Resume Analysis could not be completed.'
+            );
+          }
+
+          if (
+            refreshedActive
+              ?.auditStatus ===
+              'failed'
+          ) {
+            setAtsAuditError(
+              refreshedActive
+                ?.atsAudit
+                ?.error ||
+                refreshedActive
+                  ?.lastError ||
+                'ATS Readiness Audit could not be completed.'
+            );
+          }
         } catch (error) {
           console.warn(
             'Unable to refresh Applications in Progress:',
@@ -2663,6 +2824,14 @@ function WorkshopPage({
       }
 
       if (
+        draft.resumeAnalysis
+          ?.status ===
+          'analyzing'
+      ) {
+        return 'Analyzing resume';
+      }
+
+      if (
         draft.fitStatus ===
         'analyzing'
       ) {
@@ -2674,6 +2843,14 @@ function WorkshopPage({
         'failed'
       ) {
         return 'Audit failed';
+      }
+
+      if (
+        draft.resumeAnalysis
+          ?.status ===
+          'failed'
+      ) {
+        return 'Resume Analysis failed';
       }
 
       if (
@@ -2695,6 +2872,14 @@ function WorkshopPage({
         'completed'
       ) {
         return 'ATS audit complete';
+      }
+
+      if (
+        draft.resumeAnalysis
+          ?.status ===
+          'completed'
+      ) {
+        return 'Resume analyzed';
       }
 
       if (
@@ -2878,6 +3063,31 @@ function WorkshopPage({
           : ''
       );
 
+      setResumeAnalysisError(
+        draft.resumeAnalysis
+          ?.status ===
+          'failed'
+          ? (
+              draft.resumeAnalysis
+                ?.error ||
+              draft.lastError ||
+              'Resume Analysis could not be completed.'
+            )
+          : ''
+      );
+
+      setAtsAuditError(
+        draft.auditStatus ===
+          'failed'
+          ? (
+              draft.atsAudit
+                ?.error ||
+              draft.lastError ||
+              'ATS Readiness Audit could not be completed.'
+            )
+          : ''
+      );
+
       setDraftError('');
 
       setWorkflowStatus(
@@ -2925,6 +3135,8 @@ function WorkshopPage({
       setTailoredResumePreviewUrl('');
       setTailoredResumeFingerprint('');
       setResumeGenerationError('');
+      setResumeAnalysisError('');
+      setAtsAuditError('');
       setResumeStatus('');
       setResumePreviewOpen(false);
       setResumeReviewPromptOpen(false);
@@ -3369,6 +3581,7 @@ function WorkshopPage({
       }
 
       setResumeGenerationError('');
+      setResumeAnalysisError('');
       setTailoredResumePreviewUrl('');
       setResumeReviewed(false);
       setResumeReviewPromptOpen(
@@ -3437,6 +3650,9 @@ function WorkshopPage({
 
           resumeStatus:
             'generating',
+
+          resumeAnalysis:
+            {},
 
           resumeReviewedAt:
             null,
@@ -3532,8 +3748,12 @@ function WorkshopPage({
             true
           );
 
+          /*
+           * Human review belongs after
+           * Resume Analysis and ATS Audit.
+           */
           setResumeReviewPromptOpen(
-            true
+            false
           );
 
           setResumeGenerationError(
@@ -3675,6 +3895,490 @@ function WorkshopPage({
       }
     };
 
+  const runResumeAnalysis =
+    async () => {
+      if (
+        !activeDraftId ||
+        !activeDraftIsCurrent
+      ) {
+        setResumeAnalysisError(
+          'Open a saved application before running Resume Analysis.'
+        );
+        return;
+      }
+
+      if (
+        !tailoredResumeIsCurrent ||
+        !tailoredResume.trim()
+      ) {
+        setResumeAnalysisError(
+          'Generate the current tailored resume before running Resume Analysis.'
+        );
+        return;
+      }
+
+      if (
+        resumeAnalysisRunning ||
+        isPreview
+      ) {
+        return;
+      }
+
+      setResumeAnalysisError('');
+      setAtsAuditError('');
+      setResumeReviewed(false);
+      setResumeReviewPromptOpen(
+        false
+      );
+
+      let analysisDraft =
+        null;
+
+      try {
+        /*
+         * Persist any Applicant edits
+         * before analyzing the resume.
+         */
+        const savedDraft =
+          await saveApplicationDraft({
+            tailoredResumeText:
+              tailoredResume,
+
+            resumeReviewed:
+              false,
+          });
+
+        analysisDraft =
+          savedDraft;
+
+        mergeDraft({
+          ...savedDraft,
+
+          resumeAnalysis: {
+            status:
+              'analyzing',
+
+            startedAt:
+              new Date()
+                .toISOString(),
+          },
+
+          resumeReviewedAt:
+            null,
+
+          auditStatus:
+            'not_started',
+
+          atsScore:
+            null,
+
+          atsAudit:
+            {},
+
+          lastError:
+            '',
+        });
+
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            `/api/applicant/application-drafts/${encodeURIComponent(
+              savedDraft.id
+            )}/resume-analysis`,
+            {
+              method:
+                'POST',
+
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+
+                'Content-Type':
+                  'application/json',
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'Resume Analysis could not be completed.'
+          );
+        }
+
+        if (!result.draft) {
+          throw new Error(
+            'Resume Analysis completed without returning the application.'
+          );
+        }
+
+        mergeDraft(
+          result.draft
+        );
+
+        if (
+          activeDraftIdRef
+            .current ===
+          result.draft.id
+        ) {
+          setResumeAnalysisError(
+            ''
+          );
+        }
+      } catch (error) {
+        const message =
+          error?.message ||
+          'Resume Analysis could not be completed.';
+
+        /*
+         * As with resume generation,
+         * reconcile with Supabase before
+         * declaring the AI job failed.
+         */
+        if (analysisDraft) {
+          try {
+            const latestDraft =
+              await fetchLatestApplicationDraft(
+                analysisDraft.id
+              );
+
+            mergeDraft(
+              latestDraft
+            );
+
+            const latestStatus =
+              latestDraft
+                ?.resumeAnalysis
+                ?.status;
+
+            if (
+              latestStatus ===
+                'completed'
+            ) {
+              if (
+                activeDraftIdRef
+                  .current ===
+                latestDraft.id
+              ) {
+                setResumeAnalysisError(
+                  ''
+                );
+              }
+
+              return;
+            }
+
+            if (
+              latestStatus ===
+                'failed'
+            ) {
+              if (
+                activeDraftIdRef
+                  .current ===
+                latestDraft.id
+              ) {
+                setResumeAnalysisError(
+                  latestDraft
+                    ?.resumeAnalysis
+                    ?.error ||
+                    latestDraft
+                      ?.lastError ||
+                    message
+                );
+              }
+
+              return;
+            }
+
+            if (
+              latestStatus ===
+                'analyzing'
+            ) {
+              return;
+            }
+          } catch {
+            /*
+             * Polling can reconcile an
+             * in-flight server result.
+             */
+          }
+        }
+
+        if (
+          !analysisDraft ||
+          activeDraftIdRef
+            .current ===
+            analysisDraft.id
+        ) {
+          setResumeAnalysisError(
+            message
+          );
+        }
+      }
+    };
+
+
+  const runAtsAudit =
+    async () => {
+      if (
+        !activeDraftId ||
+        !activeDraftIsCurrent
+      ) {
+        setAtsAuditError(
+          'Open a saved application before running ATS Readiness Audit.'
+        );
+        return;
+      }
+
+      if (
+        !resumeAnalysisCompleted
+      ) {
+        setAtsAuditError(
+          'Complete Resume Analysis before running ATS Readiness Audit.'
+        );
+        return;
+      }
+
+      if (
+        atsAuditRunning ||
+        isPreview
+      ) {
+        return;
+      }
+
+      setAtsAuditError('');
+      setResumeReviewed(false);
+      setResumeReviewPromptOpen(
+        false
+      );
+
+      let auditDraft =
+        null;
+
+      try {
+        /*
+         * Save the final text before
+         * auditing it. If the Applicant
+         * changed the resume after
+         * Resume Analysis, the save will
+         * invalidate that analysis and
+         * the audit must not continue.
+         */
+        const savedDraft =
+          await saveApplicationDraft({
+            tailoredResumeText:
+              tailoredResume,
+
+            resumeReviewed:
+              false,
+          });
+
+        if (
+          savedDraft
+            ?.resumeAnalysis
+            ?.status !==
+          'completed'
+        ) {
+          throw new Error(
+            'The resume changed after Resume Analysis. Run Resume Analysis again before ATS Audit.'
+          );
+        }
+
+        auditDraft =
+          savedDraft;
+
+        mergeDraft({
+          ...savedDraft,
+
+          auditStatus:
+            'auditing',
+
+          atsScore:
+            null,
+
+          atsAudit: {
+            status:
+              'auditing',
+
+            startedAt:
+              new Date()
+                .toISOString(),
+          },
+
+          resumeReviewedAt:
+            null,
+
+          lastError:
+            '',
+        });
+
+        const accessToken =
+          await getApplicantAccessToken();
+
+        const response =
+          await fetch(
+            `/api/applicant/application-drafts/${encodeURIComponent(
+              savedDraft.id
+            )}/resume-audit`,
+            {
+              method:
+                'POST',
+
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+
+                'Content-Type':
+                  'application/json',
+              },
+            }
+          );
+
+        const result =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              'ATS Readiness Audit could not be completed.'
+          );
+        }
+
+        if (!result.draft) {
+          throw new Error(
+            'ATS Readiness Audit completed without returning the application.'
+          );
+        }
+
+        mergeDraft(
+          result.draft
+        );
+
+        if (
+          activeDraftIdRef
+            .current ===
+          result.draft.id
+        ) {
+          setAtsAuditError(
+            ''
+          );
+
+          setResumeReviewed(
+            false
+          );
+        }
+      } catch (error) {
+        const message =
+          error?.message ||
+          'ATS Readiness Audit could not be completed.';
+
+        /*
+         * Do not manufacture an Audit
+         * failure from a browser/network
+         * error. Ask Supabase what
+         * actually happened first.
+         */
+        if (auditDraft) {
+          try {
+            const latestDraft =
+              await fetchLatestApplicationDraft(
+                auditDraft.id
+              );
+
+            mergeDraft(
+              latestDraft
+            );
+
+            if (
+              latestDraft
+                ?.auditStatus ===
+              'completed'
+            ) {
+              if (
+                activeDraftIdRef
+                  .current ===
+                latestDraft.id
+              ) {
+                setAtsAuditError(
+                  ''
+                );
+
+                setResumeReviewed(
+                  Boolean(
+                    latestDraft
+                      .resumeReviewedAt
+                  )
+                );
+              }
+
+              return;
+            }
+
+            if (
+              latestDraft
+                ?.auditStatus ===
+              'failed'
+            ) {
+              if (
+                activeDraftIdRef
+                  .current ===
+                latestDraft.id
+              ) {
+                setAtsAuditError(
+                  latestDraft
+                    ?.atsAudit
+                    ?.error ||
+                    latestDraft
+                      ?.lastError ||
+                    message
+                );
+              }
+
+              return;
+            }
+
+            if (
+              latestDraft
+                ?.auditStatus ===
+              'auditing'
+            ) {
+              return;
+            }
+          } catch {
+            /*
+             * Polling will reconcile an
+             * in-flight server result.
+             */
+          }
+        }
+
+        if (
+          !auditDraft ||
+          activeDraftIdRef
+            .current ===
+            auditDraft.id
+        ) {
+          setAtsAuditError(
+            message
+          );
+        }
+      }
+    };
+
+
   const markTailoredResumeReviewed =
     async () => {
       if (
@@ -3683,6 +4387,14 @@ function WorkshopPage({
       ) {
         setResumeGenerationError(
           'The tailored resume must be saved before it can be marked reviewed.'
+        );
+
+        return;
+      }
+
+      if (!finalReviewReady) {
+        setResumeGenerationError(
+          'Complete Resume Analysis and ATS Audit before Final Review.'
         );
 
         return;
@@ -3846,6 +4558,8 @@ function WorkshopPage({
       setTailoredResumePreviewUrl('');
       setTailoredResumeFingerprint('');
       setResumeGenerationError('');
+      setResumeAnalysisError('');
+      setAtsAuditError('');
       setResumeStatus('');
       setResumePreviewOpen(false);
       setResumeReviewPromptOpen(false);
@@ -4889,11 +5603,12 @@ function WorkshopPage({
                 Mark as Applied
                 unlocks after all job
                 details are complete,
-                a current tailored
-                resume has been
-                generated, and the
-                Applicant confirms the
-                resume was reviewed.
+                the tailored resume is
+                generated, Resume
+                Analysis and ATS Audit
+                are complete, and the
+                Applicant confirms
+                Final Review.
               </p>
             )}
 
@@ -4901,8 +5616,8 @@ function WorkshopPage({
               tailoredResumeIsCurrent && (
               <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-700">
                 <FiCheckCircle />
-                Tailored resume
-                reviewed — Mark as
+                Final Review
+                complete — Mark as
                 Applied is ready.
               </div>
             )}
@@ -5032,25 +5747,910 @@ function WorkshopPage({
                   Copy Resume
                 </button>
 
+                <p className="text-xs text-slate-500 sm:max-w-xs sm:text-right">
+                  Final Review is
+                  completed after
+                  Resume Analysis and
+                  ATS Audit.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {tailoredResumeIsCurrent &&
+            activeDraft?.resumeStatus ===
+              'completed' && (
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FiFileText className="text-[#1E50C3]" />
+
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Resume Analysis
+                    </h3>
+                  </div>
+
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                    Check how well the
+                    tailored resume
+                    communicates relevant
+                    experience, where
+                    evidence is weak and
+                    whether any wording
+                    needs correction
+                    before ATS Audit.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    runResumeAnalysis
+                  }
+                  disabled={
+                    !canRunResumeAnalysis
+                  }
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {resumeAnalysisRunning ? (
+                    <FiRefreshCw className="animate-spin" />
+                  ) : (
+                    <FiFileText />
+                  )}
+
+                  {resumeAnalysisRunning
+                    ? 'Analyzing...'
+                    : resumeAnalysisCompleted
+                      ? 'Run Again'
+                      : 'Run Resume Analysis'}
+                </button>
+              </div>
+
+              {resumeAnalysisRunning && (
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                    <FiRefreshCw className="animate-spin" />
+                    Analyzing the
+                    tailored resume
+                  </div>
+
+                  <p className="mt-1 text-xs text-blue-600">
+                    You can open another
+                    application while
+                    this analysis runs.
+                  </p>
+                </div>
+              )}
+
+              {resumeAnalysisNeedsRefresh && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  The tailored resume
+                  has changed since the
+                  last analysis. Run
+                  Resume Analysis again
+                  before continuing.
+                </div>
+              )}
+
+              {resumeAnalysisCompleted && (
+                <div className="mt-5 space-y-4">
+                  {resumeAnalysis.summary && (
+                    <div className="rounded-xl bg-slate-50 px-4 py-3">
+                      <p className="text-sm leading-6 text-slate-700">
+                        {
+                          resumeAnalysis
+                            .summary
+                        }
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                        Strong Matches
+                      </h4>
+
+                      {(
+                        resumeAnalysis
+                          .strongMatches ||
+                        []
+                      ).length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                          {resumeAnalysis
+                            .strongMatches
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <li
+                                  key={`${index}-${item}`}
+                                  className="flex gap-2"
+                                >
+                                  <FiCheckCircle className="mt-0.5 shrink-0 text-emerald-600" />
+                                  <span>
+                                    {item}
+                                  </span>
+                                </li>
+                              )
+                            )}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">
+                          No major
+                          strengths were
+                          identified.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                        Missing / Weak
+                        Evidence
+                      </h4>
+
+                      {(
+                        resumeAnalysis
+                          .missingOrWeakEvidence ||
+                        []
+                      ).length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                          {resumeAnalysis
+                            .missingOrWeakEvidence
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <li
+                                  key={`${index}-${item}`}
+                                  className="flex gap-2"
+                                >
+                                  <FiAlertCircle className="mt-0.5 shrink-0 text-amber-600" />
+                                  <span>
+                                    {item}
+                                  </span>
+                                </li>
+                              )
+                            )}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">
+                          No important
+                          evidence gaps
+                          were identified.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                      Keyword Coverage
+                    </h4>
+
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold text-emerald-700">
+                          Represented
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(
+                            resumeAnalysis
+                              .keywordCoverage
+                              ?.matched ||
+                            []
+                          ).length > 0 ? (
+                            resumeAnalysis
+                              .keywordCoverage
+                              .matched
+                              .map(
+                                (
+                                  item,
+                                  index
+                                ) => (
+                                  <span
+                                    key={`${index}-${item}`}
+                                    className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                                  >
+                                    {item}
+                                  </span>
+                                )
+                              )
+                          ) : (
+                            <span className="text-xs text-slate-500">
+                              None
+                              identified.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold text-amber-700">
+                          Missing or Weak
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(
+                            resumeAnalysis
+                              .keywordCoverage
+                              ?.missingImportant ||
+                            []
+                          ).length > 0 ? (
+                            resumeAnalysis
+                              .keywordCoverage
+                              .missingImportant
+                              .map(
+                                (
+                                  item,
+                                  index
+                                ) => (
+                                  <span
+                                    key={`${index}-${item}`}
+                                    className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                                  >
+                                    {item}
+                                  </span>
+                                )
+                              )
+                          ) : (
+                            <span className="text-xs text-slate-500">
+                              None
+                              identified.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                        Evidence Risks
+                      </h4>
+
+                      {(
+                        resumeAnalysis
+                          .evidenceRisks ||
+                        []
+                      ).length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm text-red-700">
+                          {resumeAnalysis
+                            .evidenceRisks
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <li
+                                  key={`${index}-${item}`}
+                                  className="flex gap-2"
+                                >
+                                  <FiAlertCircle className="mt-0.5 shrink-0" />
+                                  <span>
+                                    {item}
+                                  </span>
+                                </li>
+                              )
+                            )}
+                        </ul>
+                      ) : (
+                        <div className="mt-3 flex gap-2 text-sm text-emerald-700">
+                          <FiCheckCircle className="mt-0.5 shrink-0" />
+                          No unsupported
+                          or overstated
+                          wording was
+                          identified.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                        Recommendations
+                      </h4>
+
+                      {(
+                        resumeAnalysis
+                          .recommendations ||
+                        []
+                      ).length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                          {resumeAnalysis
+                            .recommendations
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <li
+                                  key={`${index}-${item}`}
+                                  className="flex gap-2"
+                                >
+                                  <FiCheckCircle className="mt-0.5 shrink-0 text-[#1E50C3]" />
+                                  <span>
+                                    {item}
+                                  </span>
+                                </li>
+                              )
+                            )}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">
+                          No additional
+                          content changes
+                          were recommended.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    Resume Analysis is
+                    complete. The next
+                    step is ATS Audit.
+                  </div>
+                </div>
+              )}
+
+              {resumeAnalysisError && (
+                <div
+                  role="alert"
+                  className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+                >
+                  {
+                    resumeAnalysisError
+                  }
+                </div>
+              )}
+            </section>
+          )}
+
+          {tailoredResumeIsCurrent &&
+            activeDraft?.resumeStatus ===
+              'completed' && (
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FiFileText className="text-[#1E50C3]" />
+
+                    <h3 className="text-sm font-bold text-slate-900">
+                      ATS Readiness
+                    </h3>
+                  </div>
+
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                    Audit the final
+                    resume text and
+                    structure against
+                    the Job Description
+                    before Final Review.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    runAtsAudit
+                  }
+                  disabled={
+                    !canRunAtsAudit
+                  }
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E50C3] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1A45A7] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {atsAuditRunning ? (
+                    <FiRefreshCw className="animate-spin" />
+                  ) : (
+                    <FiFileText />
+                  )}
+
+                  {atsAuditRunning
+                    ? 'Auditing...'
+                    : atsAuditCompleted
+                      ? 'Run Again'
+                      : 'Run ATS Audit'}
+                </button>
+              </div>
+
+              {!resumeAnalysisCompleted &&
+                !atsAuditRunning && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Complete Resume
+                  Analysis before
+                  running ATS Audit.
+                </div>
+              )}
+
+              {atsAuditRunning && (
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                    <FiRefreshCw className="animate-spin" />
+                    Auditing ATS
+                    readiness
+                  </div>
+
+                  <p className="mt-1 text-xs text-blue-600">
+                    You can open another
+                    application while
+                    this audit runs.
+                  </p>
+                </div>
+              )}
+
+              {atsAuditNeedsRefresh && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  The resume or Resume
+                  Analysis changed after
+                  this ATS Audit. Run
+                  Resume Analysis and
+                  ATS Audit again.
+                </div>
+              )}
+
+              {atsAuditCompleted && (
+                <div className="mt-5 space-y-4">
+                  <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
+                      <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                        ATS Readiness Score
+                      </p>
+
+                      <div className="mt-2 flex items-end gap-1">
+                        <span className="text-4xl font-black text-slate-950">
+                          {
+                            Number(
+                              activeDraft
+                                ?.atsScore ??
+                                0
+                            )
+                          }
+                        </span>
+
+                        <span className="pb-1 text-sm font-semibold text-slate-500">
+                          /100
+                        </span>
+                      </div>
+
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        Measures text,
+                        structure and
+                        job-specific ATS
+                        readiness.
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 px-4 py-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                        Audit Summary
+                      </h4>
+
+                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                        {
+                          atsAudit
+                            .summary
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {(
+                    atsAudit.checks ||
+                    []
+                  ).length > 0 && (
+                    <div className="rounded-xl border border-slate-200 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                        ATS Checks
+                      </h4>
+
+                      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                        {atsAudit.checks.map(
+                          (
+                            check,
+                            index
+                          ) => {
+                            const checkTone =
+                              check.status ===
+                                'pass'
+                                ? 'border-emerald-100 bg-emerald-50/60'
+                                : check.status ===
+                                    'fail'
+                                  ? 'border-red-100 bg-red-50/60'
+                                  : 'border-amber-100 bg-amber-50/60';
+
+                            const statusTone =
+                              check.status ===
+                                'pass'
+                                ? 'text-emerald-700'
+                                : check.status ===
+                                    'fail'
+                                  ? 'text-red-700'
+                                  : 'text-amber-700';
+
+                            return (
+                              <div
+                                key={`${index}-${check.label}`}
+                                className={classNames(
+                                  'rounded-xl border p-4',
+                                  checkTone
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-sm font-bold text-slate-900">
+                                    {
+                                      check.label
+                                    }
+                                  </p>
+
+                                  <span
+                                    className={classNames(
+                                      'text-xs font-bold uppercase',
+                                      statusTone
+                                    )}
+                                  >
+                                    {
+                                      check.status
+                                    }
+                                  </span>
+                                </div>
+
+                                {check.finding && (
+                                  <p className="mt-2 text-sm leading-5 text-slate-700">
+                                    {
+                                      check.finding
+                                    }
+                                  </p>
+                                )}
+
+                                {check.recommendation && (
+                                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                                    <strong>
+                                      Improve:
+                                    </strong>{' '}
+                                    {
+                                      check
+                                        .recommendation
+                                    }
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                        Strong ATS Keywords
+                      </h4>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(
+                          atsAudit
+                            .keywordFindings
+                            ?.strong ||
+                          []
+                        ).length > 0 ? (
+                          atsAudit
+                            .keywordFindings
+                            .strong
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <span
+                                  key={`${index}-${item}`}
+                                  className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                                >
+                                  {item}
+                                </span>
+                              )
+                            )
+                        ) : (
+                          <span className="text-xs text-slate-500">
+                            None
+                            identified.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                        Weak / Missing ATS Keywords
+                      </h4>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(
+                          atsAudit
+                            .keywordFindings
+                            ?.weak ||
+                          []
+                        ).length > 0 ? (
+                          atsAudit
+                            .keywordFindings
+                            .weak
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <span
+                                  key={`${index}-${item}`}
+                                  className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700"
+                                >
+                                  {item}
+                                </span>
+                              )
+                            )
+                        ) : (
+                          <span className="text-xs text-slate-500">
+                            None
+                            identified.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                        Issues
+                      </h4>
+
+                      {(
+                        atsAudit.issues ||
+                        []
+                      ).length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                          {atsAudit.issues.map(
+                            (
+                              item,
+                              index
+                            ) => (
+                              <li
+                                key={`${index}-${item}`}
+                                className="flex gap-2"
+                              >
+                                <FiAlertCircle className="mt-0.5 shrink-0 text-amber-600" />
+                                <span>
+                                  {item}
+                                </span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      ) : (
+                        <div className="mt-3 flex gap-2 text-sm text-emerald-700">
+                          <FiCheckCircle className="mt-0.5 shrink-0" />
+                          No major
+                          ATS-readiness
+                          issues were
+                          identified.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                        Recommendations
+                      </h4>
+
+                      {(
+                        atsAudit
+                          .recommendations ||
+                        []
+                      ).length > 0 ? (
+                        <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                          {atsAudit
+                            .recommendations
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+                                <li
+                                  key={`${index}-${item}`}
+                                  className="flex gap-2"
+                                >
+                                  <FiCheckCircle className="mt-0.5 shrink-0 text-[#1E50C3]" />
+                                  <span>
+                                    {item}
+                                  </span>
+                                </li>
+                              )
+                            )}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">
+                          No additional
+                          ATS improvements
+                          were recommended.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {atsAudit.scopeNote && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
+                      {
+                        atsAudit
+                          .scopeNote
+                      }
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    ATS Readiness Audit
+                    is complete. Review
+                    any recommendations,
+                    then complete Final
+                    Review.
+                  </div>
+                </div>
+              )}
+
+              {atsAuditError && (
+                <div
+                  role="alert"
+                  className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+                >
+                  {
+                    atsAuditError
+                  }
+                </div>
+              )}
+            </section>
+          )}
+
+          {tailoredResumeIsCurrent &&
+            activeDraft?.resumeStatus ===
+              'completed' && (
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FiCheckCircle
+                      className={
+                        resumeReviewed
+                          ? 'text-emerald-600'
+                          : 'text-slate-400'
+                      }
+                    />
+
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Final Review
+                    </h3>
+                  </div>
+
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                    Confirm the final
+                    tailored resume only
+                    after Resume Analysis
+                    and ATS Audit are
+                    complete.
+                  </p>
+                </div>
+
                 <button
                   type="button"
                   onClick={
                     markTailoredResumeReviewed
                   }
-                  className={classNames(
-                    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold',
+                  disabled={
+                    !finalReviewReady ||
                     resumeReviewed
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-[#1E50C3] text-white'
+                  }
+                  className={classNames(
+                    'inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+                    resumeReviewed
+                      ? 'cursor-default bg-emerald-100 text-emerald-700'
+                      : finalReviewReady
+                        ? 'bg-[#1E50C3] text-white hover:bg-[#1A45A7]'
+                        : 'cursor-not-allowed bg-slate-200 text-slate-500'
                   )}
                 >
                   <FiCheckCircle />
 
                   {resumeReviewed
-                    ? 'Resume Reviewed'
-                    : 'I Have Reviewed This Resume'}
+                    ? 'Final Review Complete'
+                    : !resumeAnalysisCompleted
+                      ? 'Complete Resume Analysis First'
+                      : activeDraft?.auditStatus !==
+                          'completed'
+                        ? 'ATS Audit Required'
+                        : 'Confirm Final Review'}
                 </button>
               </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div
+                  className={classNames(
+                    'rounded-xl border px-3 py-2.5 text-xs font-semibold',
+                    resumeAnalysisCompleted
+                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 bg-slate-50 text-slate-500'
+                  )}
+                >
+                  {resumeAnalysisCompleted
+                    ? '✓ Resume Analysis Complete'
+                    : 'Resume Analysis Pending'}
+                </div>
+
+                <div
+                  className={classNames(
+                    'rounded-xl border px-3 py-2.5 text-xs font-semibold',
+                    atsAuditCompleted
+                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 bg-slate-50 text-slate-500'
+                  )}
+                >
+                  {atsAuditCompleted
+                    ? '✓ ATS Audit Complete'
+                    : 'ATS Audit Pending'}
+                </div>
+
+                <div
+                  className={classNames(
+                    'rounded-xl border px-3 py-2.5 text-xs font-semibold',
+                    resumeReviewed
+                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 bg-slate-50 text-slate-500'
+                  )}
+                >
+                  {resumeReviewed
+                    ? '✓ Final Review Complete'
+                    : 'Final Review Pending'}
+                </div>
+              </div>
+
+              {!resumeAnalysisCompleted && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Finish Resume
+                  Analysis before
+                  moving to ATS Audit.
+                </p>
+              )}
+
+              {resumeAnalysisCompleted &&
+                !atsAuditCompleted && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Resume Analysis is
+                  complete. ATS Audit is
+                  the next step.
+                </p>
+              )}
+
+              {finalReviewReady &&
+                !resumeReviewed && (
+                <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  ATS Audit is complete.
+                  Review the final resume
+                  carefully, then confirm
+                  Final Review.
+                </div>
+              )}
+
+              {resumeReviewed && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  <FiCheckCircle className="mt-0.5 shrink-0" />
+                  Final Review complete.
+                  This application can
+                  now be marked as
+                  Applied.
+                </div>
+              )}
             </section>
           )}
 
